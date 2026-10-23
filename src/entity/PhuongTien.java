@@ -1,7 +1,6 @@
 package entity;
 
 import java.math.BigDecimal;
-import java.sql.Timestamp;
 
 public class PhuongTien {
     private String VIN;
