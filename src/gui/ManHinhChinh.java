@@ -10,7 +10,6 @@ public final class ManHinhChinh extends JFrame {
     private final String employeeId;
     private final JPanel pnlNav,pnlBody;
     private final JLabel lblTitle;
-    private String current="Tổng quan";
     public ManHinhChinh(dao.TaiKhoanDAO.AuthResult account){
         this.role=account.role;
         this.displayName=account.hoTen;
@@ -105,7 +104,6 @@ public final class ManHinhChinh extends JFrame {
         pnlNav.add(Box.createVerticalStrut(14));
     }
     public void open(String page){
-        current=page;
         lblTitle.setText(page);
         pnlNav.removeAll();
         String[] items=DuLieuTrinhDon.forRole(role);
