@@ -1,4 +1,6 @@
 target/
+out/
+out-tests/
 bin/
 .idea/
 .vscode/

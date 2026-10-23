@@ -1,0 +1,20 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Chạy chương trình gara ô tô",
+            "request": "launch",
+            "mainClass": "gui.DangNhap",
+            "projectName": "Nhom06_GaraOto",
+            "classPaths": [
+                "${workspaceFolder}/bin",
+                "${workspaceFolder}/src",
+                "${workspaceFolder}/lib/sqljdbc42.jar",
+                "${workspaceFolder}/lib/jcalendar-1.4.jar"
+            ],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal"
+        }
+    ]
+}
