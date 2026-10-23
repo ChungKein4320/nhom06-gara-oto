@@ -1,7 +1,5 @@
 package entity;
 
-import java.math.BigDecimal;
-import java.sql.Timestamp;
 
 public class PhuongThucThanhToan {
     private String maPhuongThuc;
