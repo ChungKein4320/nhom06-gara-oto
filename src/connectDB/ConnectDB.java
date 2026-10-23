@@ -1,8 +1,35 @@
 package connectDB;
+
 import java.sql.Connection;
-public final class ConnectDB {
- private ConnectDB(){}
- // TODO SQL: Thêm JDBC driver vào lib khi có SQL Server/MySQL.
- // TODO SQL: Khai báo URL, tài khoản và mật khẩu từ cấu hình an toàn.
- public static Connection getConnection(){throw new UnsupportedOperationException("Chưa cấu hình kết nối SQL");}
+import java.sql.DriverManager;
+import java.sql.SQLException;
+
+public class ConnectDB {
+
+    private static final String URL = "jdbc:sqlserver://localhost:1433;databaseName=GaraOto;encrypt=true;trustServerCertificate=true;";
+    private static final String USER = "sa";
+    private static final String PASSWORD = "sapassword";
+    private static final ConnectDB instance = new ConnectDB();
+
+    private ConnectDB() { }
+
+    public static ConnectDB getInstance() {
+        return instance;
+    }
+
+    /** Mỗi DAO sở hữu một kết nối riêng và tự đóng sau khi dùng. */
+    public static Connection getConnection() throws SQLException {
+        return DriverManager.getConnection(URL, USER, PASSWORD);
+    }
+
+    public void connect() throws SQLException {
+        try (Connection conn = getConnection()) {
+            if (conn.isClosed()) throw new SQLException("Kết nối đã đóng.");
+            System.out.println("Ket noi SQL Server thanh cong!");
+        }
+    }
+
+    public static void disconnect() {
+        // Không dùng kết nối chia sẻ: DAO tự đóng kết nối của mình.
+    }
 }
