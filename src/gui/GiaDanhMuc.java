@@ -1,6 +1,6 @@
 package gui;
 
-import connectDB.ConnectDB;
+import connectDB.KetNoiCSDL;
 import java.math.BigDecimal;
 import java.sql.*;
 import java.util.*;
@@ -33,7 +33,7 @@ final class GiaDanhMuc {
         Price(OChonThamChieu source,JTextField target,String key,String table,String field) { this.source=source; this.target=target; this.key=key; this.table=table; this.field=field; }
         BigDecimal fetch() throws SQLException {
             if(source.selectedId().isEmpty()) throw new SQLException("Vui lòng chọn "+NhanCot.forField(key).toLowerCase()+".");
-            try(Connection conn=ConnectDB.getConnection(); PreparedStatement ps=conn.prepareStatement("SELECT donGia FROM dbo.["+table+"] WHERE ["+key+"]=?")) {
+            try(Connection conn=KetNoiCSDL.getConnection(); PreparedStatement ps=conn.prepareStatement("SELECT donGia FROM dbo.["+table+"] WHERE ["+key+"]=?")) {
                 ps.setString(1,source.selectedId());
                 try(ResultSet rs=ps.executeQuery()) {
                     if(!rs.next()) throw new SQLException("Không tìm thấy "+NhanCot.forField(key).toLowerCase()+".");

@@ -1,6 +1,6 @@
 package gui;
 
-import dao.WorkflowDAO;
+import dao.QuyTrinhDAO;
 import java.awt.*;
 import java.sql.*;
 import java.util.*;
@@ -54,19 +54,19 @@ final class ThaoTacNghiepVu {
                         Map<String,Object> seed=new LinkedHashMap<>(); seed.put("maPKT",id); seed.put("VIN",row.get("VIN")); seed.put("maNhanVien",employee); seed.put("ngayLap",new Timestamp(System.currentTimeMillis())); seed.put("trangThai","Còn hiệu lực");
                         TrinhSuaPhieu.show(parent,"PhieuBaoGia",seed);
                     }
-                    case "Xác nhận báo giá" -> WorkflowDAO.confirmQuote(id);
+                    case "Xác nhận báo giá" -> QuyTrinhDAO.confirmQuote(id);
                     case "Lập phiếu sửa chữa" -> {
                         String employee=choose(parent,"NhanVien","maNhanVien","Nhân viên phụ trách sửa chữa"); if(employee==null) return;
-                        String created=WorkflowDAO.createRepair(id,employee);
+                        String created=QuyTrinhDAO.createRepair(id,employee);
                         JOptionPane.showMessageDialog(parent,"Đã tạo "+created+". Cấp phát phụ tùng trước khi bắt đầu sửa chữa.");
                     }
-                    case "Bắt đầu sửa chữa" -> WorkflowDAO.startRepair(id);
-                    case "Nghiệm thu đạt" -> WorkflowDAO.acceptRepair(id);
-                    case "Duyệt nhập kho" -> WorkflowDAO.approveReceipt(id,true);
-                    case "Từ chối nhập kho" -> WorkflowDAO.approveReceipt(id,false);
-                    case "Ghi nhận đã gửi" -> WorkflowDAO.markReminder(id);
-                    case "Bàn giao" -> WorkflowDAO.handover(id);
-                    case "Hủy" -> WorkflowDAO.cancelRepair(id);
+                    case "Bắt đầu sửa chữa" -> QuyTrinhDAO.startRepair(id);
+                    case "Nghiệm thu đạt" -> QuyTrinhDAO.acceptRepair(id);
+                    case "Duyệt nhập kho" -> QuyTrinhDAO.approveReceipt(id,true);
+                    case "Từ chối nhập kho" -> QuyTrinhDAO.approveReceipt(id,false);
+                    case "Ghi nhận đã gửi" -> QuyTrinhDAO.markReminder(id);
+                    case "Bàn giao" -> QuyTrinhDAO.handover(id);
+                    case "Hủy" -> QuyTrinhDAO.cancelRepair(id);
                     default -> { }
                 }
                 refresh.run();

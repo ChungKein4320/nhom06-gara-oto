@@ -1,7 +1,7 @@
 package gui;
 
-import connectDB.ConnectDB;
-import dao.BaseDAO;
+import connectDB.KetNoiCSDL;
+import dao.CoSoDAO;
 import dao.Schema;
 import java.sql.*;
 import java.util.*;
@@ -46,7 +46,7 @@ final class TruongKeThua {
             String id=source.selectedId(); loadedId=""; problem=null;
             for(String field:link.inherited()) set(field,"");
             if(id.isEmpty()) { lblSummary.setText("Chọn phiếu nguồn để tự điền khách hàng và xe."); updating=false; return; }
-            try(Connection conn=ConnectDB.getConnection()) {
+            try(Connection conn=KetNoiCSDL.getConnection()) {
                 Map<String,Object> origin=load(conn,link.table(),id);
                 Map<String,Object> receipt=origin; String current=link.table();
                 while(!current.equals("PhieuTiepNhan")) {
@@ -81,7 +81,7 @@ final class TruongKeThua {
         }
     }
     private static Map<String,Object> load(Connection conn,String table,Object id) throws SQLException {
-        var rows=new BaseDAO(table).getAll(conn,Map.of(Schema.PRIMARY.get(table),id));
+        var rows=new CoSoDAO(table).getAll(conn,Map.of(Schema.PRIMARY.get(table),id));
         if(rows.isEmpty()) throw new SQLException("Không tìm thấy "+table+": "+id);
         return rows.get(0);
     }

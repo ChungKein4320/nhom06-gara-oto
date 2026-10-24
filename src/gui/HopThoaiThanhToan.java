@@ -1,7 +1,7 @@
 package gui;
 
-import connectDB.ConnectDB;
-import dao.CommerceDAO;
+import connectDB.KetNoiCSDL;
+import dao.ThuongMaiDAO;
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.image.BufferedImage;
@@ -65,7 +65,7 @@ final class HopThoaiThanhToan extends JDialog {
     private boolean reload() {
         cancelQr(); total=null; btnConfirm.setEnabled(false); loading=true;
         Method previous=(Method)cmbMethod.getSelectedItem(); cmbMethod.removeAllItems();
-        try(Connection conn=ConnectDB.getConnection()) {
+        try(Connection conn=KetNoiCSDL.getConnection()) {
             try(PreparedStatement ps=conn.prepareStatement("SELECT tienPhuTung,tienCong,dichVuKhac,thueVAT,giamGia,trangThaiThanhToan FROM dbo.HoaDon WHERE maHoaDon=?")) {
                 ps.setString(1,invoice);
                 try(ResultSet rs=ps.executeQuery()) {
@@ -129,7 +129,7 @@ final class HopThoaiThanhToan extends JDialog {
         if(JOptionPane.showConfirmDialog(this,"Xác nhận đã nhận đủ "+lblAmount.getText().replace("CẦN THU: ","")+" bằng "+method.label()+"?","Xác nhận nhận tiền",JOptionPane.YES_NO_OPTION)!=JOptionPane.YES_OPTION) return;
         BigDecimal expected=total; busy=true; toggle(false);
         new SwingWorker<Void,Void>() {
-            @Override protected Void doInBackground() throws Exception { CommerceDAO.pay(invoice,method.id(),expected,scannedCustomer); return null; }
+            @Override protected Void doInBackground() throws Exception { ThuongMaiDAO.pay(invoice,method.id(),expected,scannedCustomer); return null; }
             @Override protected void done() {
                 busy=false;
                 try { get(); cancelQr(); dispose(); JOptionPane.showMessageDialog(getOwner(),scannedCustomer==null ? "Đã thanh toán. Không tích điểm do chưa quét mã khách hàng." : "Đã thanh toán và ghi nhận điểm tích lũy."); refreshed.run(); }
