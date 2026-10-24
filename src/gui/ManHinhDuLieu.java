@@ -6,11 +6,13 @@ import dao.Schema;
 import dao.WorkflowDAO;
 import java.awt.*;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.util.*;
 import java.util.List;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableRowSorter;
 
 /** Danh sách và biểu mẫu sử dụng dữ liệu SQL Server thực tế. */
 public final class ManHinhDuLieu extends JPanel {
@@ -133,7 +135,7 @@ public final class ManHinhDuLieu extends JPanel {
         JButton btnDelete = GiaoDien.button("Xóa", GiaoDien.ORANGE, Color.WHITE);
         btnEdit.setEnabled(!tableName.startsWith("ChiTiet") && !Set.of("HoaDon","LichSuTichDiem").contains(tableName));
         btnDelete.setEnabled(!tableName.startsWith("ChiTiet") && WorkflowDAO.detailTable(tableName)==null && !tableName.equals("LichSuTichDiem"));
-        btnRefresh.addActionListener(e -> load());
+        btnRefresh.addActionListener(e -> lamMoi());
         btnEdit.addActionListener(e -> edit(true));
         btnDelete.addActionListener(e -> hideRecord());
         pnlButtons.add(btnRefresh);
@@ -168,6 +170,14 @@ public final class ManHinhDuLieu extends JPanel {
             public void changedUpdate(javax.swing.event.DocumentEvent e) { filter(); }
         });
         load();
+    }
+
+    private void lamMoi() {
+        txtSearch.setText("");
+        statusFilters.reset();
+        load();
+        tblTable.clearSelection();
+        tblTable.scrollRectToVisible(new Rectangle(0,0,1,1));
     }
 
     private void load() {

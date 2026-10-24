@@ -29,6 +29,15 @@ final class BoLocTrangThai extends JPanel {
     }
     void onChange(Runnable changed) { this.changed=changed; }
     void search(String value) { search=OChonTimKiem.normalize(value.trim()); apply(); }
+    void reset() {
+        rebuilding=true;
+        try {
+            search="";
+            for(JComboBox<String> combo:filters.values()) combo.setSelectedItem("Tất cả");
+        } finally { rebuilding=false; }
+        if(table.getRowSorter()!=null) table.getRowSorter().setSortKeys(null);
+        table.clearSelection(); apply();
+    }
     void refresh() {
         rebuilding=true;
         for(var entry:filters.entrySet()) {

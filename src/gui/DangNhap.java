@@ -41,9 +41,13 @@ public final class DangNhap extends JFrame {
         c.insets=new Insets(0,0,13,0);
         int y=0;
         c.gridy=y++;
-        pnlForm.add(GiaoDien.label("Chào mừng trở lại",25,true,GiaoDien.NAV),c);
+        JLabel lblWelcome=GiaoDien.label("Chào mừng trở lại",25,true,GiaoDien.NAV);
+        lblWelcome.setHorizontalAlignment(SwingConstants.CENTER);
+        pnlForm.add(lblWelcome,c);
         c.gridy=y++;
-        pnlForm.add(GiaoDien.label("Đăng nhập để tiếp tục công việc tại gara",13,false,GiaoDien.MUTED),c);
+        JLabel lblIntro=GiaoDien.label("Đăng nhập để tiếp tục công việc tại gara",13,false,GiaoDien.MUTED);
+        lblIntro.setHorizontalAlignment(SwingConstants.CENTER);
+        pnlForm.add(lblIntro,c);
         c.insets=new Insets(12,0,6,0);
         c.gridy=y++;
         pnlForm.add(GiaoDien.label("Tên đăng nhập",12,true,GiaoDien.TEXT),c);

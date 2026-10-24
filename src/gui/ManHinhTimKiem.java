@@ -16,7 +16,7 @@ import javax.swing.table.DefaultTableModel;
 public final class ManHinhTimKiem extends JPanel {
     @java.io.Serial private static final long serialVersionUID = 1L;
     private final List<String> nhomDuocPhep;
-    private final JComboBox<String> cmbNhom;
+    private final String nhom;
     static List<String> nhomTheoVaiTro(VaiTro role) {
         Objects.requireNonNull(role,"Phải xác định vai trò tìm kiếm.");
         List<String> kyThuat=List.of("Phiếu tiếp nhận","Phiếu kiểm tra","Phiếu báo giá","Phiếu sửa chữa","Bảo hành","Lịch nhắc bảo dưỡng");
@@ -53,22 +53,24 @@ public final class ManHinhTimKiem extends JPanel {
     private int generation;
 
     public ManHinhTimKiem(VaiTro role) {
+        this(role,nhomTheoVaiTro(role).get(0));
+    }
+    public ManHinhTimKiem(VaiTro role,String nhom) {
         super(new BorderLayout(0,14));
         nhomDuocPhep=nhomTheoVaiTro(role);
+        if(nhom==null || !nhomDuocPhep.contains(nhom))
+            throw new SecurityException("Không có quyền tìm kiếm nhóm dữ liệu: "+nhom);
+        this.nhom=nhom;
         ButtonGroup grpGioiTinh=new ButtonGroup();
         grpGioiTinh.add(radTatCa); grpGioiTinh.add(radNam); grpGioiTinh.add(radNu);
-        cmbNhom=new OChonTimKiem<>(nhomDuocPhep.toArray(String[]::new));
         setBackground(GiaoDien.BG); setBorder(new EmptyBorder(24,25,24,25));
         setPreferredSize(new Dimension(960,740));
         JPanel pnlHeader = new JPanel(new BorderLayout(10,14)); pnlHeader.setOpaque(false);
-        JLabel lblTitle = GiaoDien.label("Tìm kiếm dữ liệu gara",25,true,GiaoDien.NAV);
+        JLabel lblTitle = GiaoDien.label("Tìm kiếm: "+nhom,25,true,GiaoDien.NAV);
         lblTitle.setHorizontalAlignment(SwingConstants.CENTER);
-        JPanel pnlNhom = new JPanel(new BorderLayout(10,0)); pnlNhom.setOpaque(false);
-        pnlNhom.add(GiaoDien.label("Chọn nhóm dữ liệu:",13,true,GiaoDien.NAV),BorderLayout.WEST);
-        pnlNhom.add(cmbNhom,BorderLayout.CENTER);
-        pnlHeader.add(lblTitle,BorderLayout.NORTH); pnlHeader.add(pnlNhom,BorderLayout.SOUTH); add(pnlHeader,BorderLayout.NORTH);
+        pnlHeader.add(lblTitle,BorderLayout.NORTH); add(pnlHeader,BorderLayout.NORTH);
         JPanel pnlDieuKien = GiaoDien.card(new BorderLayout(0,8));
-        pnlDieuKien.add(GiaoDien.label("Nhập thông tin cần tìm (có thể để trống các ô)",13,true,GiaoDien.TEXT),BorderLayout.NORTH);
+        pnlDieuKien.add(GiaoDien.label("Nhập thông tin cần tìm",13,true,GiaoDien.TEXT),BorderLayout.NORTH);
         pnlBieuMau.setBackground(GiaoDien.WHITE); scrBieuMau.setBorder(null); scrBieuMau.getVerticalScrollBar().setUnitIncrement(20);
         pnlDieuKien.add(scrBieuMau,BorderLayout.CENTER);
         JPanel pnlButtons = new JPanel(new FlowLayout(FlowLayout.RIGHT,8,0)); pnlButtons.setOpaque(false);
@@ -79,12 +81,10 @@ public final class ManHinhTimKiem extends JPanel {
         JPanel pnlNoiDung = new JPanel(new BorderLayout(0,14)); pnlNoiDung.setOpaque(false);
         pnlNoiDung.add(pnlDieuKien,BorderLayout.NORTH); pnlNoiDung.add(pnlKetQua,BorderLayout.CENTER); add(pnlNoiDung,BorderLayout.CENTER);
         btnTimKiem.addActionListener(e -> timKiem()); btnLamMoi.addActionListener(e -> lamMoi());
-        cmbNhom.setSelectedIndex(0);
-        cmbNhom.addActionListener(e -> { if(cmbNhom.getSelectedItem()!=null) taoBieuMau(); });
         taoBieuMau();
     }
     private void taoBieuMau() {
-        String selected=(String)cmbNhom.getSelectedItem();
+        String selected=nhom;
         if(!nhomDuocPhep.contains(selected)) return;
         table=selected.equals("Dịch vụ") ? "DichVu" : ManHinhDuLieu.tableFor(selected);
         fields=Arrays.stream(Schema.COLUMNS.get(table)).filter(field -> !field.equals("matKhau")).toArray(String[]::new);
@@ -120,12 +120,14 @@ public final class ManHinhTimKiem extends JPanel {
         generation++; if(worker!=null) worker.cancel(true);
         inputs.values().forEach(input -> input.setText("")); model.setDataVector(new Object[0][],NhanCot.forFields(fields));
         radTatCa.setSelected(true);
+        tblKetQua.clearSelection();
+        tblKetQua.scrollRectToVisible(new Rectangle(0,0,1,1));
         lblKetQua.setText("Chưa tìm kiếm"); btnTimKiem.setEnabled(true); scrBieuMau.getVerticalScrollBar().setValue(0);
         if(tblKetQua.getRowSorter()!=null) tblKetQua.getRowSorter().setSortKeys(null);
     }
     private void timKiem() {
         if(!btnTimKiem.isEnabled()) return;
-        if(cmbNhom.getSelectedItem()==null || !nhomDuocPhep.contains(cmbNhom.getSelectedItem())) { JOptionPane.showMessageDialog(this,"Vui lòng chọn nhóm dữ liệu được phép tìm kiếm."); return; }
+        if(!nhomDuocPhep.contains(nhom)) { JOptionPane.showMessageDialog(this,"Vui lòng chọn nhóm dữ liệu được phép tìm kiếm."); return; }
         Map<String,String> criteria=new LinkedHashMap<>();
         inputs.forEach((field,input) -> { if(!input.getText().isBlank()) criteria.put(field,input.getText().trim()); });
         if(Arrays.asList(fields).contains("gioiTinh") && !radTatCa.isSelected())
