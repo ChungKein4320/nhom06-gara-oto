@@ -23,7 +23,13 @@ public final class ManHinhHoaDon extends JPanel {
     private String currentCoupon="";
     private final JLabel lblCoupon = GiaoDien.label("",12,true,GiaoDien.TEAL);
     private boolean loadingInvoices;
+    private final java.util.Map<String, String> printInfo = new java.util.LinkedHashMap<>();
+    private ThongTinCuaHang store;
+    private boolean invoiceReady;
+    private final JLabel lblIssuer = GiaoDien.label("", 13, true, GiaoDien.TEXT);
     private final JLabel[] lblInfo = new JLabel[6];
+    private final JPanel invoiceInfoCard = GiaoDien.card(new GridLayout(2, 3, 18, 14));
+    private JPanel repairInfoItem;
     private final JLabel[] lblTotals = new JLabel[5];
     private final JTextField txtLoyalty=GiaoDien.field("Quét QR mã khách hàng rồi Enter");
     private final JLabel lblLoyalty=GiaoDien.label("Chưa quét mã — không tích điểm.",12,true,GiaoDien.TEAL);
@@ -60,6 +66,12 @@ public final class ManHinhHoaDon extends JPanel {
         btnPrint.addActionListener(e -> printInvoice()); pnlChoose.add(btnPrint);
         cmbCoupon.setEnabled(false); cmbCoupon.setPreferredSize(new Dimension(330,36));
         cmbCoupon.addActionListener(e -> changeCoupon());
+        JButton btnStore = GiaoDien.button("Thông tin cửa hàng", GiaoDien.CREAM, GiaoDien.NAV);
+        btnStore.addActionListener(e -> {
+            try { store = new ThongTinCuaHang(); store.edit(this); }
+            catch (java.io.IOException ex) { JOptionPane.showMessageDialog(this, ex.getMessage(), "Lỗi lưu thông tin cửa hàng", JOptionPane.ERROR_MESSAGE); }
+        });
+        pnlChoose.add(btnStore);
         pnlRoot.add(pnlChoose);
         JPanel pnlCoupon=new JPanel(new FlowLayout(FlowLayout.LEFT,10,5)); pnlCoupon.setOpaque(false);
         pnlCoupon.add(GiaoDien.label("Mã giảm giá",13,true,GiaoDien.TEAL)); pnlCoupon.add(cmbCoupon); pnlRoot.add(pnlCoupon);
@@ -74,7 +86,7 @@ public final class ManHinhHoaDon extends JPanel {
         btnClearScan.addActionListener(e -> {scannedCustomer=null;txtLoyalty.setText("");lblLoyalty.setText("Chưa quét mã — không tích điểm.");});
         GiaoDien.gap(pnlRoot, 12);
 
-        JPanel pnlCard = GiaoDien.card(new GridLayout(2, 3, 18, 14));
+        JPanel pnlCard = invoiceInfoCard;
         String[] keys = {"SỐ HÓA ĐƠN", "KHÁCH HÀNG", "BIỂN SỐ/VIN", "PHIẾU SỬA CHỮA", "NGÀY LẬP", "TRẠNG THÁI"};
         for (int i = 0; i < keys.length; i++) {
             JPanel pnlItem = new JPanel(new GridLayout(2, 1));
@@ -82,9 +94,11 @@ public final class ManHinhHoaDon extends JPanel {
             pnlItem.add(GiaoDien.label(keys[i], 11, true, GiaoDien.MUTED));
             lblInfo[i] = GiaoDien.label("—", 14, true, GiaoDien.TEXT);
             pnlItem.add(lblInfo[i]);
+            if (i == 3) repairInfoItem = pnlItem;
             pnlCard.add(pnlItem);
         }
         pnlRoot.add(pnlCard);
+        pnlRoot.add(lblIssuer);
         GiaoDien.gap(pnlRoot, 16);
         pnlRoot.add(tableCard("I. DỊCH VỤ/TIỀN CÔNG", services));
         GiaoDien.gap(pnlRoot, 14);
@@ -164,6 +178,9 @@ public final class ManHinhHoaDon extends JPanel {
 
     private void loadSelected() {
         if (loadingInvoices) return;
+        invoiceReady = false;
+        showRepairInfo(true);
+        printInfo.clear(); lblIssuer.setText("");
         btnPay.setEnabled(false);
         cmbCoupon.setEnabled(false); lblCoupon.setText("");
         String id = invoiceId();
@@ -174,8 +191,12 @@ public final class ManHinhHoaDon extends JPanel {
         for (JLabel lblLabel : lblInfo) lblLabel.setText("—");
         for (JLabel lblLabel : lblTotals) lblLabel.setText("—");
         if (id == null) return;
-        String sql = "SELECT h.*, k.hoTenKH FROM dbo.HoaDon h "
+        String sql = "SELECT h.*, k.hoTenKH, k.soDienThoai AS dienThoaiKH, k.email AS emailKH, k.diaChi AS diaChiKH, "
+                + "n.hoTenNV, n.vaiTro, p.bienSo, p.hangXe, p.dongXe, t.tenPhuongThuc FROM dbo.HoaDon h "
                 + "LEFT JOIN dbo.KhachHang k ON h.maKhachHang = k.maKhachHang "
+                + "LEFT JOIN dbo.NhanVien n ON n.maNhanVien=h.maNhanVien "
+                + "LEFT JOIN dbo.PhuongTien p ON p.VIN=h.VIN "
+                + "LEFT JOIN dbo.PhuongThucThanhToan t ON t.maPhuongThuc=h.maPhuongThuc "
                 + "WHERE h.maHoaDon = ?";
         try (Connection connection = KetNoiCSDL.getConnection()) {
             String customerId=null,couponId=null;
@@ -190,9 +211,20 @@ public final class ManHinhHoaDon extends JPanel {
                         lblInfo[1].setText(customerId+(customerName==null || customerName.isBlank() ? "" : " — "+customerName));
                         lblInfo[1].setToolTipText(lblInfo[1].getText());
                         String vin=result.getString("VIN"),repair=result.getString("maPSC");
-                        lblInfo[2].setText(vin==null ? "—" : vin);
+                        String plate = result.getString("bienSo");
+                        lblInfo[2].setText((plate == null ? "" : plate + " / ") + (vin == null ? "—" : vin));
+                        printInfo.put("Nhân viên lập", display(result.getString("maNhanVien")) + " — " + display(result.getString("hoTenNV")));
+                        printInfo.put("Vai trò", display(result.getString("vaiTro")));
+                        printInfo.put("Điện thoại khách hàng", display(result.getString("dienThoaiKH")));
+                        printInfo.put("Địa chỉ khách hàng", display(result.getString("diaChiKH")));
+                        printInfo.put("Email khách hàng", display(result.getString("emailKH")));
+                        printInfo.put("Hãng / dòng xe", vin == null ? "Không áp dụng" : display(result.getString("hangXe")) + " / " + display(result.getString("dongXe")));
+                        printInfo.put("Phương thức thanh toán", display(result.getString("tenPhuongThuc")));
+                        printInfo.put("Loại hóa đơn", repair == null ? "Bán phụ tùng" : "Dịch vụ sửa chữa");
+                        lblIssuer.setText("Nhân viên lập: " + printInfo.get("Nhân viên lập") + "    |    Thanh toán: " + printInfo.get("Phương thức thanh toán"));
                         lblInfo[3].setText(repair==null ? "Bán phụ tùng" : repair);
-                        lblInfo[4].setText(String.valueOf(result.getDate("ngayLap")));
+                        showRepairInfo(repair != null);
+                        lblInfo[4].setText(result.getTimestamp("ngayLap").toLocalDateTime().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
                         lblInfo[5].setText(result.getString("trangThaiThanhToan"));
                         String coupon=result.getString("maGiamGia");
                         couponId=coupon;
@@ -229,6 +261,7 @@ public final class ManHinhHoaDon extends JPanel {
                     }
                 }
             }
+            invoiceReady = true;
             btnPay.setEnabled(lblInfo[5].getText().equals("Chưa thanh toán") || lblInfo[5].getText().equals("Chờ thanh toán"));
             loadCoupons(connection,customerId,couponId);
             cmbCoupon.setEnabled(btnPay.isEnabled());
@@ -236,6 +269,7 @@ public final class ManHinhHoaDon extends JPanel {
             if(!btnPay.isEnabled()) {scannedCustomer=null;lblLoyalty.setText("Hóa đơn đã thanh toán — không quét tích điểm bổ sung.");}
             else if(scannedCustomer==null) lblLoyalty.setText("Chưa quét mã — không tích điểm.");
         } catch (SQLException ex) {
+            invoiceReady = false;
             btnPay.setEnabled(false);
             cmbCoupon.setEnabled(false); lblCoupon.setText("Không tải được chi tiết hóa đơn.");
             services.setRowCount(0);
@@ -246,16 +280,46 @@ public final class ManHinhHoaDon extends JPanel {
         }
     }
 
+    private void showRepairInfo(boolean visible) {
+        if (visible && repairInfoItem.getParent() == null) invoiceInfoCard.add(repairInfoItem, 3);
+        else if (!visible && repairInfoItem.getParent() == invoiceInfoCard) invoiceInfoCard.remove(repairInfoItem);
+        invoiceInfoCard.revalidate();
+        invoiceInfoCard.repaint();
+    }
+
     private void printInvoice() {
-        if (invoiceId() == null || lblInfo[0].getText().equals("—")) {
+        if (!invoiceReady || invoiceId() == null || lblInfo[0].getText().equals("—")) {
             JOptionPane.showMessageDialog(this, "Vui lòng chọn hóa đơn đã tải thành công.");
             return;
         }
         try {
+            store = new ThongTinCuaHang();
+            if (!store.complete() && !store.edit(this)) return;
             boolean printed = printAllPages();
             if (!printed) return;
-        } catch (PrinterException ex) {
-            JOptionPane.showMessageDialog(this, ex.getMessage(), "Lỗi in hóa đơn", JOptionPane.ERROR_MESSAGE);
+        } catch (PrinterException | java.io.IOException ex) {
+            String message;
+            if (ex instanceof java.awt.print.PrinterAbortException) {
+                message = "Quá trình in hóa đơn đã bị hủy hoặc gián đoạn.\n"
+                        + "Vui lòng kiểm tra máy in rồi thử in lại.";
+            } else if (ex instanceof java.io.IOException) {
+                message = "Không thể đọc hoặc lưu thông tin cửa hàng để in hóa đơn.\n"
+                        + "Vui lòng kiểm tra thông tin cửa hàng và quyền truy cập tệp rồi thử lại.";
+            } else {
+                message = "Không thể in hóa đơn.\n"
+                        + "Vui lòng kiểm tra máy in đã được kết nối và sẵn sàng,\n"
+                        + "hoặc chọn Microsoft Print to PDF để lưu hóa đơn rồi thử lại.";
+            }
+            String detail = ex.getMessage();
+            if (detail != null && !detail.isBlank()) message += "\n\nChi tiết: " + detail;
+            JTextArea content = new JTextArea(message);
+            content.setEditable(false);
+            content.setOpaque(false);
+            content.setFont(GiaoDien.font(13, false));
+            content.setLineWrap(true);
+            content.setWrapStyleWord(true);
+            content.setColumns(46);
+            JOptionPane.showMessageDialog(this, content, "Lỗi in hóa đơn", JOptionPane.ERROR_MESSAGE);
         }
     }
     private void changeCoupon() {
@@ -305,70 +369,88 @@ public final class ManHinhHoaDon extends JPanel {
         paper.setImageableArea(36, 36, width - 72, height - 72);
         java.awt.print.PageFormat format = job.defaultPage();
         format.setPaper(paper);
-        job.setPrintable((graphics, page, index) -> {
-            if (index != 0) return java.awt.print.Printable.NO_SUCH_PAGE;
-            Graphics2D g = (Graphics2D) graphics.create();
-            try {
-                double scale = Math.min(page.getImageableWidth() / document.getWidth(),
-                        page.getImageableHeight() / Math.max(1, document.getHeight()));
-                g.translate(page.getImageableX(), page.getImageableY());
-                g.scale(scale, scale);
-                document.printAll(g);
-            } finally { g.dispose(); }
-            return java.awt.print.Printable.PAGE_EXISTS;
-        }, job.validatePage(format));
+        job.setPrintable(document.getPrintable(
+                null,
+                new java.text.MessageFormat("Hóa đơn " + invoiceId() + " — Trang {0}")), job.validatePage(format));
         if (!job.printDialog()) return false;
         job.print();
         return true;
     }
 
     private String invoicePrintHtml() {
+        if (store == null) throw new IllegalStateException("Chưa tải thông tin cửa hàng.");
+        boolean sale = "Bán phụ tùng".equals(printInfo.get("Loại hóa đơn"));
         StringBuilder html = new StringBuilder("<html><head><style>"
                 + "body { font-family: Arial; font-size: 9pt; color: #172f3a; margin: 0; }"
-                + "h1 { text-align: center; font-size: 16pt; margin: 0 0 8pt 0; }"
-                + "h2 { font-size: 10pt; margin: 8pt 0 4pt 0; }"
-                + "p { margin: 4pt 0; }"
-                + "table { width: 100%; } td, th { padding: 3px; }"
-                + "th { background-color: #edf3f2; }"
-                + "</style></head><body><h1>Hóa đơn thanh toán</h1><table>");
-        String[] keys = {"Số hóa đơn", "Khách hàng", "Biển số/VIN", "Phiếu sửa chữa", "Ngày lập", "Trạng thái"};
-        int[] order = {0, 4, 1, 3, 2, 5};
-        for (int row = 0; row < order.length; row += 2) {
-            html.append("<tr>");
-            for (int column = row; column < row + 2; column++) {
-                int i = order[column];
-                html.append("<td width='50%'><b>").append(keys[i]).append(": </b>")
-                        .append(escapeHtml(lblInfo[i].getText())).append("</td>");
-            }
-            html.append("</tr>");
+                + "h1 { text-align: center; font-size: 15pt; margin: 10pt 0 4pt 0; }"
+                + "h2 { font-size: 10pt; color: #13272e; margin: 9pt 0 4pt 0; }"
+                + "p { margin: 4pt 0; } table { width: 100%; } td, th { padding: 3px; }"
+                + "th { background-color: #edf3f2; color: #13272e; }"
+                + ".grand td { background-color: #edf3f2; font-size: 11pt; padding: 7px; }"
+                + "</style></head><body>");
+        html.append(store.headerHtml()).append("<hr size='1' color='#487674'>");
+        html.append("<h1>").append(sale ? "HÓA ĐƠN BÁN PHỤ TÙNG" : "HÓA ĐƠN THANH TOÁN DỊCH VỤ")
+                .append("</h1><p align='center'>Số hóa đơn: <b>").append(escapeHtml(lblInfo[0].getText()))
+                .append("</b> &nbsp; | &nbsp; Ngày lập: ").append(escapeHtml(lblInfo[4].getText())).append("</p>");
+        html.append("<h2>THÔNG TIN KHÁCH HÀNG</h2><table cellspacing='0'>");
+        infoRow(html, "Khách hàng", lblInfo[1].getText(), "Điện thoại", printInfo.get("Điện thoại khách hàng"));
+        infoRow(html, "Địa chỉ", printInfo.get("Địa chỉ khách hàng"), "Email", printInfo.get("Email khách hàng"));
+        if (!sale) {
+            infoRow(html, "Biển số / VIN", lblInfo[2].getText(), "Hãng / dòng xe", printInfo.get("Hãng / dòng xe"));
+            infoRow(html, "Phiếu sửa chữa", lblInfo[3].getText(), "Loại hóa đơn", printInfo.get("Loại hóa đơn"));
         }
-        html.append("</table><p>").append(escapeHtml(lblCoupon.getText())).append("</p>");
-        appendPrintTable(html, "I. DỊCH VỤ/TIỀN CÔNG", services);
-        appendPrintTable(html, "II. PHỤ TÙNG SỬ DỤNG", parts);
-        html.append("<h2>TỔNG KẾT</h2><table>");
-        String[] totals = {"Tổng tiền công/dịch vụ", "Tổng tiền phụ tùng", "Thuế VAT 8%", "Giảm giá", "TỔNG THANH TOÁN"};
+        html.append("</table><h2>CHI TIẾT THANH TOÁN</h2>");
+        if (services.getRowCount() > 0) appendPrintTable(html, "I. DỊCH VỤ / TIỀN CÔNG", services);
+        if (parts.getRowCount() > 0) appendPrintTable(html, services.getRowCount() > 0 ? "II. PHỤ TÙNG SỬ DỤNG" : "PHỤ TÙNG", parts);
+        html.append("<table cellspacing='0'><tr><td width='45%' valign='top'><h2>THÔNG TIN THANH TOÁN</h2>");
+        html.append("<p><b>Phương thức:</b> ").append(escapeHtml(printInfo.get("Phương thức thanh toán")))
+                .append("</p><p><b>Trạng thái:</b> ").append(escapeHtml(lblInfo[5].getText()))
+                .append("</p><p>").append(escapeHtml(lblCoupon.getText()))
+                .append("</p></td><td width='55%' valign='top'><h2>TỔNG CỘNG</h2><table cellspacing='0'>");
+        String[] totals = {"Tiền công / dịch vụ", "Tiền phụ tùng", "Thuế VAT 8%", "Giảm giá", "TỔNG THANH TOÁN"};
         for (int i = 0; i < totals.length; i++) {
-            html.append("<tr><td><b>").append(totals[i]).append("</b></td><td align='right'>")
-                    .append(escapeHtml(lblTotals[i].getText())).append("</td></tr>");
+            html.append(i == 4 ? "<tr class='grand'>" : "<tr>").append("<td><b>").append(totals[i])
+                    .append("</b></td><td align='right' nowrap>").append(escapeHtml(lblTotals[i].getText())).append("</td></tr>");
         }
-        return html.append("</table></body></html>").toString();
+        html.append("</table></td></tr></table><p><b>Xác nhận thu tiền: </b>")
+                .append("Đã thanh toán".equals(lblInfo[5].getText()) ? "Đã thu đủ tiền." : "Chưa xác nhận thanh toán.")
+                .append("</p><br><table cellspacing='0'><tr><td align='center' width='50%'><b>KHÁCH HÀNG</b><br>(Ký, ghi rõ họ tên)</td>")
+                .append("<td align='center'><b>NHÂN VIÊN LẬP HÓA ĐƠN</b><br>(Ký, ghi rõ họ tên)</td></tr>")
+                .append("<tr><td height='45'></td><td></td></tr><tr><td align='center'>")
+                .append(escapeHtml(lblInfo[1].getText())).append("</td><td align='center'>")
+                .append(escapeHtml(printInfo.get("Nhân viên lập"))).append("<br>")
+                .append(escapeHtml(printInfo.get("Vai trò"))).append("</td></tr></table>")
+                .append("<p align='center'>Cảm ơn Quý khách đã tin tưởng và sử dụng dịch vụ!</p>");
+        return html.append("</body></html>").toString();
+    }
+
+    private static void infoRow(StringBuilder html, String leftLabel, String left, String rightLabel, String right) {
+        html.append("<tr><td width='58%'><b>").append(escapeHtml(leftLabel)).append(": </b>")
+                .append(escapeHtml(left)).append("</td><td width='42%'><b>").append(escapeHtml(rightLabel))
+                .append(": </b>").append(escapeHtml(right)).append("</td></tr>");
     }
 
     private static void appendPrintTable(StringBuilder html, String title, DefaultTableModel model) {
-        html.append("<h2>").append(title).append("</h2><table border='1' cellspacing='0'><tr>");
+        html.append("<p><b>").append(escapeHtml(title)).append("</b></p><table border='1' cellspacing='0' cellpadding='3'><tr>");
+        String[] widths = {"5%", "10%", "35%", "10%", "19%", "21%"};
         for (int column = 0; column < model.getColumnCount(); column++) {
-            html.append("<th>").append(escapeHtml(model.getColumnName(column))).append("</th>");
+            html.append("<th width='").append(widths[column]).append("'>").append(escapeHtml(model.getColumnName(column))).append("</th>");
         }
         html.append("</tr>");
         for (int row = 0; row < model.getRowCount(); row++) {
             html.append("<tr>");
             for (int column = 0; column < model.getColumnCount(); column++) {
                 Object value = model.getValueAt(row, column);
-                html.append("<td align='center'>").append(escapeHtml(value == null ? "" : value.toString())).append("</td>");
+                html.append("<td align='").append(column >= 4 ? "right" : column == 2 ? "left" : "center").append("'>")
+                        .append(escapeHtml(value == null ? "" : value.toString())).append("</td>");
             }
             html.append("</tr>");
         }
         html.append("</table>");
+    }
+
+    private static String display(String text) {
+        return text == null || text.isBlank() ? "Chưa cập nhật" : text;
     }
 
     private static String escapeHtml(String text) {
