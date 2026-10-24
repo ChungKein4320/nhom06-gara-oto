@@ -36,7 +36,6 @@ public final class ManHinhThongKe extends JPanel {
     private final JLabel[] lblMetricValues = new JLabel[3];
     private final JLabel lblChartTitle = GiaoDien.label("",18,true,GiaoDien.NAV);
     private final JLabel lblChartHint = GiaoDien.label("",12,false,GiaoDien.MUTED);
-    private final JTextArea txtAnalysis = new JTextArea(3,70);
     private final JLabel lblSummary = GiaoDien.label("",12,false,GiaoDien.MUTED);
     private final Chart pnlChart = new Chart();
     private final DefaultTableModel detailModel = new DefaultTableModel(new Object[]{"STT", "Nội dung thống kê", "Số liệu"},0) {

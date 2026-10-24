@@ -6,13 +6,11 @@ import dao.Schema;
 import dao.QuyTrinhDAO;
 import java.awt.*;
 import java.sql.SQLException;
-import java.sql.Timestamp;
 import java.util.*;
 import java.util.List;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
-import javax.swing.table.TableRowSorter;
 
 /** Danh sách và biểu mẫu sử dụng dữ liệu SQL Server thực tế. */
 public final class ManHinhDuLieu extends JPanel {
