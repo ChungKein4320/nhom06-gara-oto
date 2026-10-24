@@ -1,27 +1,27 @@
 package dao;
 
-import connectDB.ConnectDB;
+import connectDB.KetNoiCSDL;
 import java.math.BigDecimal;
 import java.sql.*;
 import java.util.*;
 
 /** Các bước nghiệp vụ lưu cùng giao dịch, khóa đầu phiếu trước khi xử lý chi tiết. */
-public final class WorkflowDAO {
-    private WorkflowDAO() {}
+public final class QuyTrinhDAO {
+    private QuyTrinhDAO() {}
     @FunctionalInterface public interface Work<T> { T run(Connection conn) throws SQLException; }
     public static <T> T transaction(Work<T> work) throws SQLException {
-        try(Connection conn=ConnectDB.getConnection()) {
+        try(Connection conn=KetNoiCSDL.getConnection()) {
             conn.setAutoCommit(false);
             try { T result=work.run(conn); conn.commit(); return result; }
             catch(SQLException | RuntimeException ex) { conn.rollback(); throw ex; }
         }
     }
     static int execute(Connection conn,String sql,Object... args) throws SQLException {
-        try(PreparedStatement ps=conn.prepareStatement(sql)) { BaseDAO.bind(ps,Arrays.asList(args)); return ps.executeUpdate(); }
+        try(PreparedStatement ps=conn.prepareStatement(sql)) { CoSoDAO.bind(ps,Arrays.asList(args)); return ps.executeUpdate(); }
     }
     static Map<String,Object> one(Connection conn,String sql,Object... args) throws SQLException {
         try(PreparedStatement ps=conn.prepareStatement(sql)) {
-            BaseDAO.bind(ps,Arrays.asList(args));
+            CoSoDAO.bind(ps,Arrays.asList(args));
             try(ResultSet rs=ps.executeQuery()) {
                 if(!rs.next()) throw new SQLException("Không tìm thấy dữ liệu phù hợp. Vui lòng tải lại.");
                 Map<String,Object> row=new LinkedHashMap<>();
@@ -31,7 +31,7 @@ public final class WorkflowDAO {
         }
     }
     static boolean exists(Connection conn,String sql,Object... args) throws SQLException {
-        try(PreparedStatement ps=conn.prepareStatement(sql)) { BaseDAO.bind(ps,Arrays.asList(args)); try(ResultSet rs=ps.executeQuery()) { return rs.next(); } }
+        try(PreparedStatement ps=conn.prepareStatement(sql)) { CoSoDAO.bind(ps,Arrays.asList(args)); try(ResultSet rs=ps.executeQuery()) { return rs.next(); } }
     }
     static Map<String,Object> lock(Connection conn,String table,Object id) throws SQLException {
         if(!Schema.PRIMARY.containsKey(table)) throw new SQLException("Bảng không hợp lệ.");
@@ -141,7 +141,7 @@ public final class WorkflowDAO {
     }
     public static void saveDocument(String table,Map<String,Object> header,List<Map<String,Object>> details,String id) throws SQLException {
         transaction(conn -> {
-            BaseDAO dao=new BaseDAO(table);
+            CoSoDAO dao=new CoSoDAO(table);
             String child=detailTable(table); String fk=Schema.PRIMARY.get(table);
             require(child!=null && !Set.of("HoaDon","PhieuSuaChua").contains(table),"Loại phiếu không được lập bằng biểu mẫu này.");
             require(!details.isEmpty(),"Phiếu phải có ít nhất một hạng mục chi tiết.");
@@ -155,11 +155,11 @@ public final class WorkflowDAO {
             return null;
         });
     }
-    private static void idHolderInsert(Connection conn,BaseDAO dao,Map<String,Object> header,List<Map<String,Object>> details,String child,String fk) throws SQLException {
+    private static void idHolderInsert(Connection conn,CoSoDAO dao,Map<String,Object> header,List<Map<String,Object>> details,String child,String fk) throws SQLException {
         insertDetails(conn,child,fk,dao.insert(conn,header),details);
     }
     private static void insertDetails(Connection conn,String child,String fk,String id,List<Map<String,Object>> details) throws SQLException {
-        BaseDAO dao=new BaseDAO(child);
+        CoSoDAO dao=new CoSoDAO(child);
         for(Map<String,Object> detail:details) { Map<String,Object> row=new LinkedHashMap<>(detail); row.put(fk,id); dao.insert(conn,row); }
     }
     public static void confirmQuote(String id) throws SQLException {
@@ -179,14 +179,14 @@ public final class WorkflowDAO {
             Map<String,Object> header=new LinkedHashMap<>();
             header.put("maBaoGia",quoteId); header.put("maKhachHang",check.get("maKhachHang")); header.put("VIN",quote.get("VIN"));
             header.put("maNhanVien",employee); header.put("ngayLap",now(conn)); header.put("ngayHoanThanh",null); header.put("trangThai","Chờ sửa chữa");
-            List<LinkedHashMap<String,Object>> quoted=new BaseDAO("ChiTietPhieuBaoGia").getAll(conn,Map.of("maBaoGia",quoteId));
+            List<LinkedHashMap<String,Object>> quoted=new CoSoDAO("ChiTietPhieuBaoGia").getAll(conn,Map.of("maBaoGia",quoteId));
             require(!quoted.isEmpty(),"Báo giá chưa có chi tiết.");
-            String id=new BaseDAO("PhieuSuaChua").insert(conn,header);
+            String id=new CoSoDAO("PhieuSuaChua").insert(conn,header);
             for(Map<String,Object> line:quoted) {
                 Map<String,Object> detail=new LinkedHashMap<>();
                 detail.put("maPSC",id); detail.put("maDichVu",line.get("maDichVu")); detail.put("maPhuTung",line.get("maPhuTung"));
                 detail.put("soLuongPhuTung",line.get("soLuongPhuTung")); detail.put("trangThaiHangMuc","Thiếu phụ tùng"); detail.put("ketQuaNghiemThu","Không đạt"); detail.put("thoiHanBaoHanh",0);
-                new BaseDAO("ChiTietPhieuSuaChua").insert(conn,detail);
+                new CoSoDAO("ChiTietPhieuSuaChua").insert(conn,detail);
             }
             return id;
         });
@@ -194,12 +194,12 @@ public final class WorkflowDAO {
     public static void approveReceipt(String id,boolean approve) throws SQLException {
         transaction(conn -> {
             editable(conn,"PhieuNhapKho",lock(conn,"PhieuNhapKho",id));
-            List<LinkedHashMap<String,Object>> details=new BaseDAO("ChiTietPhieuNhapKho").getAll(conn,Map.of("maPNK",id));
+            List<LinkedHashMap<String,Object>> details=new CoSoDAO("ChiTietPhieuNhapKho").getAll(conn,Map.of("maPNK",id));
             require(!details.isEmpty(),"Phiếu nhập chưa có chi tiết.");
             if(approve) for(Map<String,Object> row:details) {
                 Object part=row.get("maPhuTung"); int quantity=((Number)row.get("soLuongNhap")).intValue();
                 if(exists(conn,"SELECT 1 FROM dbo.TonKho WITH (UPDLOCK,HOLDLOCK) WHERE maPhuTung=?",part)) execute(conn,"UPDATE dbo.TonKho SET soLuongHienTai=soLuongHienTai+? WHERE maPhuTung=?",quantity,part);
-                else new BaseDAO("TonKho").insert(conn,Map.of("maPhuTung",part,"soLuongHienTai",quantity,"soLuongToiThieu",0));
+                else new CoSoDAO("TonKho").insert(conn,Map.of("maPhuTung",part,"soLuongHienTai",quantity,"soLuongToiThieu",0));
             }
             execute(conn,"UPDATE dbo.PhieuNhapKho SET trangThai=? WHERE maPNK=?",approve ? "Đã duyệt" : "Không duyệt",id); return null;
         });
@@ -244,7 +244,7 @@ public final class WorkflowDAO {
             Map<String,Object> repair=lock(conn,"PhieuSuaChua",repairId);
             require("Đã sửa xong".equals(repair.get("trangThai")),"Chỉ lập hóa đơn sau nghiệm thu.");
             require(!exists(conn,"SELECT 1 FROM dbo.HoaDon WHERE maPSC=?",repairId),"Phiếu sửa đã có hóa đơn.");
-            List<LinkedHashMap<String,Object>> details=new BaseDAO("ChiTietPhieuSuaChua").getAll(conn,Map.of("maPSC",repairId));
+            List<LinkedHashMap<String,Object>> details=new CoSoDAO("ChiTietPhieuSuaChua").getAll(conn,Map.of("maPSC",repairId));
             require(!details.isEmpty(),"Phiếu sửa không có chi tiết.");
             BigDecimal parts=BigDecimal.ZERO,labor=BigDecimal.ZERO;
             List<Map<String,Object>> lines=new ArrayList<>(); Map<Object,BigDecimal> serviceFees=new LinkedHashMap<>();
@@ -262,7 +262,7 @@ public final class WorkflowDAO {
             Map<String,Object> header=new LinkedHashMap<>(); header.put("maGiamGia",coupon==null || coupon.isBlank() ? null : coupon);
             header.put("maKhachHang",repair.get("maKhachHang")); header.put("maNhanVien",employee); header.put("maPSC",repairId); header.put("VIN",repair.get("VIN"));
             header.put("ngayLap",now(conn)); header.put("tienPhuTung",parts); header.put("tienCong",labor); header.put("dichVuKhac",BigDecimal.ZERO); header.put("thueVAT",vat); header.put("giamGia",discount); header.put("trangThaiThanhToan","Chưa thanh toán"); header.put("maPhuongThuc",initialMethod);
-            String id=new BaseDAO("HoaDon").insert(conn,header);
+            String id=new CoSoDAO("HoaDon").insert(conn,header);
             for(Map<String,Object> line:lines) {
                 Map<String,Object> values=new LinkedHashMap<>(line); values.put("maHoaDon",id);
                 // Hóa đơn được khóa và tạo ngay trong cùng giao dịch.
@@ -301,7 +301,7 @@ public final class WorkflowDAO {
             Map<String,Object> repair=lock(conn,"PhieuSuaChua",id);
             require(Set.of("Chờ sửa chữa","Đang sửa chữa").contains(String.valueOf(repair.get("trangThai"))),"Chỉ hủy phiếu trước nghiệm thu.");
             require(!exists(conn,"SELECT 1 FROM dbo.HoaDon WHERE maPSC=?",id),"Phiếu đã có hóa đơn, không thể hủy.");
-            List<LinkedHashMap<String,Object>> lines=new BaseDAO("ChiTietPhieuSuaChua").getAll(conn,Map.of("maPSC",id));
+            List<LinkedHashMap<String,Object>> lines=new CoSoDAO("ChiTietPhieuSuaChua").getAll(conn,Map.of("maPSC",id));
             for(Map<String,Object> line:lines) if(Set.of("Đang sửa chữa","Hoàn thành").contains(String.valueOf(line.get("trangThaiHangMuc")))) {
                 require(execute(conn,"UPDATE dbo.TonKho SET soLuongHienTai=soLuongHienTai+? WHERE maPhuTung=?",line.get("soLuongPhuTung"),line.get("maPhuTung"))==1,"Không thể hoàn tồn kho cho phụ tùng đã cấp.");
             }

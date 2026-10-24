@@ -1,20 +1,20 @@
 package dao;
 
-import connectDB.ConnectDB;
+import connectDB.KetNoiCSDL;
 import java.sql.*;
 import java.util.*;
 
 /** CRUD tham số hóa, khóa đúng khóa đơn/ghép và dùng sequence của database. */
-public class BaseDAO {
+public class CoSoDAO {
     private final String table;
     private final String primary;
-    public BaseDAO(String table) {
+    public CoSoDAO(String table) {
         if (!Schema.COLUMNS.containsKey(table)) throw new IllegalArgumentException("Bảng không hợp lệ: " + table);
         this.table = table;
         primary = Schema.PRIMARY.get(table);
     }
     public List<LinkedHashMap<String,Object>> getAll() throws SQLException {
-        try (Connection conn = ConnectDB.getConnection()) {
+        try (Connection conn = KetNoiCSDL.getConnection()) {
             List<LinkedHashMap<String,Object>> rows=getAll(conn,null);
             rows.removeIf(row -> HiddenRecords.isHidden(table,String.valueOf(row.get(primary))));
             return rows;
@@ -37,7 +37,7 @@ public class BaseDAO {
     }
     public String previewNextId() throws SQLException {
         if (Schema.KEYS.get(table).length != 1 || Schema.IDENTITY.contains(table) || primary.equals("VIN")) return "";
-        try (Connection conn = ConnectDB.getConnection(); PreparedStatement ps = conn.prepareStatement(
+        try (Connection conn = KetNoiCSDL.getConnection(); PreparedStatement ps = conn.prepareStatement(
                 "SELECT CASE WHEN current_value IS NULL THEN CONVERT(int,start_value) ELSE CONVERT(int,current_value)+1 END FROM sys.sequences WHERE name=? AND schema_id=SCHEMA_ID('dbo')")) {
             ps.setString(1,"Seq_" + table);
             try (ResultSet rs = ps.executeQuery()) { return rs.next() ? prefix() + String.format(Locale.ROOT,"%03d",rs.getInt(1)) : ""; }
@@ -56,7 +56,7 @@ public class BaseDAO {
     }
     public void insert(Map<String,Object> row) throws SQLException { insert(row,null); }
     public void insert(Map<String,Object> row, String preview) throws SQLException {
-        WorkflowDAO.transaction(conn -> { insert(conn,row); return null; });
+        QuyTrinhDAO.transaction(conn -> { insert(conn,row); return null; });
     }
     /** Dùng connection của phiếu để lưu đầu phiếu và chi tiết cùng giao dịch. */
     public String insert(Connection conn, Map<String,Object> values) throws SQLException {
@@ -68,7 +68,7 @@ public class BaseDAO {
             }
         }
         DataRules.validate(table,row,true);
-        WorkflowDAO.guardWrite(conn,table,row,null);
+        QuyTrinhDAO.guardWrite(conn,table,row,null);
         String fields = String.join(",",row.keySet().stream().map(s -> "[" + s + "]").toList());
         try (PreparedStatement ps = conn.prepareStatement("INSERT INTO dbo.[" + table + "](" + fields + ") VALUES(" + String.join(",",Collections.nCopies(row.size(),"?")) + ")")) {
             bind(ps,row.values()); ps.executeUpdate();
@@ -77,13 +77,13 @@ public class BaseDAO {
     }
     public void update(String id, Map<String,Object> row) throws SQLException {
         if (Schema.KEYS.get(table).length != 1) throw new SQLException("Cần đầy đủ khóa ghép để sửa chi tiết.");
-        WorkflowDAO.transaction(conn -> { update(conn,Map.of(primary,id),row); return null; });
+        QuyTrinhDAO.transaction(conn -> { update(conn,Map.of(primary,id),row); return null; });
     }
     public void update(Connection conn, Map<String,Object> key, Map<String,Object> values) throws SQLException {
         Map<String,Object> row = new LinkedHashMap<>(values);
         for (String field : Schema.KEYS.get(table)) row.remove(field);
         DataRules.validate(table,row,false);
-        WorkflowDAO.guardWrite(conn,table,row,key);
+        QuyTrinhDAO.guardWrite(conn,table,row,key);
         if (row.isEmpty()) return;
         String fields = String.join(",",row.keySet().stream().map(s -> "[" + s + "]=?").toList());
         try (PreparedStatement ps = conn.prepareStatement("UPDATE dbo.[" + table + "] SET " + fields + " WHERE " + conditions(key))) {

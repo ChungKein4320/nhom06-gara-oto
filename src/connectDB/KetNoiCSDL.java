@@ -4,16 +4,16 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 
-public class ConnectDB {
+public class KetNoiCSDL {
 
     private static final String URL = "jdbc:sqlserver://localhost:1433;databaseName=GaraOto;encrypt=true;trustServerCertificate=true;";
     private static final String USER = "sa";
     private static final String PASSWORD = "sapassword";
-    private static final ConnectDB instance = new ConnectDB();
+    private static final KetNoiCSDL instance = new KetNoiCSDL();
 
-    private ConnectDB() { }
+    private KetNoiCSDL() { }
 
-    public static ConnectDB getInstance() {
+    public static KetNoiCSDL getInstance() {
         return instance;
     }
 
