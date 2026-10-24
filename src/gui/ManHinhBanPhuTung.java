@@ -46,7 +46,7 @@ public final class ManHinhBanPhuTung extends JPanel {
         JPanel pnlHeader=new JPanel(new BorderLayout()); pnlHeader.setOpaque(false);
         pnlHeader.add(GiaoDien.label("Bán phụ tùng",26,true,GiaoDien.NAV),BorderLayout.WEST);
         JButton btnRefresh=GiaoDien.button("Làm mới dữ liệu",GiaoDien.CREAM,GiaoDien.NAV);
-        btnRefresh.addActionListener(e -> load()); pnlHeader.add(btnRefresh,BorderLayout.EAST); add(pnlHeader,BorderLayout.NORTH);
+        btnRefresh.addActionListener(e -> lamMoi()); pnlHeader.add(btnRefresh,BorderLayout.EAST); add(pnlHeader,BorderLayout.NORTH);
 
         JPanel pnlLeft=new JPanel(new BorderLayout(0,10)); pnlLeft.setOpaque(false);
         JPanel pnlCart=GiaoDien.card(new BorderLayout(0,10));
@@ -129,6 +129,14 @@ public final class ManHinhBanPhuTung extends JPanel {
             }); pnlKeyboard.add(btnKey);
         }
         return pnlKeyboard;
+    }
+    private void lamMoi() {
+        txtCode.setText(""); category="Tất cả";
+        if(cmbCustomers.getItemCount()>0) cmbCustomers.setSelectedIndex(0);
+        tblCart.clearSelection();
+        if(tblCart.getRowSorter()!=null) tblCart.getRowSorter().setSortKeys(null);
+        spnQuantity.setValue(1);
+        load();
     }
     private void load() {
         String oldInvoice=LuaChonDuLieu.id(cmbCustomers); loading=true; btnConfirm.setEnabled(false);

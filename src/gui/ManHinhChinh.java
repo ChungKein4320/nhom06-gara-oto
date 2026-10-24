@@ -10,6 +10,9 @@ public final class ManHinhChinh extends JFrame {
     private final String employeeId;
     private final JPanel pnlNav,pnlBody;
     private final JLabel lblTitle;
+    private static final String SEARCH_PREFIX="Tìm kiếm: ";
+    private boolean searchExpanded;
+    private String current="Tổng quan";
     public ManHinhChinh(dao.TaiKhoanDAO.AuthResult account){
         this.role=account.role;
         this.displayName=account.hoTen;
@@ -103,8 +106,8 @@ public final class ManHinhChinh extends JFrame {
         pnlNav.add(pnlDuongKe);
         pnlNav.add(Box.createVerticalStrut(14));
     }
-    public void open(String page){
-        lblTitle.setText(page);
+    private void rebuildNavigation(){
+        String page=current;
         pnlNav.removeAll();
         String[] items=DuLieuTrinhDon.forRole(role);
         section("TỔNG QUAN");
@@ -116,29 +119,86 @@ public final class ManHinhChinh extends JFrame {
             }
             if (role == VaiTro.ADMIN && s.equals("Phiếu tiếp nhận")) section("NHÂN VIÊN KỸ THUẬT");
             if (s.equals("Thống kê")) section("BÁO CÁO");
+            boolean search=s.equals("Tìm kiếm");
+            boolean active=s.equals(page) || (search && page.startsWith(SEARCH_PREFIX));
             JButton btnB=new JButton(s);
-            btnB.setIcon(BieuTuong.get(s,17,s.equals(page)?Color.WHITE:new Color(0xB8D4D0)));
+            if(search) {
+                final boolean expanded=searchExpanded;
+                JLabel arrow=new JLabel(new Icon() {
+                    public int getIconWidth(){ return 12; }
+                    public int getIconHeight(){ return 12; }
+                    public void paintIcon(Component c,Graphics g,int x,int y){
+                        Graphics2D q=(Graphics2D)g.create();
+                        q.setRenderingHint(RenderingHints.KEY_ANTIALIASING,RenderingHints.VALUE_ANTIALIAS_ON);
+                        q.setColor(active ? Color.WHITE : new Color(0xD1DFDD));
+                        if(expanded) q.fillPolygon(new int[]{x+1,x+11,x+6},new int[]{y+3,y+3,y+9},3);
+                        else q.fillPolygon(new int[]{x+3,x+9,x+3},new int[]{y+1,y+6,y+11},3);
+                        q.dispose();
+                    }
+                });
+                btnB.setLayout(new BorderLayout());
+                btnB.add(arrow,BorderLayout.EAST);
+            }
+            btnB.setIcon(BieuTuong.get(s,17,active?Color.WHITE:new Color(0xB8D4D0)));
             btnB.setIconTextGap(12);
             btnB.setHorizontalAlignment(SwingConstants.LEFT);
             btnB.setMaximumSize(new Dimension(222,42));
             btnB.setPreferredSize(new Dimension(222,42));
-            btnB.setFont(GiaoDien.font(12,s.equals(page)));
+            btnB.setFont(GiaoDien.font(12,active));
             btnB.setFocusPainted(false);
-            btnB.setBorder(new EmptyBorder(0,13,0,5));
+            btnB.setBorder(new EmptyBorder(0,13,0,search ? 20 : 5));
             btnB.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-            btnB.setBackground(s.equals(page)?GiaoDien.TEAL:GiaoDien.NAV);
-            btnB.setForeground(s.equals(page)?Color.WHITE:new Color(0xD1DFDD));
+            btnB.setBackground(active?GiaoDien.TEAL:GiaoDien.NAV);
+            btnB.setForeground(active?Color.WHITE:new Color(0xD1DFDD));
             btnB.setOpaque(true);
-            btnB.addActionListener(e->open(s));
+            if(search) btnB.addActionListener(e->{searchExpanded=!searchExpanded; rebuildNavigation();});
+            else btnB.addActionListener(e->open(s));
             pnlNav.add(btnB);
+            if(search && searchExpanded) {
+                for(String group:ManHinhTimKiem.nhomTheoVaiTro(role)) {
+                    String route=SEARCH_PREFIX+group;
+                    boolean selected=route.equals(current);
+                    JButton child=new JButton("<html><div style='width:130px'>"+group+"</div></html>");
+                    child.setToolTipText(route);
+                    child.getAccessibleContext().setAccessibleName(route);
+                    child.setHorizontalAlignment(SwingConstants.LEFT);
+                    child.setFont(GiaoDien.font(12,selected));
+                    child.setFocusPainted(false);
+                    child.setBorder(new EmptyBorder(6,38,6,8));
+                    child.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+                    child.setBackground(selected ? GiaoDien.TEAL : GiaoDien.NAV);
+                    child.setForeground(selected ? Color.WHITE : new Color(0xD1DFDD));
+                    child.setOpaque(true);
+                    child.setMaximumSize(new Dimension(222,48));
+                    child.setPreferredSize(new Dimension(222,48));
+                    child.addActionListener(e->open(route));
+                    pnlNav.add(child);
+                    pnlNav.add(Box.createVerticalStrut(3));
+                }
+            }
             pnlNav.add(Box.createVerticalStrut(3));
         }
         pnlNav.revalidate();
         pnlNav.repaint();
+    }
+    public void open(String page){
+        java.util.Objects.requireNonNull(page,"Phải xác định trang cần mở.");
+        if(page.equals("Tìm kiếm")) {
+            searchExpanded=!searchExpanded;
+            rebuildNavigation();
+            return;
+        }
+        String searchGroup=page.startsWith(SEARCH_PREFIX) ? page.substring(SEARCH_PREFIX.length()) : null;
+        if(searchGroup!=null && !ManHinhTimKiem.nhomTheoVaiTro(role).contains(searchGroup))
+            throw new SecurityException("Không có quyền tìm kiếm nhóm dữ liệu: "+searchGroup);
+        if(searchGroup!=null) searchExpanded=true;
+        current=page;
+        lblTitle.setText(page);
+        rebuildNavigation();
         pnlBody.removeAll();
         JComponent view = page.equals("Tổng quan")
                 ? new ManHinhTongQuan(role, this, displayName)
-                : page.equals("Tìm kiếm") ? new ManHinhTimKiem(role)
+                : searchGroup!=null ? new ManHinhTimKiem(role,searchGroup)
                 : page.equals("Thống kê") ? new ManHinhThongKe()
                 : page.equals("Phụ tùng") ? new ManHinhBanPhuTung(employeeId)
                 : new ManHinhDuLieu(page);
