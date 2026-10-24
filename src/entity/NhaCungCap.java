@@ -1,6 +1,5 @@
 package entity;
 
-
 public class NhaCungCap {
     private String maNCC;
     private String tenNCC;

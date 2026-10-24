@@ -1,6 +1,5 @@
 package entity;
 
-
 public class TonKho {
     private String maTonKho;
     private String maPhuTung;
