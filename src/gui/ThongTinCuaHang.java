@@ -4,7 +4,6 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.Properties;
-import javax.swing.*;
 
 /** Thông tin đơn vị dùng trên chứng từ; lưu UTF-8 bên ngoài mã nguồn. */
 final class ThongTinCuaHang {
@@ -16,10 +15,24 @@ final class ThongTinCuaHang {
     ThongTinCuaHang() throws IOException {
         Path root;
         try {
-            root = Paths.get(ThongTinCuaHang.class.getProtectionDomain().getCodeSource().getLocation().toURI());
-            if (!Files.isDirectory(root)) root = root.getParent();
-            while (root != null && !Files.isDirectory(root.resolve("data"))) root = root.getParent();
-        } catch (Exception ex) { root = null; }
+        root = Paths.get(
+            ThongTinCuaHang.class.getProtectionDomain()
+                .getCodeSource()
+                .getLocation()
+                .toURI()
+        );
+
+        if (!Files.isDirectory(root)) {
+            root = root.getParent();
+        }
+
+        while (root != null && !Files.isDirectory(root.resolve("data"))) {
+            root = root.getParent();
+        }
+
+        } catch (java.net.URISyntaxException | SecurityException | NullPointerException ex) {
+            root = null;
+         }
         file = (root == null ? Paths.get("").toAbsolutePath() : root).resolve("data/cua-hang.properties");
         values.setProperty("ten", "THANH PHONG AUTO");
         values.setProperty("chiNhanh", "Xưởng dịch vụ Quận 7");
