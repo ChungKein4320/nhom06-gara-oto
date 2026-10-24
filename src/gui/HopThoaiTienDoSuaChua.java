@@ -11,7 +11,16 @@ import javax.swing.*;
 final class HopThoaiTienDoSuaChua {
     static void show(Component parent,String id) {
         JDialog winDialog=new JDialog(SwingUtilities.getWindowAncestor(parent),"Tiến độ sửa chữa "+id,Dialog.ModalityType.APPLICATION_MODAL);
-        JPanel pnlRows=new JPanel(); pnlRows.setLayout(new BoxLayout(pnlRows,BoxLayout.Y_AXIS));
+        JPanel pnlRows=new JPanel() {
+            @Override public Dimension getPreferredSize() {
+                Dimension d=super.getPreferredSize();
+                if(getParent() instanceof JViewport vp && vp.getWidth()>0) return new Dimension(vp.getWidth(),d.height);
+                return d;
+            }
+        };
+        pnlRows.setLayout(new BoxLayout(pnlRows,BoxLayout.Y_AXIS));
+        pnlRows.setBackground(GiaoDien.BG);
+        pnlRows.setBorder(BorderFactory.createEmptyBorder(8,8,8,8));
         JButton btnFinish=GiaoDien.button("Nghiệm thu đạt",GiaoDien.TEAL,Color.WHITE);
         JButton btnStart=GiaoDien.button("Bắt đầu sửa chữa",GiaoDien.CREAM,GiaoDien.NAV);
         Runnable[] load=new Runnable[1];
@@ -60,8 +69,9 @@ final class HopThoaiTienDoSuaChua {
             try { QuyTrinhDAO.acceptRepair(id); winDialog.dispose(); } catch(SQLException ex) { JOptionPane.showMessageDialog(winDialog,ex.getMessage()); load[0].run(); }
         });
         JPanel pnlContent=new JPanel(new BorderLayout(8,8)); pnlContent.setBorder(BorderFactory.createEmptyBorder(12,12,12,12));
-        JScrollPane scrRows=new JScrollPane(pnlRows); scrRows.setPreferredSize(new Dimension(840,510)); scrRows.getVerticalScrollBar().setUnitIncrement(20); pnlContent.add(scrRows);
-        JPanel pnlButtons=new JPanel(new FlowLayout(FlowLayout.RIGHT)); JButton btnClose=GiaoDien.button("Đóng",GiaoDien.CREAM,GiaoDien.NAV); btnClose.addActionListener(e -> winDialog.dispose()); pnlButtons.add(btnStart); pnlButtons.add(btnFinish); pnlButtons.add(btnClose); pnlContent.add(pnlButtons,BorderLayout.SOUTH);
+        JScrollPane scrRows=new JScrollPane(pnlRows); scrRows.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        scrRows.setPreferredSize(new Dimension(860,520)); scrRows.getVerticalScrollBar().setUnitIncrement(20); pnlContent.add(scrRows);
+        JPanel pnlButtons=new JPanel(new FlowLayout(FlowLayout.RIGHT,8,2)); JButton btnClose=GiaoDien.button("Đóng",GiaoDien.CREAM,GiaoDien.NAV); btnClose.addActionListener(e -> winDialog.dispose()); pnlButtons.add(btnStart); pnlButtons.add(btnFinish); pnlButtons.add(btnClose); pnlContent.add(pnlButtons,BorderLayout.SOUTH);
         winDialog.setContentPane(pnlContent); load[0].run(); winDialog.pack(); winDialog.setLocationRelativeTo(null); winDialog.setVisible(true);
     }
 }

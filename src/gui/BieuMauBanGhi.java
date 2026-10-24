@@ -19,7 +19,7 @@ final class BieuMauBanGhi extends JPanel {
     }
     BieuMauBanGhi(String table,Map<String,Object> row,Set<String> excluded,boolean readOnly) {
         super(new GridBagLayout()); this.table=table; existing=row!=null;
-        setBackground(GiaoDien.WHITE); int index=0;
+        setBackground(GiaoDien.WHITE); setBorder(BorderFactory.createEmptyBorder(8,10,8,10)); int index=0;
         for(String field:Schema.COLUMNS.get(table)) {
             if(excluded.contains(field)) continue;
             String type=Schema.TYPES.get(table).get(field).split(":",2)[0];
@@ -42,10 +42,11 @@ final class BieuMauBanGhi extends JPanel {
                 input=new OChonNgay(value);
                 if(field.equals("ngayHoanThanh") || field.equals("thoiGianXacNhan")) setEnabledDeep(input,false);
             } else if(type.equals("bit")) {
-                JPanel pnlGender=new JPanel(new FlowLayout(FlowLayout.LEFT));
+                JPanel pnlGender=new JPanel(new FlowLayout(FlowLayout.LEFT,14,7)); pnlGender.setOpaque(false);
                 ButtonGroup group=new ButtonGroup();
                 for(String label:new String[]{"Nam","Nữ"}) {
-                    JRadioButton radGender=new JRadioButton(label); group.add(radGender); pnlGender.add(radGender);
+                    JRadioButton radGender=new JRadioButton(label); radGender.setOpaque(false); radGender.setFont(GiaoDien.font(13,false));
+                    group.add(radGender); pnlGender.add(radGender);
                     if(old!=null) radGender.setSelected(label.equals("Nam")== (Boolean.TRUE.equals(old) || value.equals("1") || value.equals("Nam")));
                 }
                 input=pnlGender;
@@ -79,4 +80,9 @@ final class BieuMauBanGhi extends JPanel {
         if(component instanceof Container container) for(Component child:container.getComponents()) setEnabledDeep(child,enabled);
     }
     void lockField(String field) { if(inputs.get(field)!=null) DinhDangKeThua.lock(inputs.get(field)); }
+    @Override public Dimension getPreferredSize() {
+        Dimension d=super.getPreferredSize();
+        if(getParent() instanceof JViewport vp && vp.getWidth()>0) return new Dimension(vp.getWidth(),d.height);
+        return d;
+    }
 }

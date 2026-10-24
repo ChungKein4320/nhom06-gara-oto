@@ -14,7 +14,7 @@ public final class DuLieuTrinhDon {
         "Nhập kho phụ tùng", "Lịch sử sửa chữa"
     };
     public static final String[] CASH = {
-        "Tổng quan", "Tìm kiếm", "Hóa đơn", "Khuyến mãi/Tích điểm", "Phụ tùng"
+        "Tổng quan", "Tìm kiếm", "Hóa đơn", "Lịch sử tích điểm", "Phụ tùng"
     };
     public static final String[] MANAGER = {
         "Tổng quan", "Tìm kiếm", "Nhà cung cấp", "Nhân viên",

@@ -1,8 +1,8 @@
 package gui;
 
 import connectDB.KetNoiCSDL;
-import dao.InvoiceMath;
 import dao.ThuongMaiDAO;
+import dao.InvoiceMath;
 import java.awt.*;
 import java.math.BigDecimal;
 import java.sql.*;
@@ -29,7 +29,13 @@ public final class ManHinhBanPhuTung extends JPanel {
     private final JComboBox<LuaChonDuLieu.Choice> cmbCustomers=new OChonTimKiem<>();
     private final String employeeId;
     private final JPanel pnlCategories=new JPanel(new FlowLayout(FlowLayout.LEFT,6,4));
-    private final JPanel pnlProducts=new JPanel();
+    private final JPanel pnlProducts=new JPanel() {
+        @Override public Dimension getPreferredSize() {
+            Dimension d=super.getPreferredSize();
+            if(getParent() instanceof JViewport vp && vp.getWidth()>0) return new Dimension(vp.getWidth(),d.height);
+            return d;
+        }
+    };
     private final JLabel lblTotal=GiaoDien.label("",15,true,GiaoDien.TEAL);
     private final JLabel lblStatus=GiaoDien.label("Chọn phụ tùng bên phải hoặc nhập mã.",12,false,GiaoDien.MUTED);
     private final JSpinner spnQuantity=new JSpinner(new SpinnerNumberModel(1,1,Integer.MAX_VALUE,1));
@@ -80,17 +86,19 @@ public final class ManHinhBanPhuTung extends JPanel {
         pnlEntry.add(keyboard(),BorderLayout.CENTER); pnlLeft.add(pnlEntry,BorderLayout.SOUTH);
 
         JPanel pnlRight=GiaoDien.card(new BorderLayout(0,10));
-        pnlRight.setBorder(new EmptyBorder(10,10,10,10));
+        pnlRight.setBorder(new EmptyBorder(10,12,10,12));
         pnlCategories.setOpaque(false);
         JScrollPane scrCategories=new JScrollPane(pnlCategories,JScrollPane.VERTICAL_SCROLLBAR_NEVER,JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-        scrCategories.setPreferredSize(new Dimension(260,48)); scrCategories.setBorder(null); pnlRight.add(scrCategories,BorderLayout.NORTH);
+        scrCategories.setPreferredSize(new Dimension(420,48)); scrCategories.setBorder(null);
+        scrCategories.getHorizontalScrollBar().setUnitIncrement(20);
+        pnlRight.add(scrCategories,BorderLayout.NORTH);
         scrCategories.getViewport().setBackground(GiaoDien.WHITE);
         pnlProducts.setLayout(new BoxLayout(pnlProducts,BoxLayout.Y_AXIS)); pnlProducts.setOpaque(false);
-        JScrollPane scrProducts=new JScrollPane(pnlProducts,JScrollPane.VERTICAL_SCROLLBAR_ALWAYS,JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        JScrollPane scrProducts=new JScrollPane(pnlProducts,JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         scrProducts.setBorder(null); scrProducts.getVerticalScrollBar().setUnitIncrement(20); pnlRight.add(scrProducts,BorderLayout.CENTER);
         scrProducts.getViewport().setBackground(GiaoDien.WHITE);
-        JPanel pnlSale=new JPanel(new BorderLayout(10,0)); pnlSale.setOpaque(false);
-        pnlRight.setPreferredSize(new Dimension(290,0));
+        JPanel pnlSale=new JPanel(new BorderLayout(12,0)); pnlSale.setOpaque(false);
+        pnlRight.setPreferredSize(new Dimension(450,0));
         pnlLeft.setMinimumSize(new Dimension(0,0)); pnlRight.setMinimumSize(new Dimension(0,0));
         pnlSale.add(pnlLeft,BorderLayout.CENTER); pnlSale.add(pnlRight,BorderLayout.EAST);
         add(pnlSale,BorderLayout.CENTER);
@@ -166,7 +174,9 @@ public final class ManHinhBanPhuTung extends JPanel {
         ButtonGroup group=new ButtonGroup();
         for(String name:categories) {
             JToggleButton tglCategory=new JToggleButton(name); group.add(tglCategory); tglCategory.setSelected(name.equals(category));
-            tglCategory.setFont(GiaoDien.font(12,true)); tglCategory.addActionListener(e -> { category=name; renderProducts(); }); pnlCategories.add(tglCategory);
+            tglCategory.setFont(GiaoDien.font(12,true));
+            tglCategory.setToolTipText(name);
+            tglCategory.addActionListener(e -> { category=name; renderProducts(); }); pnlCategories.add(tglCategory);
         }
         pnlCategories.revalidate(); pnlCategories.repaint();
     }
@@ -175,9 +185,9 @@ public final class ManHinhBanPhuTung extends JPanel {
         for(Product p:products.values()) {
             if(!category.equals("Tất cả") && !category.equals(p.category())) continue;
             count++;
-            JPanel pnlProduct=new JPanel(new BorderLayout(8,6)); pnlProduct.setBackground(GiaoDien.WHITE);
-            pnlProduct.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(GiaoDien.LINE),new EmptyBorder(12,12,12,12)));
-            JPanel pnlText=new JPanel(new GridLayout(0,1,0,5)); pnlText.setOpaque(false);
+            JPanel pnlProduct=new JPanel(new BorderLayout(10,6)); pnlProduct.setBackground(GiaoDien.WHITE);
+            pnlProduct.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(GiaoDien.LINE),new EmptyBorder(10,12,10,12)));
+            JPanel pnlText=new JPanel(new GridLayout(0,1,0,4)); pnlText.setOpaque(false);
             JLabel lblProduct=GiaoDien.label(p.code()+" • "+p.name(),12,true,GiaoDien.NAV);
             lblProduct.setToolTipText(p.code()+" • "+p.name()); pnlText.add(lblProduct);
             pnlText.add(GiaoDien.label(format(p.price())+"  |  Tồn: "+p.stock(),13,true,GiaoDien.TEAL));
@@ -186,8 +196,10 @@ public final class ManHinhBanPhuTung extends JPanel {
             else if(p.stock()==0) pnlText.add(GiaoDien.label("Hết hàng",11,true,GiaoDien.ORANGE));
             pnlProduct.add(pnlText,BorderLayout.CENTER);
             JButton btnAdd=GiaoDien.button("+",GiaoDien.TEAL,Color.WHITE); btnAdd.setToolTipText("Thêm "+p.code()+" vào giỏ");
+            btnAdd.setIcon(null); btnAdd.setDisabledIcon(null); btnAdd.setPressedIcon(null); btnAdd.setRolloverIcon(null);
+            btnAdd.setBorder(new EmptyBorder(8,14,8,14)); btnAdd.setFont(GiaoDien.font(14,true));
             btnAdd.setEnabled(p.stock()>0 && !blocked); btnAdd.addActionListener(e -> addProduct(p.code())); pnlProduct.add(btnAdd,BorderLayout.EAST);
-            pnlProduct.setMaximumSize(new Dimension(Integer.MAX_VALUE,blocked || p.stock()==0 ? 110 : 92));
+            pnlProduct.setMaximumSize(new Dimension(Integer.MAX_VALUE,blocked || p.stock()==0 ? 106 : 86));
             pnlProduct.setAlignmentX(Component.LEFT_ALIGNMENT); pnlProducts.add(pnlProduct); pnlProducts.add(Box.createVerticalStrut(8));
         }
         if(count==0) pnlProducts.add(GiaoDien.label("Không có phụ tùng trong nhóm này.",13,false,GiaoDien.MUTED));

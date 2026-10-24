@@ -95,6 +95,7 @@ public final class ManHinhHoaDon extends JPanel {
         for (int i = 0; i < labels.length; i++) {
             pnlTotalCard.add(GiaoDien.label(labels[i], 13, i == 4, GiaoDien.TEXT));
             lblTotals[i] = GiaoDien.label("0 đ", 15, true, i == 4 ? GiaoDien.ORANGE : GiaoDien.TEAL);
+            lblTotals[i].setHorizontalAlignment(SwingConstants.RIGHT);
             pnlTotalCard.add(lblTotals[i]);
         }
         pnlRoot.add(pnlTotalCard);
@@ -103,6 +104,11 @@ public final class ManHinhHoaDon extends JPanel {
         cmbInvoices.addActionListener(e -> loadSelected());
         if(selectedInvoice==null) loadInvoices();
         else { loadingInvoices=true; cmbInvoices.addItem(selectedInvoice); loadingInvoices=false; loadSelected(); }
+    }
+    @Override public Dimension getPreferredSize() {
+        Dimension d = super.getPreferredSize();
+        if (getParent() instanceof JViewport vp && vp.getWidth() > 0) return new Dimension(vp.getWidth(), d.height);
+        return d;
     }
     private String invoiceId() { return fixedInvoice!=null ? fixedInvoice : (String)cmbInvoices.getSelectedItem(); }
     void openPayment() {

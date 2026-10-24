@@ -12,7 +12,18 @@ public final class ManHinhChinh extends JFrame {
     private final JLabel lblTitle;
     private static final String SEARCH_PREFIX="Tìm kiếm: ";
     private boolean searchExpanded;
+    private final java.util.Set<String> expandedSections = new java.util.HashSet<>();
     private String current="Tổng quan";
+
+    private static final class NavPanel extends JPanel implements Scrollable {
+        @java.io.Serial
+        private static final long serialVersionUID = 1L;
+        @Override public boolean getScrollableTracksViewportWidth() { return true; }
+        @Override public boolean getScrollableTracksViewportHeight() { return false; }
+        @Override public Dimension getPreferredScrollableViewportSize() { return getPreferredSize(); }
+        @Override public int getScrollableUnitIncrement(Rectangle visibleRect, int orientation, int direction) { return 16; }
+        @Override public int getScrollableBlockIncrement(Rectangle visibleRect, int orientation, int direction) { return 40; }
+    }
     public ManHinhChinh(dao.TaiKhoanDAO.AuthResult account){
         this.role=account.role;
         this.displayName=account.hoTen;
@@ -26,7 +37,7 @@ public final class ManHinhChinh extends JFrame {
         setLayout(new BorderLayout());
         JPanel pnlSidebar=new JPanel(new BorderLayout());
         pnlSidebar.setBackground(GiaoDien.NAV);
-        pnlSidebar.setPreferredSize(new Dimension(246,0));
+        pnlSidebar.setPreferredSize(new Dimension(258,0));
         JPanel pnlBrand=new JPanel();
         pnlBrand.setBackground(GiaoDien.NAV);
         pnlBrand.setBorder(new EmptyBorder(25,18,18,12));
@@ -38,14 +49,17 @@ public final class ManHinhChinh extends JFrame {
         pnlBrand.add(Box.createVerticalStrut(5));
         pnlBrand.add(GiaoDien.label("QUẢN LÝ GARA  •  GÒ VẤP",10,true,GiaoDien.CREAM));
         pnlSidebar.add(pnlBrand,BorderLayout.NORTH);
-        pnlNav=new JPanel();
+        pnlNav=new NavPanel();
         pnlNav.setBackground(GiaoDien.NAV);
-        pnlNav.setBorder(new EmptyBorder(7,10,8,10));
+        pnlNav.setBorder(new EmptyBorder(6,12,8,12));
         pnlNav.setLayout(new BoxLayout(pnlNav,BoxLayout.Y_AXIS));
         JScrollPane scrNavScroll=new JScrollPane(pnlNav);
         scrNavScroll.setBorder(null);
+        scrNavScroll.getViewport().setBackground(GiaoDien.NAV);
         scrNavScroll.getVerticalScrollBar().setUnitIncrement(14);
         scrNavScroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        scrNavScroll.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
+        GiaoDien.styleScroll(scrNavScroll,true);
         pnlSidebar.add(scrNavScroll,BorderLayout.CENTER);
         JPanel pnlBottom=new JPanel();
         pnlBottom.setBackground(GiaoDien.NAV);
@@ -61,7 +75,7 @@ public final class ManHinhChinh extends JFrame {
         JPanel pnlUser=new JPanel(new GridLayout(2,1));
         pnlUser.setOpaque(false);
         JLabel lblUserName=GiaoDien.label(displayName,13,true,Color.WHITE);
-        JLabel lblUserRole=GiaoDien.label(role.title,11,false,GiaoDien.MINT);
+        JLabel lblUserRole=GiaoDien.label(role.title,11,true,GiaoDien.MINT);
         pnlUser.add(lblUserName);
         pnlUser.add(lblUserRole);
         pnlProfile.add(pnlUser,BorderLayout.CENTER);
@@ -90,35 +104,108 @@ public final class ManHinhChinh extends JFrame {
         add(pnlMain,BorderLayout.CENTER);
         open("Tổng quan");
     }
+    private void addNavStrut(int height) {
+        Box.Filler filler = (Box.Filler) Box.createVerticalStrut(height);
+        filler.setAlignmentX(Component.LEFT_ALIGNMENT);
+        pnlNav.add(filler);
+    }
     private void section(String label){
-        pnlNav.add(Box.createVerticalStrut(19));
+        addNavStrut(14);
         JLabel lblL=GiaoDien.label("  "+label,10,true,GiaoDien.MINT);
-        lblL.setMaximumSize(new Dimension(220,22));
+        lblL.setAlignmentX(Component.LEFT_ALIGNMENT);
+        lblL.setMaximumSize(new Dimension(Integer.MAX_VALUE,20));
         pnlNav.add(lblL);
-        pnlNav.add(Box.createVerticalStrut(9));
+        addNavStrut(6);
+    }
+    private static String sectionForItem(String s) {
+        return switch (s) {
+            case "Phiếu tiếp nhận", "Phiếu kiểm tra", "Phiếu báo giá", "Phiếu sửa chữa", "Bảo hành", "Lịch nhắc bảo dưỡng" -> "NHÂN VIÊN KỸ THUẬT";
+            case "Tồn kho", "Cấp phát phụ tùng", "Nhập kho phụ tùng", "Lịch sử sửa chữa" -> "NHÂN VIÊN KHO";
+            case "Hóa đơn", "Lịch sử tích điểm", "Khuyến mãi/Tích điểm", "Phụ tùng" -> "NHÂN VIÊN BÁN HÀNG";
+            case "Nhà cung cấp", "Nhân viên", "Khách hàng", "Phương tiện", "Danh mục dịch vụ", "Danh mục phụ tùng", "Tài khoản", "Khuyến mãi" -> "NHÂN VIÊN QUẢN LÝ";
+            case "Thống kê" -> "BÁO CÁO";
+            default -> null;
+        };
+    }
+    private void accordionSection(String label, boolean expanded) {
+        addNavStrut(6);
+        Color textColor = GiaoDien.MINT;
+        Color expandedBg = new Color(0x1D3840);
+        JButton btnHeader = new JButton("  " + label) {
+            @Override protected void paintComponent(Graphics g) {
+                Graphics2D q = (Graphics2D) g.create();
+                q.setColor((expanded || getModel().isRollover()) ? expandedBg : GiaoDien.NAV);
+                q.fillRect(0, 0, getWidth(), getHeight());
+                q.dispose();
+                super.paintComponent(g);
+            }
+        };
+        btnHeader.setLayout(new BorderLayout());
+        JLabel arrow = new JLabel(new Icon() {
+            public int getIconWidth(){ return 12; }
+            public int getIconHeight(){ return 12; }
+            public void paintIcon(Component c,Graphics g,int x,int y){
+                Graphics2D q=(Graphics2D)g.create();
+                q.setRenderingHint(RenderingHints.KEY_ANTIALIASING,RenderingHints.VALUE_ANTIALIAS_ON);
+                q.setColor(textColor);
+                if(expanded) q.fillPolygon(new int[]{x+1,x+11,x+6},new int[]{y+3,y+3,y+9},3);
+                else q.fillPolygon(new int[]{x+3,x+9,x+3},new int[]{y+1,y+6,y+11},3);
+                q.dispose();
+            }
+        });
+        btnHeader.add(arrow, BorderLayout.EAST);
+        btnHeader.setHorizontalAlignment(SwingConstants.LEFT);
+        btnHeader.setAlignmentX(Component.LEFT_ALIGNMENT);
+        btnHeader.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34));
+        btnHeader.setPreferredSize(new Dimension(232, 34));
+        btnHeader.setFont(GiaoDien.font(11, true));
+        btnHeader.setFocusPainted(false);
+        btnHeader.setContentAreaFilled(false);
+        btnHeader.setBorder(new EmptyBorder(0, 8, 0, 14));
+        btnHeader.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btnHeader.setBackground(expanded ? expandedBg : GiaoDien.NAV);
+        btnHeader.setForeground(textColor);
+        btnHeader.setOpaque(false);
+        btnHeader.setRolloverEnabled(true);
+        btnHeader.addActionListener(e -> {
+            if (expandedSections.contains(label)) {
+                expandedSections.remove(label);
+            } else {
+                expandedSections.add(label);
+            }
+            rebuildNavigation();
+        });
+        pnlNav.add(btnHeader);
+        addNavStrut(4);
     }
     private void duongPhanCach(){
-        pnlNav.add(Box.createVerticalStrut(14));
+        addNavStrut(10);
         JPanel pnlDuongKe=new JPanel();
         pnlDuongKe.setBackground(new Color(0x355055));
+        pnlDuongKe.setAlignmentX(Component.LEFT_ALIGNMENT);
         pnlDuongKe.setMaximumSize(new Dimension(Integer.MAX_VALUE,1));
-        pnlDuongKe.setPreferredSize(new Dimension(220,1));
+        pnlDuongKe.setPreferredSize(new Dimension(232,1));
         pnlNav.add(pnlDuongKe);
-        pnlNav.add(Box.createVerticalStrut(14));
+        addNavStrut(10);
     }
     private void rebuildNavigation(){
         String page=current;
         pnlNav.removeAll();
         String[] items=DuLieuTrinhDon.forRole(role);
         section("TỔNG QUAN");
+        String lastGroup=null;
+        JButton activeBtnRef=null;
         for(int i=0;i<items.length;i++){
             String s=items[i];
             if(i==2)duongPhanCach();
-            if (role == VaiTro.ADMIN && (s.equals("Tồn kho") || s.equals("Hóa đơn") || s.equals("Nhà cung cấp"))) {
-                section(s.equals("Tồn kho") ? "NHÂN VIÊN KHO" : s.equals("Hóa đơn") ? "NHÂN VIÊN BÁN HÀNG" : "NHÂN VIÊN QUẢN LÝ");
+            String groupName=sectionForItem(s);
+            if(groupName!=null) {
+                if(!groupName.equals(lastGroup)) {
+                    lastGroup=groupName;
+                    accordionSection(groupName, expandedSections.contains(groupName));
+                }
+                if(!expandedSections.contains(groupName)) continue;
             }
-            if (role == VaiTro.ADMIN && s.equals("Phiếu tiếp nhận")) section("NHÂN VIÊN KỸ THUẬT");
-            if (s.equals("Thống kê")) section("BÁO CÁO");
             boolean search=s.equals("Tìm kiếm");
             boolean active=s.equals(page) || (search && page.startsWith(SEARCH_PREFIX));
             JButton btnB=new JButton(s);
@@ -142,11 +229,12 @@ public final class ManHinhChinh extends JFrame {
             btnB.setIcon(BieuTuong.get(s,17,active?Color.WHITE:new Color(0xB8D4D0)));
             btnB.setIconTextGap(12);
             btnB.setHorizontalAlignment(SwingConstants.LEFT);
-            btnB.setMaximumSize(new Dimension(222,42));
-            btnB.setPreferredSize(new Dimension(222,42));
-            btnB.setFont(GiaoDien.font(12,active));
+            btnB.setAlignmentX(Component.LEFT_ALIGNMENT);
+            btnB.setMaximumSize(new Dimension(Integer.MAX_VALUE,40));
+            btnB.setPreferredSize(new Dimension(232,40));
+            btnB.setFont(GiaoDien.font(12,true));
             btnB.setFocusPainted(false);
-            btnB.setBorder(new EmptyBorder(0,13,0,search ? 20 : 5));
+            btnB.setBorder(new EmptyBorder(0,13,0,search ? 16 : 8));
             btnB.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
             btnB.setBackground(active?GiaoDien.TEAL:GiaoDien.NAV);
             btnB.setForeground(active?Color.WHITE:new Color(0xD1DFDD));
@@ -154,32 +242,39 @@ public final class ManHinhChinh extends JFrame {
             if(search) btnB.addActionListener(e->{searchExpanded=!searchExpanded; rebuildNavigation();});
             else btnB.addActionListener(e->open(s));
             pnlNav.add(btnB);
+            if(active) activeBtnRef=btnB;
             if(search && searchExpanded) {
                 for(String group:ManHinhTimKiem.nhomTheoVaiTro(role)) {
                     String route=SEARCH_PREFIX+group;
                     boolean selected=route.equals(current);
-                    JButton child=new JButton("<html><div style='width:130px'>"+group+"</div></html>");
+                    JButton child=new JButton("<html><div style='width:142px'>"+group+"</div></html>");
                     child.setToolTipText(route);
                     child.getAccessibleContext().setAccessibleName(route);
                     child.setHorizontalAlignment(SwingConstants.LEFT);
-                    child.setFont(GiaoDien.font(12,selected));
+                    child.setAlignmentX(Component.LEFT_ALIGNMENT);
+                    child.setFont(GiaoDien.font(12,true));
                     child.setFocusPainted(false);
-                    child.setBorder(new EmptyBorder(6,38,6,8));
+                    child.setBorder(new EmptyBorder(5,36,5,8));
                     child.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
                     child.setBackground(selected ? GiaoDien.TEAL : GiaoDien.NAV);
                     child.setForeground(selected ? Color.WHITE : new Color(0xD1DFDD));
                     child.setOpaque(true);
-                    child.setMaximumSize(new Dimension(222,48));
-                    child.setPreferredSize(new Dimension(222,48));
+                    child.setMaximumSize(new Dimension(Integer.MAX_VALUE,42));
+                    child.setPreferredSize(new Dimension(232,42));
                     child.addActionListener(e->open(route));
                     pnlNav.add(child);
-                    pnlNav.add(Box.createVerticalStrut(3));
+                    if(selected) activeBtnRef=child;
+                    addNavStrut(2);
                 }
             }
-            pnlNav.add(Box.createVerticalStrut(3));
+            addNavStrut(2);
         }
         pnlNav.revalidate();
         pnlNav.repaint();
+        if(activeBtnRef!=null) {
+            final JButton targetBtn=activeBtnRef;
+            SwingUtilities.invokeLater(() -> targetBtn.scrollRectToVisible(new Rectangle(0,0,targetBtn.getWidth(),targetBtn.getHeight())));
+        }
     }
     public void open(String page){
         java.util.Objects.requireNonNull(page,"Phải xác định trang cần mở.");
@@ -192,6 +287,8 @@ public final class ManHinhChinh extends JFrame {
         if(searchGroup!=null && !ManHinhTimKiem.nhomTheoVaiTro(role).contains(searchGroup))
             throw new SecurityException("Không có quyền tìm kiếm nhóm dữ liệu: "+searchGroup);
         if(searchGroup!=null) searchExpanded=true;
+        String targetSection=sectionForItem(page);
+        if(targetSection!=null) expandedSections.add(targetSection);
         current=page;
         lblTitle.setText(page);
         rebuildNavigation();
@@ -202,14 +299,26 @@ public final class ManHinhChinh extends JFrame {
                 : page.equals("Thống kê") ? new ManHinhThongKe()
                 : page.equals("Phụ tùng") ? new ManHinhBanPhuTung(employeeId)
                 : new ManHinhDuLieu(page);
-        if (view instanceof ManHinhBanPhuTung) {
+        if (view instanceof ManHinhBanPhuTung || view instanceof ManHinhDuLieu || view instanceof ManHinhTimKiem) {
             pnlBody.add(view,BorderLayout.CENTER);
         } else {
-        JScrollPane scrScroll=new JScrollPane(view, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-        scrScroll.setBorder(null);
-        scrScroll.getVerticalScrollBar().setUnitIncrement(20);
-        pnlBody.add(scrScroll,BorderLayout.CENTER);
+            JPanel pnlViewportWrap=new JPanel(new BorderLayout()) {
+                @Override public Dimension getPreferredSize() {
+                    Dimension d=super.getPreferredSize();
+                    if(getParent() instanceof JViewport vp && vp.getWidth()>0) return new Dimension(vp.getWidth(),d.height);
+                    return d;
+                }
+            };
+            pnlViewportWrap.setBackground(GiaoDien.BG);
+            pnlViewportWrap.add(view,BorderLayout.CENTER);
+            JScrollPane scrScroll=new JScrollPane(pnlViewportWrap, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+            scrScroll.setBorder(null);
+            scrScroll.getViewport().setBackground(GiaoDien.BG);
+            scrScroll.getVerticalScrollBar().setUnitIncrement(20);
+            GiaoDien.styleScroll(scrScroll,false);
+            pnlBody.add(scrScroll,BorderLayout.CENTER);
         }
+        GiaoDien.styleAllScrollPanes(pnlBody);
         pnlBody.revalidate();
         pnlBody.repaint();
     }

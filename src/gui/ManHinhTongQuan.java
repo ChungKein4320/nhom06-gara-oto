@@ -1,7 +1,7 @@
 package gui;
-import java.awt.*;
 import javax.swing.*;
 import javax.swing.border.*;
+import java.awt.*;
 public final class ManHinhTongQuan extends JPanel {
     @java.io.Serial
     private static final long serialVersionUID = 1L;
@@ -21,7 +21,8 @@ public final class ManHinhTongQuan extends JPanel {
         GiaoDien.gap(pnlMain,26);
         JPanel pnlCards=new JPanel(new GridLayout(1,4,14,0));
         pnlCards.setOpaque(false);
-        pnlCards.setMaximumSize(new Dimension(9999,130));
+        pnlCards.setMaximumSize(new Dimension(Integer.MAX_VALUE,130));
+        pnlCards.setAlignmentX(Component.CENTER_ALIGNMENT);
         String[] keys = role == VaiTro.KY_THUAT
                 ? new String[] {"Xe tiếp nhận", "Phiếu kiểm tra", "Báo giá", "Phiếu sửa chữa"}
                 : role == VaiTro.KHO ? new String[] {"Loại phụ tùng", "Sắp hết hàng", "Phiếu nhập", "Yêu cầu cấp"}
@@ -30,7 +31,8 @@ public final class ManHinhTongQuan extends JPanel {
         for (String key : keys) {
             JPanel pnlCard = GiaoDien.card(new BorderLayout(0, 13));
             pnlCard.add(GiaoDien.label(key.toUpperCase(), 11, true, GiaoDien.MUTED), BorderLayout.NORTH);
-            JLabel lblValue = GiaoDien.label("—", 29, true, GiaoDien.TEAL);
+            int valSize = (key.equals("Doanh thu") || key.toLowerCase().contains("doanh")) ? 23 : 28;
+            JLabel lblValue = GiaoDien.label("—", valSize, true, GiaoDien.TEAL);
             pnlCard.add(lblValue, BorderLayout.CENTER);
             try {
                 lblValue.setText(dao.TongQuanDAO.metric(key));

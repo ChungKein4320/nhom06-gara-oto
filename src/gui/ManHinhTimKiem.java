@@ -93,7 +93,7 @@ public final class ManHinhTimKiem extends JPanel {
             String field=fields[i],type=Schema.TYPES.get(table).get(field).split(":",2)[0];
             JComponent input;
             if(field.equals("gioiTinh")) {
-                JPanel pnlGioiTinh=new JPanel(new FlowLayout(FlowLayout.LEFT,14,4)); pnlGioiTinh.setOpaque(false);
+                JPanel pnlGioiTinh=new JPanel(new FlowLayout(FlowLayout.LEFT,14,7)); pnlGioiTinh.setOpaque(false);
                 for(JRadioButton radGioiTinh:new JRadioButton[]{radTatCa,radNam,radNu}) {
                     radGioiTinh.setOpaque(false); radGioiTinh.setFont(GiaoDien.font(13,false));
                     pnlGioiTinh.add(radGioiTinh);
@@ -112,7 +112,9 @@ public final class ManHinhTimKiem extends JPanel {
             GridBagConstraints c=new GridBagConstraints(); c.gridx=i%2; c.gridy=i/2; c.weightx=1; c.fill=GridBagConstraints.HORIZONTAL; c.insets=new Insets(6,8,6,8);
             pnlBieuMau.add(pnlCell,c);
         }
-        scrBieuMau.setPreferredSize(new Dimension(800,Math.min(280,((fields.length+1)/2)*78+12)));
+        scrBieuMau.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        int prefH=pnlBieuMau.getPreferredSize().height+8;
+        scrBieuMau.setPreferredSize(new Dimension(800,Math.min(340,prefH)));
         lamMoi(); pnlBieuMau.revalidate(); pnlBieuMau.repaint();
         SwingUtilities.invokeLater(() -> scrBieuMau.getVerticalScrollBar().setValue(0));
     }
