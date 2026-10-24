@@ -36,7 +36,6 @@ public final class ManHinhThongKe extends JPanel {
     private final JLabel[] lblMetricValues = new JLabel[3];
     private final JLabel lblChartTitle = GiaoDien.label("",18,true,GiaoDien.NAV);
     private final JLabel lblChartHint = GiaoDien.label("",12,false,GiaoDien.MUTED);
-    private final JTextArea txtAnalysis = new JTextArea(3,70);
     private final JLabel lblSummary = GiaoDien.label("",12,false,GiaoDien.MUTED);
     private final Chart pnlChart = new Chart();
     private final DefaultTableModel detailModel = new DefaultTableModel(new Object[]{"STT", "Nội dung thống kê", "Số liệu"},0) {
@@ -62,10 +61,12 @@ public final class ManHinhThongKe extends JPanel {
         pnlSelectors.add(cell("Phân loại",cmbCategory)); pnlSelectors.add(cell("Thời gian",cmbPeriod));
         pnlFilters.add(pnlSelectors,BorderLayout.NORTH);
         JPanel pnlExtra=new JPanel(new BorderLayout(0,6)); pnlExtra.setOpaque(false);
+        JPanel pnlSubtypeWrap=new JPanel(new BorderLayout()); pnlSubtypeWrap.setOpaque(false);
+        pnlSubtypeWrap.add(pnlSubtype,BorderLayout.WEST);
         chkTheoMa.setOpaque(false); chkTheoMa.setFont(GiaoDien.font(13,false));
-        pnlExtra.add(pnlSubtype,BorderLayout.CENTER); pnlExtra.add(chkTheoMa,BorderLayout.SOUTH);
+        pnlExtra.add(pnlSubtypeWrap,BorderLayout.CENTER); pnlExtra.add(chkTheoMa,BorderLayout.SOUTH);
         pnlFilters.add(pnlExtra,BorderLayout.SOUTH);
-        cmbSubtype.setPreferredSize(new Dimension(250,36));
+        cmbSubtype.setPreferredSize(new Dimension(240,36));
         for(int i=1;i<=12;i++) cmbMonth.addItem("Tháng "+i);
         cmbMonth.setSelectedIndex(LocalDate.now().getMonthValue()-1);
         cmbQuarter.setSelectedIndex((LocalDate.now().getMonthValue()-1)/3);

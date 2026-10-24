@@ -1,9 +1,9 @@
 package gui;
 
 import dao.CoSoDAO;
-import dao.QuyTrinhDAO;
-import dao.Schema;
 import dao.ThuongMaiDAO;
+import dao.Schema;
+import dao.QuyTrinhDAO;
 import java.awt.*;
 import java.sql.SQLException;
 import java.util.*;
@@ -29,6 +29,7 @@ public final class ManHinhDuLieu extends JPanel {
         ROUTES.put("Nhập kho phụ tùng", "PhieuNhapKho");
         ROUTES.put("Lịch sử sửa chữa", "PhieuSuaChua");
         ROUTES.put("Hóa đơn", "HoaDon");
+        ROUTES.put("Lịch sử tích điểm", "LichSuTichDiem");
         ROUTES.put("Khuyến mãi/Tích điểm", "LichSuTichDiem");
         ROUTES.put("Phụ tùng", "PhuTung");
         ROUTES.put("Nhà cung cấp", "NhaCungCap");
@@ -107,14 +108,11 @@ public final class ManHinhDuLieu extends JPanel {
             @Override public boolean isCellEditable(int row, int col) { return false; }
         };
         tblTable = GiaoDien.table(model);
-        if(tableName.equals("TonKho")) {
-            tblTable.putClientProperty("tableLayout.fixedWidths",Map.of(2,220));
-            tblTable.getColumnModel().getColumn(2).setMaxWidth(220);
-        }
         tblTable.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
         tblTable.setAutoCreateRowSorter(true);
         statusFilters=new BoLocTrangThai(tblTable);
         statusFilters.onChange(this::updateCount);
+        statusFilters.setBorder(new EmptyBorder(6, 0, 0, 0));
         pnlToolbar.add(statusFilters,BorderLayout.SOUTH);
         tblTable.setRowHeight(40);
         tblTable.getTableHeader().setResizingAllowed(true);
@@ -122,11 +120,11 @@ public final class ManHinhDuLieu extends JPanel {
         scrScroll.setPreferredSize(new Dimension(850, 440));
         BoCucBang.install(tblTable, scrScroll);
         pnlCard.add(scrScroll, BorderLayout.CENTER);
-        JPanel pnlActions = new JPanel(new BorderLayout());
+        JPanel pnlActions = new JPanel(new BorderLayout(0, 4));
         pnlActions.setOpaque(false);
         lblCount = GiaoDien.label("Đang tải dữ liệu...", 12, false, GiaoDien.MUTED);
         pnlActions.add(lblCount, BorderLayout.WEST);
-        JPanel pnlButtons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        JPanel pnlButtons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 2));
         pnlButtons.setOpaque(false);
         JButton btnRefresh = GiaoDien.button("Làm mới", GiaoDien.CREAM, GiaoDien.NAV);
         JButton btnEdit = GiaoDien.button("Chỉnh sửa", GiaoDien.TEAL, Color.WHITE);
@@ -152,10 +150,18 @@ public final class ManHinhDuLieu extends JPanel {
             pnlButtons.add(btnEdit);
             pnlButtons.add(btnDelete);
         }
+        for (Component comp : pnlButtons.getComponents()) {
+            if (comp instanceof JButton btnAction) {
+                Dimension pref = btnAction.getPreferredSize();
+                btnAction.setPreferredSize(new Dimension(Math.max(pref.width + 14, 100), 38));
+            }
+        }
         JScrollPane scrActions = new JScrollPane(pnlButtons,
                 JScrollPane.VERTICAL_SCROLLBAR_NEVER, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         scrActions.setBorder(null);
-        scrActions.setPreferredSize(new Dimension(850,65));
+        scrActions.setOpaque(false);
+        scrActions.getViewport().setOpaque(false);
+        scrActions.setPreferredSize(new Dimension(850, 42));
         pnlActions.add(scrActions, BorderLayout.SOUTH);
         pnlCard.add(pnlActions, BorderLayout.SOUTH);
         add(pnlCard, BorderLayout.CENTER);
@@ -269,10 +275,14 @@ public final class ManHinhDuLieu extends JPanel {
             } else if (type.equals("datetime") || type.equals("datetime2") || type.equals("date")) {
                 input = new OChonNgay(value);
             } else if (field.equalsIgnoreCase("gioiTinh")) {
-                JPanel pnlGioiTinh = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 0));
+                JPanel pnlGioiTinh = new JPanel(new FlowLayout(FlowLayout.LEFT, 14, 8));
                 pnlGioiTinh.setOpaque(false);
                 JRadioButton radNam = new JRadioButton("Nam");
                 JRadioButton radNu = new JRadioButton("Nữ");
+                radNam.setOpaque(false);
+                radNu.setOpaque(false);
+                radNam.setFont(GiaoDien.font(13, false));
+                radNu.setFont(GiaoDien.font(13, false));
                 ButtonGroup group = new ButtonGroup();
                 group.add(radNam);
                 group.add(radNu);
@@ -308,16 +318,20 @@ public final class ManHinhDuLieu extends JPanel {
         TruongKeThua.Binding inherited = TruongKeThua.bind(tableName,inputs);
         JScrollPane scrSc = new JScrollPane(pnlForm);
         scrSc.setBorder(null);
-        scrSc.setPreferredSize(new Dimension(690, Math.min(520, ((fields.length + 1) / 2) * 80 + 25)));
+        scrSc.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        int formH = pnlForm.getPreferredSize().height + 8;
+        scrSc.setPreferredSize(new Dimension(700, Math.min(540, formH)));
         JDialog winDialog = new JDialog(SwingUtilities.getWindowAncestor(this),
                 existing ? "Chỉnh sửa thông tin" : "Thêm thông tin mới", Dialog.ModalityType.APPLICATION_MODAL);
         winDialog.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
         JPanel pnlContent = new JPanel(new BorderLayout(0, 12));
         pnlContent.setBorder(new EmptyBorder(12, 12, 12, 12));
         pnlContent.add(scrSc, BorderLayout.CENTER);
-        JPanel pnlActions = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        JPanel pnlActions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 2));
         JButton btnSave = GiaoDien.button("Lưu", GiaoDien.TEAL, Color.WHITE);
         JButton btnCancel = GiaoDien.button("Hủy", GiaoDien.CREAM, GiaoDien.NAV);
+        btnSave.setPreferredSize(new Dimension(115, 40));
+        btnCancel.setPreferredSize(new Dimension(115, 40));
         pnlActions.add(btnSave);
         pnlActions.add(btnCancel);
         pnlContent.add(pnlActions, BorderLayout.SOUTH);
@@ -399,6 +413,7 @@ public final class ManHinhDuLieu extends JPanel {
             String invoice=String.valueOf(model.getValueAt(tblTable.convertRowIndexToModel(selected),0));
             JDialog winInvoice=new JDialog(SwingUtilities.getWindowAncestor(this),"Chi tiết hóa đơn "+invoice,Dialog.ModalityType.APPLICATION_MODAL);
             JScrollPane scrInvoice=new JScrollPane(new ManHinhHoaDon(invoice)); scrInvoice.getVerticalScrollBar().setUnitIncrement(20);
+            scrInvoice.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
             Dimension screen=Toolkit.getDefaultToolkit().getScreenSize();
             scrInvoice.setPreferredSize(new Dimension(Math.min(1050,screen.width-100),Math.min(740,screen.height-140)));
             winInvoice.setContentPane(scrInvoice); winInvoice.pack(); winInvoice.setLocationRelativeTo(null); winInvoice.setVisible(true); load(); return;

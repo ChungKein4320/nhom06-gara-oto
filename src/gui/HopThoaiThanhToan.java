@@ -84,7 +84,9 @@ final class HopThoaiThanhToan extends JDialog {
                 }
             }
             if(cmbMethod.getItemCount()==0) throw new SQLException("Chưa có phương thức Tiền mặt/QR Code trong dữ liệu.");
-            if(previous!=null) for(int i=0;i<cmbMethod.getItemCount();i++) if(previous.id().equals(cmbMethod.getItemAt(i).id())) cmbMethod.setSelectedIndex(i);
+            int selectedIndex=0;
+            if(previous!=null) for(int i=0;i<cmbMethod.getItemCount();i++) if(previous.id().equals(cmbMethod.getItemAt(i).id())) selectedIndex=i;
+            cmbMethod.setSelectedIndex(selectedIndex);
             lblAmount.setText("CẦN THU: "+NumberFormat.getNumberInstance(Locale.forLanguageTag("vi-VN")).format(total)+" đ");
         } catch(SQLException ex) { total=null; lblQr.setIcon(null); lblQr.setText("Không tải được hóa đơn."); error(ex); return false; }
         finally { loading=false; }

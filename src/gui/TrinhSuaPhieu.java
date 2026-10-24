@@ -47,16 +47,18 @@ final class TrinhSuaPhieu {
         refresh.run();
         JDialog winDialog=new JDialog(SwingUtilities.getWindowAncestor(parent),(id==null ? "Lập phiếu mới" : readOnly ? "Chi tiết "+id : "Chỉnh sửa "+id),Dialog.ModalityType.APPLICATION_MODAL);
         JPanel pnlContent=new JPanel(new BorderLayout(0,10)); pnlContent.setBorder(BorderFactory.createEmptyBorder(12,12,12,12));
-        JScrollPane scrHeader=new JScrollPane(pnlHeader); scrHeader.setPreferredSize(new Dimension(820,290));
+        JScrollPane scrHeader=new JScrollPane(pnlHeader);
+        scrHeader.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        scrHeader.setPreferredSize(new Dimension(840,Math.min(310,pnlHeader.getPreferredSize().height+12)));
         JPanel pnlTop=new JPanel(new BorderLayout(0,8)); pnlTop.add(scrHeader,BorderLayout.CENTER);
         if(lockedReason!=null) pnlTop.add(GiaoDien.label("<html>Chỉ xem: "+lockedReason+"</html>",12,true,DinhDangKeThua.TEXT),BorderLayout.NORTH);
         pnlContent.add(pnlTop,BorderLayout.NORTH);
-        JScrollPane scrDetails=new JScrollPane(tblDetails); scrDetails.setPreferredSize(new Dimension(820,230));
+        JScrollPane scrDetails=new JScrollPane(tblDetails); scrDetails.setPreferredSize(new Dimension(840,240));
         JPanel pnlDetailList=new JPanel(new BorderLayout(0,6));
         pnlDetailList.add(new BoLocTrangThai(tblDetails),BorderLayout.NORTH); pnlDetailList.add(scrDetails,BorderLayout.CENTER);
         pnlContent.add(pnlDetailList,BorderLayout.CENTER);
         BoCucBang.install(tblDetails,scrDetails);
-        JPanel pnlButtons=new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        JPanel pnlButtons=new JPanel(new FlowLayout(FlowLayout.RIGHT,8,2));
         JButton btnAdd=GiaoDien.button("Thêm hạng mục",GiaoDien.TEAL,Color.WHITE);
         JButton btnEdit=GiaoDien.button("Sửa hạng mục",GiaoDien.CREAM,GiaoDien.NAV);
         JButton btnRemove=GiaoDien.button("Bỏ hạng mục",GiaoDien.CREAM,GiaoDien.NAV);
@@ -66,7 +68,9 @@ final class TrinhSuaPhieu {
             int selected=tblDetails.getSelectedRow();
             if(selected<0) { JOptionPane.showMessageDialog(winDialog,"Vui lòng chọn hạng mục."); return; }
             BieuMauBanGhi pnlLine=new BieuMauBanGhi(child,details.get(tblDetails.convertRowIndexToModel(selected)),Set.of(),true);
-            JScrollPane scrLine=new JScrollPane(pnlLine); scrLine.setPreferredSize(new Dimension(640,360));
+            JScrollPane scrLine=new JScrollPane(pnlLine);
+            scrLine.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+            scrLine.setPreferredSize(new Dimension(660,Math.min(380,pnlLine.getPreferredSize().height+12)));
             JOptionPane.showMessageDialog(winDialog,scrLine,"Chi tiết hạng mục",JOptionPane.PLAIN_MESSAGE);
         });
         tblDetails.addMouseListener(new java.awt.event.MouseAdapter() {
@@ -95,7 +99,9 @@ final class TrinhSuaPhieu {
     private static Map<String,Object> editLine(Component parent,String child,Map<String,Object> row,String foreignKey) {
         // Khóa hạng mục được nhập lại trong bản nháp; đầu phiếu sẽ gắn khi lưu.
         BieuMauBanGhi pnlForm=new BieuMauBanGhi(child,row,Set.of(foreignKey,"maChiTietHoaDon"));
-        JScrollPane scrForm=new JScrollPane(pnlForm); scrForm.setPreferredSize(new Dimension(640,360));
+        JScrollPane scrForm=new JScrollPane(pnlForm);
+        scrForm.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        scrForm.setPreferredSize(new Dimension(660,Math.min(380,pnlForm.getPreferredSize().height+12)));
         Object[] options={"Áp dụng vào phiếu","Hủy"};
         while(JOptionPane.showOptionDialog(parent,scrForm,"Chỉnh sửa hạng mục — lưu phiếu để ghi nhận",JOptionPane.OK_CANCEL_OPTION,JOptionPane.PLAIN_MESSAGE,null,options,options[0])==JOptionPane.OK_OPTION) {
             try {

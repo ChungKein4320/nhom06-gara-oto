@@ -63,7 +63,11 @@ public final class DangNhap extends JFrame {
         c.insets=new Insets(0,0,8,0);
         c.gridy=y++;
         pnlForm.add(txtPassword,c);
-        JButton btnLogin=GiaoDien.button("ĐĂNG NHẬP  →",GiaoDien.TEAL,Color.WHITE);
+        JButton btnLogin=GiaoDien.button("ĐĂNG NHẬP",GiaoDien.TEAL,Color.WHITE);
+        btnLogin.setFont(GiaoDien.font(13,true));
+        btnLogin.setIcon(null);
+        btnLogin.setIconTextGap(0);
+        btnLogin.setHorizontalAlignment(SwingConstants.CENTER);
         btnLogin.addActionListener(e->login());
         c.gridy=y++;
         c.insets=new Insets(8,0,10,0);

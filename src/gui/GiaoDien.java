@@ -1,6 +1,7 @@
 package gui;
 import javax.swing.*;
 import javax.swing.border.*;
+import javax.swing.plaf.basic.BasicScrollBarUI;
 import javax.swing.table.*;
 import java.awt.*;
 public final class GiaoDien {
@@ -13,11 +14,16 @@ public final class GiaoDien {
         if(!dialogCenteringInstalled) {
             Toolkit.getDefaultToolkit().addAWTEventListener(event -> {
                 if(event instanceof java.awt.event.WindowEvent windowEvent
-                        && windowEvent.getID()==java.awt.event.WindowEvent.WINDOW_OPENED
-                        && windowEvent.getWindow() instanceof Dialog dialog) {
-                    dialog.setLocationRelativeTo(null);
+                        && windowEvent.getID()==java.awt.event.WindowEvent.WINDOW_OPENED) {
+                    styleAllScrollPanes(windowEvent.getWindow());
+                    if(windowEvent.getWindow() instanceof Dialog dialog) {
+                        dialog.setLocationRelativeTo(null);
+                    }
+                } else if(event instanceof java.awt.event.ContainerEvent containerEvent
+                        && containerEvent.getID()==java.awt.event.ContainerEvent.COMPONENT_ADDED) {
+                    styleAllScrollPanes(containerEvent.getChild());
                 }
-            },AWTEvent.WINDOW_EVENT_MASK);
+            },AWTEvent.WINDOW_EVENT_MASK | AWTEvent.CONTAINER_EVENT_MASK);
             dialogCenteringInstalled=true;
         }
         UIManager.put("Label.font",font(13,false));
@@ -26,6 +32,81 @@ public final class GiaoDien {
         UIManager.put("Table.font",font(13,false));
         UIManager.put("TableHeader.font",font(12,true));
         UIManager.put("OptionPane.messageFont",font(13,false));
+        UIManager.put("ScrollBar.width",8);
+        UIManager.put("ComboBox.background", WHITE);
+        UIManager.put("ComboBox.foreground", TEXT);
+        UIManager.put("ComboBox.selectionBackground", TEAL);
+        UIManager.put("ComboBox.selectionForeground", WHITE);
+        UIManager.put("ComboBox.font", font(12, false));
+    }
+    public static void styleAllScrollPanes(Component root) {
+        if(root==null) return;
+        if(root instanceof JScrollPane scr) {
+            Component view=scr.getViewport()!=null ? scr.getViewport().getView() : null;
+            boolean dark=view!=null && NAV.equals(view.getBackground());
+            styleScroll(scr,dark);
+        }
+        if(root instanceof Container container) {
+            for(Component child:container.getComponents()) styleAllScrollPanes(child);
+        }
+    }
+    public static void styleScroll(JScrollPane scr,boolean dark) {
+        if(scr==null) return;
+        styleScrollBar(scr.getVerticalScrollBar(),dark);
+        styleScrollBar(scr.getHorizontalScrollBar(),dark);
+        if(scr.getViewport()!=null && scr.getViewport().getView() instanceof JTable) {
+            scr.setBorder(new LineBorder(LINE,1,true));
+            scr.getViewport().setBackground(WHITE);
+        }
+    }
+    public static void styleScrollBar(JScrollBar bar,boolean dark) {
+        if(bar==null) return;
+        Boolean applied=(Boolean)bar.getClientProperty("giaoDien.styled");
+        Boolean wasDark=(Boolean)bar.getClientProperty("giaoDien.dark");
+        if(Boolean.TRUE.equals(applied) && java.util.Objects.equals(wasDark,dark)) return;
+        bar.putClientProperty("giaoDien.styled",Boolean.TRUE);
+        bar.putClientProperty("giaoDien.dark",dark);
+        bar.setOpaque(true);
+        bar.setBackground(dark ? NAV : WHITE);
+        bar.setPreferredSize(new Dimension(dark ? 6 : 8,dark ? 6 : 8));
+        bar.setUI(new BasicScrollBarUI() {
+            @Override protected void configureScrollBarColors() {
+                trackColor=dark ? NAV : new Color(0xF0F4F3);
+                thumbColor=dark ? new Color(0x3D5E63) : new Color(0xB8C9C6);
+            }
+            private JButton zeroButton() {
+                JButton b=new JButton();
+                Dimension d=new Dimension(0,0);
+                b.setPreferredSize(d); b.setMinimumSize(d); b.setMaximumSize(d);
+                b.setBorder(null); b.setFocusable(false); b.setOpaque(false);
+                return b;
+            }
+            @Override protected JButton createDecreaseButton(int orientation) { return zeroButton(); }
+            @Override protected JButton createIncreaseButton(int orientation) { return zeroButton(); }
+            @Override protected void paintTrack(Graphics g,JComponent c,Rectangle r) {
+                Graphics2D g2=(Graphics2D)g.create();
+                g2.setColor(dark ? NAV : (c.getParent() instanceof JScrollPane sp && sp.getViewport()!=null && sp.getViewport().getView() instanceof JTable ? WHITE : BG));
+                g2.fillRect(r.x,r.y,r.width,r.height);
+                g2.dispose();
+            }
+            @Override protected void paintThumb(Graphics g,JComponent c,Rectangle r) {
+                if(r.isEmpty() || !scrollbar.isEnabled()) return;
+                Graphics2D g2=(Graphics2D)g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(isDragging || isThumbRollover() ? (dark ? MINT : TEAL) : (dark ? new Color(0x3D5E63) : new Color(0xB8C9C6)));
+                int arc=6;
+                if(scrollbar.getOrientation()==Adjustable.VERTICAL) {
+                    int w=Math.max(4,r.width-2);
+                    int x=r.x+(r.width-w)/2;
+                    g2.fillRoundRect(x,r.y+1,w,Math.max(12,r.height-2),arc,arc);
+                } else {
+                    int h=Math.max(4,r.height-2);
+                    int y=r.y+(r.height-h)/2;
+                    g2.fillRoundRect(r.x+1,y,Math.max(12,r.width-2),h,arc,arc);
+                }
+                g2.dispose();
+            }
+        });
     }
     public static JPanel panel(Color c){
         JPanel pnlP=new JPanel();
