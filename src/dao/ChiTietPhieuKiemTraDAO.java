@@ -1,6 +1,6 @@
 package dao;
 
-public class ChiTietPhieuKiemTraDAO extends BaseDAO {
+public class ChiTietPhieuKiemTraDAO extends CoSoDAO {
     public ChiTietPhieuKiemTraDAO() {
         super("ChiTietPhieuKiemTra");
     }

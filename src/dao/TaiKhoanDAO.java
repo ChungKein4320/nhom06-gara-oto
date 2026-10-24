@@ -1,10 +1,10 @@
 package dao;
 
-import connectDB.ConnectDB;
+import connectDB.KetNoiCSDL;
 import gui.VaiTro;
 import java.sql.*;
 
-public class TaiKhoanDAO extends BaseDAO {
+public class TaiKhoanDAO extends CoSoDAO {
     public TaiKhoanDAO() {
         super("TaiKhoan");
     }
@@ -26,11 +26,13 @@ public class TaiKhoanDAO extends BaseDAO {
                 + "FROM dbo.TaiKhoan tk JOIN dbo.NhanVien nv ON nv.maNhanVien = tk.maNhanVien "
                 + "WHERE tk.tenDangNhap = ? AND tk.trangThai IN (N'Hoạt động', N'Đang hoạt động') "
                 + "AND nv.trangThai = N'Đang làm'";
-        try (Connection conn = ConnectDB.getConnection();
+        try (Connection conn = KetNoiCSDL.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, user);
             try (ResultSet rs = stmt.executeQuery()) {
                 if (!rs.next()) return null;
+                // SQL của nhóm hiện lưu mật khẩu dạng văn bản thuần.
+                // Cần chuyển sang BCrypt/PBKDF2 trước khi sử dụng ngoài môi trường bài tập.
                 if (!password.equals(rs.getString("matKhau"))) return null;
                 String id = rs.getString("maNhanVien");
                 String title = rs.getString("vaiTro");

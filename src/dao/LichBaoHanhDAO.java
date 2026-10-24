@@ -1,6 +1,6 @@
 package dao;
 
-public class LichBaoHanhDAO extends BaseDAO {
+public class LichBaoHanhDAO extends CoSoDAO {
     public LichBaoHanhDAO() {
         super("LichBaoHanh");
     }

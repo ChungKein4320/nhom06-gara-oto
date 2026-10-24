@@ -1,6 +1,6 @@
 package dao;
 
-public class TonKhoDAO extends BaseDAO {
+public class TonKhoDAO extends CoSoDAO {
     @Override
     public java.util.List<java.util.LinkedHashMap<String,Object>> getAll() throws java.sql.SQLException {
         var rows=new java.util.ArrayList<java.util.LinkedHashMap<String,Object>>();
