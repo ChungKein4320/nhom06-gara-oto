@@ -1,8 +1,8 @@
 package gui;
 
-import connectDB.ConnectDB;
-import dao.CommerceDAO;
+import connectDB.KetNoiCSDL;
 import dao.InvoiceMath;
+import dao.ThuongMaiDAO;
 import java.awt.*;
 import java.math.BigDecimal;
 import java.sql.*;
@@ -142,7 +142,7 @@ public final class ManHinhBanPhuTung extends JPanel {
         String oldInvoice=LuaChonDuLieu.id(cmbCustomers); loading=true; btnConfirm.setEnabled(false);
         try {
             Map<String,Product> fresh=new LinkedHashMap<>();
-            try(Connection conn=ConnectDB.getConnection(); PreparedStatement ps=conn.prepareStatement("SELECT p.maPhuTung,p.tenPhuTung,p.loaiPhuTung,p.donGia,COALESCE(t.soLuongHienTai,0) AS ton FROM dbo.PhuTung p LEFT JOIN dbo.TonKho t ON t.maPhuTung=p.maPhuTung ORDER BY p.maPhuTung"); ResultSet rs=ps.executeQuery()) {
+            try(Connection conn=KetNoiCSDL.getConnection(); PreparedStatement ps=conn.prepareStatement("SELECT p.maPhuTung,p.tenPhuTung,p.loaiPhuTung,p.donGia,COALESCE(t.soLuongHienTai,0) AS ton FROM dbo.PhuTung p LEFT JOIN dbo.TonKho t ON t.maPhuTung=p.maPhuTung ORDER BY p.maPhuTung"); ResultSet rs=ps.executeQuery()) {
                 while(rs.next()) { Product p=new Product(rs.getString(1),rs.getString(2),rs.getString(3),rs.getBigDecimal(4),rs.getInt(5)); fresh.put(p.code(),p); }
             }
             products.clear(); products.putAll(fresh);
@@ -231,10 +231,10 @@ public final class ManHinhBanPhuTung extends JPanel {
     private void sell() {
         if(!btnConfirm.isEnabled()) return;
         if(JOptionPane.showConfirmDialog(this,"Lập hóa đơn bán "+quantities.size()+" loại phụ tùng cho "+cmbCustomers.getSelectedItem()+"?","Xác nhận bán phụ tùng",JOptionPane.YES_NO_OPTION)!=JOptionPane.YES_OPTION) return;
-        List<CommerceDAO.SaleItem> items=quantities.entrySet().stream().map(e -> new CommerceDAO.SaleItem(e.getKey(),e.getValue(),cartPrices.get(e.getKey()))).toList();
+        List<ThuongMaiDAO.SaleItem> items=quantities.entrySet().stream().map(e -> new ThuongMaiDAO.SaleItem(e.getKey(),e.getValue(),cartPrices.get(e.getKey()))).toList();
         btnConfirm.setEnabled(false);
         try {
-            String invoice=CommerceDAO.createPartsInvoice(LuaChonDuLieu.id(cmbCustomers),employeeId,items);
+            String invoice=ThuongMaiDAO.createPartsInvoice(LuaChonDuLieu.id(cmbCustomers),employeeId,items);
             quantities.clear(); cartPrices.clear(); load(); lblStatus.setText("Đã lập "+invoice+"; tiếp tục thanh toán trong chi tiết hóa đơn.");
             showSaleInvoice(invoice);
         } catch(SQLException ex) { error(ex); load(); }

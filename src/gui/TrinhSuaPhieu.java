@@ -1,6 +1,6 @@
 package gui;
 
-import connectDB.ConnectDB;
+import connectDB.KetNoiCSDL;
 import dao.*;
 import java.awt.*;
 import java.sql.*;
@@ -22,19 +22,19 @@ final class TrinhSuaPhieu {
         open(parent,table,header,List.of(),true);
     }
     private static void open(Component parent,String table,Map<String,Object> header,List<Map<String,Object>> initialDetails,boolean viewOnly) {
-        String child=WorkflowDAO.detailTable(table), pk=Schema.PRIMARY.get(table);
+        String child=QuyTrinhDAO.detailTable(table), pk=Schema.PRIMARY.get(table);
         String id=header==null || header.get(pk)==null ? null : String.valueOf(header.get(pk));
         if(id==null && (table.equals("PhieuSuaChua") || table.equals("HoaDon"))) { JOptionPane.showMessageDialog(parent,"Hãy lập phiếu bằng nút nghiệp vụ của phiếu trước đó."); return; }
         String lockedReason=null;
         List<Map<String,Object>> details=new ArrayList<>();
         if(id==null) for(Map<String,Object> line:initialDetails) details.add(new LinkedHashMap<>(line));
-        try(Connection conn=ConnectDB.getConnection()) {
+        try(Connection conn=KetNoiCSDL.getConnection()) {
             if(id!=null) {
-                var fresh=new BaseDAO(table).getAll(conn,Map.of(pk,id));
+                var fresh=new CoSoDAO(table).getAll(conn,Map.of(pk,id));
                 if(fresh.isEmpty()) throw new SQLException("Phiếu không còn tồn tại. Vui lòng tải lại danh sách.");
                 header=fresh.get(0);
-                if(!viewOnly) lockedReason=WorkflowDAO.documentEditProblem(conn,table,id);
-                details.addAll(new BaseDAO(child).getAll(conn,Map.of(pk,id)));
+                if(!viewOnly) lockedReason=QuyTrinhDAO.documentEditProblem(conn,table,id);
+                details.addAll(new CoSoDAO(child).getAll(conn,Map.of(pk,id)));
             }
         } catch(SQLException ex) { error(parent,ex); return; }
         boolean readOnly=viewOnly || lockedReason!=null;
@@ -83,7 +83,7 @@ final class TrinhSuaPhieu {
         btnSave.addActionListener(e -> {
             btnSave.setEnabled(false);
             try {
-                WorkflowDAO.saveDocument(table,pnlHeader.read(),details,id); winDialog.dispose();
+                QuyTrinhDAO.saveDocument(table,pnlHeader.read(),details,id); winDialog.dispose();
             } catch(SQLException ex) { error(winDialog,ex); }
             finally { btnSave.setEnabled(true); }
         });

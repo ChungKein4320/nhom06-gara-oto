@@ -1,6 +1,6 @@
 package gui;
 
-import connectDB.ConnectDB;
+import connectDB.KetNoiCSDL;
 import dao.*;
 import java.awt.*;
 import java.sql.*;
@@ -16,12 +16,12 @@ final class HopThoaiTienDoSuaChua {
         JButton btnStart=GiaoDien.button("Bắt đầu sửa chữa",GiaoDien.CREAM,GiaoDien.NAV);
         Runnable[] load=new Runnable[1];
         load[0]=() -> {
-            try(Connection conn=ConnectDB.getConnection()) {
-                var headers=new BaseDAO("PhieuSuaChua").getAll(conn,Map.of("maPSC",id));
+            try(Connection conn=KetNoiCSDL.getConnection()) {
+                var headers=new CoSoDAO("PhieuSuaChua").getAll(conn,Map.of("maPSC",id));
                 if(headers.isEmpty()) throw new SQLException("Phiếu không còn tồn tại.");
                 var header=headers.get(0); boolean ongoing="Đang sửa chữa".equals(header.get("trangThai"));
                 btnStart.setVisible("Chờ sửa chữa".equals(header.get("trangThai")));
-                var lines=new BaseDAO("ChiTietPhieuSuaChua").getAll(conn,Map.of("maPSC",id));
+                var lines=new CoSoDAO("ChiTietPhieuSuaChua").getAll(conn,Map.of("maPSC",id));
                 pnlRows.removeAll(); pnlRows.add(new BieuMauBanGhi("PhieuSuaChua",header,Set.of(),true)); boolean all=!lines.isEmpty(),pending=false;
                 for(var line:lines) {
                     boolean done="Hoàn thành".equals(line.get("trangThaiHangMuc")); all &= done;
@@ -35,14 +35,14 @@ final class HopThoaiTienDoSuaChua {
                     btnDone.addActionListener(e -> {
                         if(needsParts) {
                             if(JOptionPane.showConfirmDialog(winDialog,"Cấp phát phụ tùng cho "+service+" / "+part+"?","Xác nhận cấp phát",JOptionPane.YES_NO_OPTION)!=JOptionPane.YES_OPTION) return;
-                            try { CommerceDAO.allocate(id,service,part); load[0].run(); }
+                            try { ThuongMaiDAO.allocate(id,service,part); load[0].run(); }
                             catch(SQLException ex) { JOptionPane.showMessageDialog(winDialog,ex.getMessage(),"Không thể cấp phát",JOptionPane.ERROR_MESSAGE); }
                             return;
                         }
                         JSpinner spnMonths=new JSpinner(new SpinnerNumberModel(((Number)line.get("thoiHanBaoHanh")).intValue(),0,1200,1));
                         JPanel pnlWarranty=new JPanel(new BorderLayout(8,8)); pnlWarranty.add(new JLabel("Thời hạn bảo hành hạng mục (tháng, 0 = không bảo hành)"),BorderLayout.NORTH); pnlWarranty.add(spnMonths);
                         if(JOptionPane.showConfirmDialog(winDialog,pnlWarranty,"Xác nhận đã sửa "+service+" / "+part,JOptionPane.OK_CANCEL_OPTION)!=JOptionPane.OK_OPTION) return;
-                        try { spnMonths.commitEdit(); WorkflowDAO.completeRepairItem(id,service,part,((Number)spnMonths.getValue()).intValue()); load[0].run(); }
+                        try { spnMonths.commitEdit(); QuyTrinhDAO.completeRepairItem(id,service,part,((Number)spnMonths.getValue()).intValue()); load[0].run(); }
                         catch(Exception ex) { JOptionPane.showMessageDialog(winDialog,ex.getMessage(),"Không thể xác nhận",JOptionPane.ERROR_MESSAGE); }
                     });
                     pnlLine.add(btnDone,BorderLayout.EAST); pnlLine.setMaximumSize(new Dimension(Integer.MAX_VALUE,85)); pnlRows.add(pnlLine); pnlRows.add(Box.createVerticalStrut(6));
@@ -52,12 +52,12 @@ final class HopThoaiTienDoSuaChua {
         };
         btnStart.addActionListener(e -> {
             if(JOptionPane.showConfirmDialog(winDialog,"Bắt đầu sửa chữa phiếu "+id+"?","Xác nhận",JOptionPane.YES_NO_OPTION)!=JOptionPane.YES_OPTION) return;
-            try { WorkflowDAO.startRepair(id); load[0].run(); }
+            try { QuyTrinhDAO.startRepair(id); load[0].run(); }
             catch(SQLException ex) { JOptionPane.showMessageDialog(winDialog,ex.getMessage()); }
         });
         btnFinish.addActionListener(e -> {
             if(JOptionPane.showConfirmDialog(winDialog,"Xác nhận tất cả hạng mục nghiệm thu đạt và chuyển phiếu sang Đã sửa xong?","Nghiệm thu đạt",JOptionPane.YES_NO_OPTION)!=JOptionPane.YES_OPTION) return;
-            try { WorkflowDAO.acceptRepair(id); winDialog.dispose(); } catch(SQLException ex) { JOptionPane.showMessageDialog(winDialog,ex.getMessage()); load[0].run(); }
+            try { QuyTrinhDAO.acceptRepair(id); winDialog.dispose(); } catch(SQLException ex) { JOptionPane.showMessageDialog(winDialog,ex.getMessage()); load[0].run(); }
         });
         JPanel pnlContent=new JPanel(new BorderLayout(8,8)); pnlContent.setBorder(BorderFactory.createEmptyBorder(12,12,12,12));
         JScrollPane scrRows=new JScrollPane(pnlRows); scrRows.setPreferredSize(new Dimension(840,510)); scrRows.getVerticalScrollBar().setUnitIncrement(20); pnlContent.add(scrRows);

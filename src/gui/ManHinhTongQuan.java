@@ -1,7 +1,7 @@
 package gui;
+import java.awt.*;
 import javax.swing.*;
 import javax.swing.border.*;
-import java.awt.*;
 public final class ManHinhTongQuan extends JPanel {
     @java.io.Serial
     private static final long serialVersionUID = 1L;
@@ -33,7 +33,7 @@ public final class ManHinhTongQuan extends JPanel {
             JLabel lblValue = GiaoDien.label("—", 29, true, GiaoDien.TEAL);
             pnlCard.add(lblValue, BorderLayout.CENTER);
             try {
-                lblValue.setText(dao.DashboardDAO.metric(key));
+                lblValue.setText(dao.TongQuanDAO.metric(key));
             } catch (java.sql.SQLException ex) {
                 pnlCard.add(GiaoDien.label("Không tải được dữ liệu", 12, false, GiaoDien.MUTED), BorderLayout.SOUTH);
                 lblValue.setToolTipText(ex.getMessage());

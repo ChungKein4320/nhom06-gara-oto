@@ -1,7 +1,7 @@
 package gui;
 
-import connectDB.ConnectDB;
-import dao.CommerceDAO;
+import connectDB.KetNoiCSDL;
+import dao.ThuongMaiDAO;
 import java.awt.*;
 import java.awt.print.PrinterException;
 import java.sql.*;
@@ -138,7 +138,7 @@ public final class ManHinhHoaDon extends JPanel {
         String old = (String) cmbInvoices.getSelectedItem();
         loadingInvoices = true;
         cmbInvoices.removeAllItems();
-        try (Connection connection = ConnectDB.getConnection();
+        try (Connection connection = KetNoiCSDL.getConnection();
              PreparedStatement statement = connection.prepareStatement(
                      "SELECT maHoaDon FROM dbo.HoaDon ORDER BY maHoaDon ASC");
              ResultSet result = statement.executeQuery()) {
@@ -171,7 +171,7 @@ public final class ManHinhHoaDon extends JPanel {
         String sql = "SELECT h.*, k.hoTenKH FROM dbo.HoaDon h "
                 + "LEFT JOIN dbo.KhachHang k ON h.maKhachHang = k.maKhachHang "
                 + "WHERE h.maHoaDon = ?";
-        try (Connection connection = ConnectDB.getConnection()) {
+        try (Connection connection = KetNoiCSDL.getConnection()) {
             String customerId=null,couponId=null;
             try (PreparedStatement statement = connection.prepareStatement(sql)) {
                 statement.setString(1, id);
@@ -258,7 +258,7 @@ public final class ManHinhHoaDon extends JPanel {
         Object value=cmbCoupon.getSelectedItem();
         if(!(value instanceof LuaChonDuLieu.Choice choice) || choice.id().equals(currentCoupon)) return;
         cmbCoupon.setEnabled(false);
-        try { CommerceDAO.changeCoupon(invoice,choice.id()); loadSelected(); }
+        try { ThuongMaiDAO.changeCoupon(invoice,choice.id()); loadSelected(); }
         catch(SQLException ex) { JOptionPane.showMessageDialog(this,ex.getMessage(),"Không thể áp dụng mã giảm giá",JOptionPane.ERROR_MESSAGE); loadSelected(); }
     }
     private void scanCustomer() {

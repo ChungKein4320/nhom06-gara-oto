@@ -1,6 +1,6 @@
 package gui;
 
-import dao.BaseDAO;
+import dao.CoSoDAO;
 import dao.Schema;
 import java.awt.*;
 import java.sql.Timestamp;
@@ -124,6 +124,7 @@ public final class ManHinhTimKiem extends JPanel {
         tblKetQua.scrollRectToVisible(new Rectangle(0,0,1,1));
         lblKetQua.setText("Chưa tìm kiếm"); btnTimKiem.setEnabled(true); scrBieuMau.getVerticalScrollBar().setValue(0);
         if(tblKetQua.getRowSorter()!=null) tblKetQua.getRowSorter().setSortKeys(null);
+        timKiem(); // Tải lại toàn bộ dữ liệu theo quyền hiện tại, không chỉ xóa bảng.
     }
     private void timKiem() {
         if(!btnTimKiem.isEnabled()) return;
@@ -136,7 +137,7 @@ public final class ManHinhTimKiem extends JPanel {
         btnTimKiem.setEnabled(false); model.setRowCount(0); lblKetQua.setText("Đang tìm kiếm…");
         worker=new SwingWorker<>() {
             @Override protected List<LinkedHashMap<String,Object>> doInBackground() throws Exception {
-                List<LinkedHashMap<String,Object>> rows=new BaseDAO(selectedTable).getAll();
+                List<LinkedHashMap<String,Object>> rows=new CoSoDAO(selectedTable).getAll();
                 rows.removeIf(row -> !khopDieuKien(row,criteria)); return rows;
             }
             @Override protected void done() {

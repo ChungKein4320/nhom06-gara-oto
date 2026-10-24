@@ -1,5 +1,5 @@
 package gui;
-import connectDB.ConnectDB;
+import connectDB.KetNoiCSDL;
 import java.sql.*;
 import javax.swing.JComboBox;
 final class LuaChonDuLieu {
@@ -10,7 +10,7 @@ final class LuaChonDuLieu {
     private LuaChonDuLieu() { }
     static void load(JComboBox<Choice> cmbCombo, String sql, String... params) throws SQLException {
         cmbCombo.removeAllItems();
-        try (Connection conn = ConnectDB.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (Connection conn = KetNoiCSDL.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             for (int i=0; i<params.length; i++) ps.setString(i+1, params[i]);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) cmbCombo.addItem(new Choice(rs.getString(1), rs.getString(2)));

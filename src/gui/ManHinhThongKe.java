@@ -1,7 +1,7 @@
 package gui;
 
-import dao.StatisticsDAO;
-import dao.StatisticsDAO.Bucket;
+import dao.ThongKeDAO;
+import dao.ThongKeDAO.Bucket;
 import java.awt.*;
 import java.awt.geom.Path2D;
 import java.math.BigDecimal;
@@ -15,11 +15,16 @@ import java.util.List;
 import java.util.Locale;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
+import javax.swing.table.DefaultTableModel;
 
 /** Thống kê theo kỳ; số liệu được tải từ database ngoài luồng giao diện. */
 public final class ManHinhThongKe extends JPanel {
     @java.io.Serial private static final long serialVersionUID = 1L;
-    private final JComboBox<String> cmbCategory = new OChonTimKiem<>(new String[]{"Doanh thu","Khách hàng","Dịch vụ"});
+    private final JComboBox<String> cmbCategory = new OChonTimKiem<>(new String[]{"Doanh thu","Số lượng khách hàng","Khách hàng","Dịch vụ","Phụ tùng","Phương tiện","Doanh số của nhân viên","Giá trị hóa đơn"});
+    private final JComboBox<String> cmbSubtype = new OChonTimKiem<>();
+    private final JPanel pnlSubtype = cell("Loại phụ tùng",cmbSubtype);
+    private final JLabel lblSubtype = (JLabel)pnlSubtype.getComponent(0);
+    private final JCheckBox chkTheoMa = new JCheckBox("Thống kê theo mã phương tiện");
     private final JComboBox<String> cmbPeriod = new OChonTimKiem<>(new String[]{"Theo tháng","Theo quý","Theo năm","Thời gian tùy chọn"});
     private final JComboBox<String> cmbMonth = new OChonTimKiem<>();
     private final JComboBox<String> cmbQuarter = new OChonTimKiem<>(new String[]{"Quý I","Quý II","Quý III","Quý IV"});
@@ -31,8 +36,13 @@ public final class ManHinhThongKe extends JPanel {
     private final JLabel[] lblMetricValues = new JLabel[3];
     private final JLabel lblChartTitle = GiaoDien.label("",18,true,GiaoDien.NAV);
     private final JLabel lblChartHint = GiaoDien.label("",12,false,GiaoDien.MUTED);
+    private final JTextArea txtAnalysis = new JTextArea(3,70);
     private final JLabel lblSummary = GiaoDien.label("",12,false,GiaoDien.MUTED);
     private final Chart pnlChart = new Chart();
+    private final DefaultTableModel detailModel = new DefaultTableModel(new Object[]{"STT", "Nội dung thống kê", "Số liệu"},0) {
+        @Override public boolean isCellEditable(int r,int c) { return false; }
+    };
+    private final JTable detailTable = new JTable(detailModel);
     private final JButton btnView = GiaoDien.button("Xem thống kê",GiaoDien.TEAL,Color.WHITE);
     private int requestVersion;
     private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("dd/MM/yyyy");
@@ -51,6 +61,11 @@ public final class ManHinhThongKe extends JPanel {
         JPanel pnlSelectors = new JPanel(new GridLayout(1,2,16,0)); pnlSelectors.setOpaque(false);
         pnlSelectors.add(cell("Phân loại",cmbCategory)); pnlSelectors.add(cell("Thời gian",cmbPeriod));
         pnlFilters.add(pnlSelectors,BorderLayout.NORTH);
+        JPanel pnlExtra=new JPanel(new BorderLayout(0,6)); pnlExtra.setOpaque(false);
+        chkTheoMa.setOpaque(false); chkTheoMa.setFont(GiaoDien.font(13,false));
+        pnlExtra.add(pnlSubtype,BorderLayout.CENTER); pnlExtra.add(chkTheoMa,BorderLayout.SOUTH);
+        pnlFilters.add(pnlExtra,BorderLayout.SOUTH);
+        cmbSubtype.setPreferredSize(new Dimension(250,36));
         for(int i=1;i<=12;i++) cmbMonth.addItem("Tháng "+i);
         cmbMonth.setSelectedIndex(LocalDate.now().getMonthValue()-1);
         cmbQuarter.setSelectedIndex((LocalDate.now().getMonthValue()-1)/3);
@@ -82,18 +97,53 @@ public final class ManHinhThongKe extends JPanel {
         JPanel pnlChartCard=GiaoDien.card(new BorderLayout(0,14));
         JPanel pnlChartHeading=new JPanel(new GridLayout(2,1,0,6)); pnlChartHeading.setOpaque(false);
         pnlChartHeading.add(lblChartTitle); pnlChartHeading.add(lblChartHint); pnlChartCard.add(pnlChartHeading,BorderLayout.NORTH);
-        pnlChartCard.add(pnlChart,BorderLayout.CENTER); pnlChartCard.add(lblSummary,BorderLayout.SOUTH);
+        JPanel chartAndTable = new JPanel(new BorderLayout(0,12)); chartAndTable.setOpaque(false);
+        chartAndTable.add(pnlChart,BorderLayout.CENTER);
+        JPanel tableSection = new JPanel(new BorderLayout(0,6)); tableSection.setOpaque(false);
+        tableSection.add(GiaoDien.label("BẢNG SỐ LIỆU CHI TIẾT",13,true,GiaoDien.NAV),BorderLayout.NORTH);
+        detailTable.setRowHeight(28); detailTable.setAutoCreateRowSorter(true);
+        javax.swing.table.DefaultTableCellRenderer center = new javax.swing.table.DefaultTableCellRenderer();
+        center.setHorizontalAlignment(SwingConstants.CENTER);
+        detailTable.setDefaultRenderer(Object.class,center);
+        detailTable.setDefaultRenderer(Number.class,center);
+        ((javax.swing.table.DefaultTableCellRenderer)detailTable.getTableHeader().getDefaultRenderer()).setHorizontalAlignment(SwingConstants.CENTER);
+        JScrollPane detailScroll = new JScrollPane(detailTable);
+        detailScroll.setPreferredSize(new Dimension(700,215));
+        detailTable.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
+        detailTable.setFillsViewportHeight(false);
+        tableSection.add(detailScroll,BorderLayout.CENTER);
+        chartAndTable.add(tableSection,BorderLayout.SOUTH);
+        pnlChartCard.add(chartAndTable,BorderLayout.CENTER); pnlChartCard.add(lblSummary,BorderLayout.SOUTH);
         pnlBody.add(pnlChartCard,BorderLayout.CENTER); add(pnlBody,BorderLayout.CENTER);
         for(JComboBox<String> cmbCombo:List.of(cmbCategory,cmbPeriod,cmbMonth,cmbQuarter)) {
             cmbCombo.setFont(GiaoDien.font(13,false)); cmbCombo.setPreferredSize(new Dimension(160,36));
         }
         btnView.addActionListener(e->load());
-        cmbCategory.addActionListener(e->load());
+        cmbCategory.addActionListener(e->{ capNhatBoLoc(); load(); });
+        cmbSubtype.addActionListener(e->load());
+        chkTheoMa.addActionListener(e->load());
         cmbPeriod.addActionListener(e->{ updatePeriod(); load(); });
         cmbMonth.addActionListener(e->load()); cmbQuarter.addActionListener(e->load()); spnYear.addChangeListener(e->load());
-        updatePeriod(); load();
+        updatePeriod(); capNhatBoLoc(); load();
     }
 
+    private void capNhatBoLoc() {
+        int loai=cmbCategory.getSelectedIndex();
+        pnlSubtype.setVisible(loai==4 || loai==5);
+        lblSubtype.setText(loai==5?"Hãng xe":"Loại phụ tùng");
+        chkTheoMa.setVisible(loai==5);
+        cmbSubtype.removeAllItems();
+        cmbSubtype.addItem("Tất cả");
+        if(loai==4 || loai==5) {
+            try { for(String ten:ThongKeDAO.danhSachLoc(loai==4)) cmbSubtype.addItem(ten); }
+            catch(Exception ex) { System.err.println("Không tải được danh mục: "+ex.getMessage()); }
+        }
+        cmbSubtype.setSelectedItem("Tất cả");
+        revalidate(); repaint();
+    }
+    private static int loaiCu(int loai) {
+        return switch(loai) { case 0->0; case 1->1; case 2->9; case 3->2; case 4->3; case 5->8; case 6->11; default->12; };
+    }
     private static JPanel cell(String label,JComponent component) {
         JPanel pnlCell=new JPanel(new BorderLayout(0,7)); pnlCell.setOpaque(false);
         pnlCell.add(GiaoDien.label(label,12,true,GiaoDien.TEXT),BorderLayout.NORTH); pnlCell.add(component,BorderLayout.CENTER);
@@ -123,6 +173,9 @@ public final class ManHinhThongKe extends JPanel {
     private void load() {
         final int version=++requestVersion;
         final int type=cmbCategory.getSelectedIndex();
+        final int oldType=loaiCu(type);
+        final boolean theoMa=type==5 && chkTheoMa.isSelected();
+        final String subFilter=(type==4 || type==5) && cmbSubtype.getSelectedItem()!=null ? cmbSubtype.getSelectedItem().toString() : "Tất cả";
         final LocalDate[] range;
         try {
             spnYear.commitEdit();
@@ -133,27 +186,38 @@ public final class ManHinhThongKe extends JPanel {
             JOptionPane.showMessageDialog(this,ex.getMessage(),"Kiểm tra thời gian",JOptionPane.WARNING_MESSAGE); return;
         }
         boolean daily=cmbPeriod.getSelectedIndex()==0 || (cmbPeriod.getSelectedIndex()==3 && ChronoUnit.DAYS.between(range[0],range[1])<=62);
-        lblChartTitle.setText(type==0?"Xu hướng doanh thu":type==1?"Khách hàng sử dụng dịch vụ":"Dịch vụ được sử dụng nhiều nhất");
-        lblChartHint.setText(type==0?"Doanh thu từ hóa đơn đã thanh toán • Đường xu hướng và vùng diện tích"
-                :type==1?"Khách hàng duy nhất trong từng mốc thời gian • Biểu đồ cột"
-                :"Số hóa đơn có sử dụng từng dịch vụ • Tối đa 12 dịch vụ trên biểu đồ");
-        lblMetricTitles[0].setText(type==0?"TỔNG DOANH THU":type==1?"KHÁCH HÀNG DUY NHẤT":"TỔNG LƯỢT DỊCH VỤ");
-        lblMetricTitles[1].setText(type==2?"DỊCH VỤ PHÁT SINH":"MỐC THỜI GIAN");
-        lblMetricTitles[2].setText(type==2?"LƯỢT CAO NHẤT":"GIÁ TRỊ CAO NHẤT");
+        lblChartTitle.setText(type==0?"Xu hướng doanh thu":type==1?"Số lượng khách hàng":cmbCategory.getSelectedItem().toString());
+        lblChartHint.setText(type<=1?"Biểu đồ theo kỳ thống kê":"Xếp hạng theo số liệu thực tế • Tối đa 12 mục trên biểu đồ");
+        lblMetricTitles[0].setText(switch(type) {case 0->"TỔNG DOANH THU";case 1->"KHÁCH HÀNG DUY NHẤT";case 2->"TỔNG KHÁCH THANH TOÁN";case 3->"LƯỢT DỊCH VỤ";case 4->"SỐ PHỤ TÙNG ĐÃ THAY";case 5->"SỐ XE SỬA CHỮA";case 6->"DOANH SỐ ĐÃ THU";default->"GIÁ TRỊ HÓA ĐƠN ĐÃ THU";});
+        lblMetricTitles[1].setText("SỐ NHÓM CÓ PHÁT SINH");
+        lblMetricTitles[2].setText("GIÁ TRỊ NHÓM CAO NHẤT");
         clear("Đang tải số liệu…"); btnView.setEnabled(false);
-        new SwingWorker<StatisticsDAO.Result,Void>() {
-            @Override protected StatisticsDAO.Result doInBackground() throws Exception { return StatisticsDAO.load(type,range[0],range[1],daily); }
+        new SwingWorker<ThongKeDAO.Result,Void>() {
+            private ThongKeDAO.BangChiTiet bang;
+            @Override protected ThongKeDAO.Result doInBackground() throws Exception { bang=ThongKeDAO.taiBangLoc(oldType,range[0],range[1],subFilter,theoMa); return ThongKeDAO.taiBieuDoLoc(oldType,range[0],range[1],daily,subFilter,theoMa); }
             @Override protected void done() {
                 if(version!=requestVersion) return;
                 btnView.setEnabled(true);
                 try {
-                    StatisticsDAO.Result result=get();
+                    ThongKeDAO.Result result=get();
                     List<Bucket> buckets=result.buckets();
-                    lblMetricValues[0].setText(format(result.total(),type==0));
+                    lblMetricValues[0].setText(format(result.total(),(type==0 || type==2 || type==6 || type==7)));
                     lblMetricValues[1].setText(NUMBER.format(buckets.size()));
+                    detailModel.setColumnCount(0);
+                    detailModel.addColumn("STT");
+                    for(String col:bang.cot()) detailModel.addColumn(col);
+                    detailModel.setRowCount(0);
+                    for(int i=0;i<bang.dong().size();i++) {
+                        Object[] raw=bang.dong().get(i), row=new Object[raw.length+1];row[0]=i+1;
+                        for(int j=0;j<raw.length;j++) row[j+1]=raw[j] instanceof BigDecimal ? NUMBER.format(raw[j]) : raw[j];
+                        detailModel.addRow(row);
+                    }
+                    detailTable.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
+                    for(int j=0;j<detailTable.getColumnCount();j++)
+                        detailTable.getColumnModel().getColumn(j).setPreferredWidth(j==0?45:Math.max(100, 700/Math.max(1,detailTable.getColumnCount()-1)));
                     double peak=buckets.stream().mapToDouble(Bucket::value).max().orElse(0);
-                    lblMetricValues[2].setText(format(BigDecimal.valueOf(peak),type==0));
-                    pnlChart.update(buckets,type,daily);
+                    lblMetricValues[2].setText(format(BigDecimal.valueOf(peak),(type==0 || type==2 || type==6 || type==7)));
+                    pnlChart.update(buckets,type<=1?type:2,daily);
                     lblSummary.setText(DATE.format(range[0])+" – "+DATE.format(range[1])
                             +(buckets.isEmpty()?"  •  Không có dữ liệu trong kỳ đã chọn.":type==1?"  •  Tổng kỳ không cộng trùng khách giữa các mốc.":""));
                 } catch(Exception ex) {
@@ -166,7 +230,7 @@ public final class ManHinhThongKe extends JPanel {
     }
     private void clear(String message) {
         for(JLabel lblValue:lblMetricValues) lblValue.setText("—");
-        pnlChart.update(List.of(),cmbCategory.getSelectedIndex(),false); lblSummary.setText(message);
+        detailModel.setRowCount(0); pnlChart.update(List.of(),cmbCategory.getSelectedIndex(),false); lblSummary.setText(message);
         btnView.setEnabled(true);
     }
     private static String format(BigDecimal value,boolean money) { return NUMBER.format(value)+(money?" đ":""); }
@@ -179,7 +243,7 @@ public final class ManHinhThongKe extends JPanel {
         Chart() { setBackground(Color.WHITE); setPreferredSize(new Dimension(800,410)); }
         void update(List<Bucket> buckets,int category,boolean days) {
             data=new ArrayList<>(buckets); type=category; daily=days;
-            setPreferredSize(new Dimension(800,category==2?Math.max(380,Math.min(12,data.size())*36+40):410));
+            setPreferredSize(new Dimension(800,category>=2?Math.max(380,Math.min(12,data.size())*36+40):410));
             revalidate(); repaint();
         }
         @Override protected void paintComponent(Graphics graphics) {
@@ -191,7 +255,7 @@ public final class ManHinhThongKe extends JPanel {
                 g.setColor(GiaoDien.MUTED); String text="Chưa có số liệu để vẽ biểu đồ";
                 g.drawString(text,Math.max(12,(getWidth()-g.getFontMetrics().stringWidth(text))/2),getHeight()/2); g.dispose(); return;
             }
-            if(type==2) drawHorizontal(g); else drawTimeline(g);
+            if(type>=2) drawHorizontal(g); else drawTimeline(g);
             g.dispose();
         }
         private void drawHorizontal(Graphics2D g) {

@@ -1,18 +1,16 @@
 package gui;
 
-import dao.BaseDAO;
-import dao.CommerceDAO;
+import dao.CoSoDAO;
+import dao.QuyTrinhDAO;
 import dao.Schema;
-import dao.WorkflowDAO;
+import dao.ThuongMaiDAO;
 import java.awt.*;
 import java.sql.SQLException;
-import java.sql.Timestamp;
 import java.util.*;
 import java.util.List;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
-import javax.swing.table.TableRowSorter;
 
 /** Danh sách và biểu mẫu sử dụng dữ liệu SQL Server thực tế. */
 public final class ManHinhDuLieu extends JPanel {
@@ -46,7 +44,7 @@ public final class ManHinhDuLieu extends JPanel {
         return ROUTES.get(page);
     }
     private final String tableName;
-    private transient BaseDAO dao;
+    private transient CoSoDAO dao;
     private final JTable tblTable;
     private final DefaultTableModel model;
     private final JTextField txtSearch;
@@ -58,7 +56,7 @@ public final class ManHinhDuLieu extends JPanel {
     @java.io.Serial
     private void readObject(java.io.ObjectInputStream input) throws java.io.IOException, ClassNotFoundException {
         input.defaultReadObject();
-        dao = tableName.equals("TonKho") ? new dao.TonKhoDAO() : tableName.equals("HoaDon") ? new dao.HoaDonDAO() : new BaseDAO(tableName);
+        dao = tableName.equals("TonKho") ? new dao.TonKhoDAO() : tableName.equals("HoaDon") ? new dao.HoaDonDAO() : new CoSoDAO(tableName);
     }
 
     public ManHinhDuLieu(String page) {
@@ -67,7 +65,7 @@ public final class ManHinhDuLieu extends JPanel {
         setBorder(new EmptyBorder(26, 26, 26, 26));
         tableName = ROUTES.get(page);
         if (tableName == null) throw new IllegalArgumentException("Chưa có nguồn dữ liệu cho: " + page);
-        dao = tableName.equals("TonKho") ? new dao.TonKhoDAO() : tableName.equals("HoaDon") ? new dao.HoaDonDAO() : new BaseDAO(tableName);
+        dao = tableName.equals("TonKho") ? new dao.TonKhoDAO() : tableName.equals("HoaDon") ? new dao.HoaDonDAO() : new CoSoDAO(tableName);
         fields = Schema.COLUMNS.get(tableName);
         displayFields = tableName.equals("TonKho")
                 ? new String[]{"maTonKho","maPhuTung","tenPhuTung","soLuongHienTai","soLuongToiThieu"}
@@ -134,12 +132,12 @@ public final class ManHinhDuLieu extends JPanel {
         JButton btnEdit = GiaoDien.button("Chỉnh sửa", GiaoDien.TEAL, Color.WHITE);
         JButton btnDelete = GiaoDien.button("Xóa", GiaoDien.ORANGE, Color.WHITE);
         btnEdit.setEnabled(!tableName.startsWith("ChiTiet") && !Set.of("HoaDon","LichSuTichDiem").contains(tableName));
-        btnDelete.setEnabled(!tableName.startsWith("ChiTiet") && WorkflowDAO.detailTable(tableName)==null && !tableName.equals("LichSuTichDiem"));
+        btnDelete.setEnabled(!tableName.startsWith("ChiTiet") && QuyTrinhDAO.detailTable(tableName)==null && !tableName.equals("LichSuTichDiem"));
         btnRefresh.addActionListener(e -> lamMoi());
         btnEdit.addActionListener(e -> edit(true));
         btnDelete.addActionListener(e -> hideRecord());
         pnlButtons.add(btnRefresh);
-        if (WorkflowDAO.detailTable(tableName) != null) {
+        if (QuyTrinhDAO.detailTable(tableName) != null) {
             JButton btnDetails = GiaoDien.button(tableName.equals("HoaDon") ? "Chi tiết hóa đơn" : "Chi tiết phiếu", GiaoDien.CREAM, GiaoDien.NAV);
             btnDetails.addActionListener(e -> openDocument());
             pnlButtons.add(btnDetails);
@@ -217,7 +215,7 @@ public final class ManHinhDuLieu extends JPanel {
         int row = tblTable.convertRowIndexToModel(selected);
         if (JOptionPane.showConfirmDialog(this, "Xác nhận cấp phát phụ tùng cho hạng mục đã chọn?", "Xác nhận", JOptionPane.YES_NO_OPTION) != JOptionPane.YES_OPTION) return;
         try {
-            CommerceDAO.allocate(String.valueOf(model.getValueAt(row, 0)), String.valueOf(model.getValueAt(row, 1)), String.valueOf(model.getValueAt(row, 2)));
+            ThuongMaiDAO.allocate(String.valueOf(model.getValueAt(row, 0)), String.valueOf(model.getValueAt(row, 1)), String.valueOf(model.getValueAt(row, 2)));
             load();
         } catch (SQLException ex) {
             JOptionPane.showMessageDialog(this, ex.getMessage(), "Không thể cấp phát", JOptionPane.ERROR_MESSAGE);
@@ -229,7 +227,7 @@ public final class ManHinhDuLieu extends JPanel {
             Map<String,Object> record=selectedRecord();if(record==null)return;
             if(Set.of("Chờ sửa chữa","Đang sửa chữa","Đã sửa xong").contains(String.valueOf(record.get("trangThai")))) {HopThoaiTienDoSuaChua.show(this,String.valueOf(record.get("maPSC")));load();return;}
         }
-        if (WorkflowDAO.detailTable(tableName) != null) {
+        if (QuyTrinhDAO.detailTable(tableName) != null) {
             Map<String,Object> record = existing ? selectedRecord() : null;
             if (existing && record == null) return;
             TrinhSuaPhieu.show(this,tableName,record);
