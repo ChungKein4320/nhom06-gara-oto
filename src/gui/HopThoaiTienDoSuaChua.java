@@ -38,21 +38,61 @@ final class HopThoaiTienDoSuaChua {
                     JPanel pnlLine=GiaoDien.card(new BorderLayout(8,8));
                     String service=String.valueOf(line.get("maDichVu")),part=String.valueOf(line.get("maPhuTung"));
                     pnlLine.add(GiaoDien.label(service+" / "+part+" — "+line.get("trangThaiHangMuc")+" — Bảo hành: "+line.get("thoiHanBaoHanh")+" tháng",13,true,DinhDangKeThua.TEXT),BorderLayout.CENTER);
-                    boolean needsParts="Thiếu phụ tùng".equals(line.get("trangThaiHangMuc"));
-                    JButton btnDone=GiaoDien.button(done ? "Đã hoàn thành" : needsParts ? "Cấp phát phụ tùng" : "Xác nhận đã sửa",GiaoDien.CREAM,GiaoDien.NAV);
-                    btnDone.setEnabled((needsParts && (ongoing || "Chờ sửa chữa".equals(header.get("trangThai")))) || (ongoing && "Đang sửa chữa".equals(line.get("trangThaiHangMuc"))));
+                    boolean needsParts =
+                            "Thiếu phụ tùng".equals(line.get("trangThaiHangMuc"));
+
+                    String buttonText = done
+                            ? "Đã hoàn thành"
+                            : needsParts
+                                    ? "Chờ cấp phát phụ tùng"
+                                    : "Xác nhận đã sửa";
+
+                    JButton btnDone = GiaoDien.button(
+                            buttonText, GiaoDien.CREAM, GiaoDien.NAV
+                    );
+
+                    btnDone.setEnabled(
+                            ongoing
+                            && "Đang sửa chữa".equals(line.get("trangThaiHangMuc"))
+                    );
+
                     btnDone.addActionListener(e -> {
-                        if(needsParts) {
-                            if(JOptionPane.showConfirmDialog(winDialog,"Cấp phát phụ tùng cho "+service+" / "+part+"?","Xác nhận cấp phát",JOptionPane.YES_NO_OPTION)!=JOptionPane.YES_OPTION) return;
-                            try { ThuongMaiDAO.allocate(id,service,part); load[0].run(); }
-                            catch(SQLException ex) { JOptionPane.showMessageDialog(winDialog,ex.getMessage(),"Không thể cấp phát",JOptionPane.ERROR_MESSAGE); }
+                        JSpinner spnMonths = new JSpinner(new SpinnerNumberModel(
+                                ((Number) line.get("thoiHanBaoHanh")).intValue(),
+                                0, 1200, 1
+                        ));
+
+                        JPanel pnlWarranty = new JPanel(new BorderLayout(8, 8));
+                        pnlWarranty.add(
+                                new JLabel(
+                                        "Thời hạn bảo hành hạng mục (tháng, 0 = không bảo hành)"
+                                ),
+                                BorderLayout.NORTH
+                        );
+                        pnlWarranty.add(spnMonths);
+
+                        if (JOptionPane.showConfirmDialog(
+                                winDialog,
+                                pnlWarranty,
+                                "Xác nhận đã sửa " + service + " / " + part,
+                                JOptionPane.OK_CANCEL_OPTION
+                        ) != JOptionPane.OK_OPTION) {
                             return;
                         }
-                        JSpinner spnMonths=new JSpinner(new SpinnerNumberModel(((Number)line.get("thoiHanBaoHanh")).intValue(),0,1200,1));
-                        JPanel pnlWarranty=new JPanel(new BorderLayout(8,8)); pnlWarranty.add(new JLabel("Thời hạn bảo hành hạng mục (tháng, 0 = không bảo hành)"),BorderLayout.NORTH); pnlWarranty.add(spnMonths);
-                        if(JOptionPane.showConfirmDialog(winDialog,pnlWarranty,"Xác nhận đã sửa "+service+" / "+part,JOptionPane.OK_CANCEL_OPTION)!=JOptionPane.OK_OPTION) return;
-                        try { spnMonths.commitEdit(); QuyTrinhDAO.completeRepairItem(id,service,part,((Number)spnMonths.getValue()).intValue()); load[0].run(); }
-                        catch(Exception ex) { JOptionPane.showMessageDialog(winDialog,ex.getMessage(),"Không thể xác nhận",JOptionPane.ERROR_MESSAGE); }
+
+                        try {
+                            spnMonths.commitEdit();
+                            QuyTrinhDAO.completeRepairItem(
+                                    id, service, part,
+                                    ((Number) spnMonths.getValue()).intValue()
+                            );
+                            load[0].run();
+                        } catch (Exception ex) {
+                            JOptionPane.showMessageDialog(
+                                    winDialog, ex.getMessage(),
+                                    "Không thể xác nhận", JOptionPane.ERROR_MESSAGE
+                            );
+                        }
                     });
                     pnlLine.add(btnDone,BorderLayout.EAST); pnlLine.setMaximumSize(new Dimension(Integer.MAX_VALUE,85)); pnlRows.add(pnlLine); pnlRows.add(Box.createVerticalStrut(6));
                 }
@@ -73,5 +113,24 @@ final class HopThoaiTienDoSuaChua {
         scrRows.setPreferredSize(new Dimension(860,520)); scrRows.getVerticalScrollBar().setUnitIncrement(20); pnlContent.add(scrRows);
         JPanel pnlButtons=new JPanel(new FlowLayout(FlowLayout.RIGHT,8,2)); JButton btnClose=GiaoDien.button("Đóng",GiaoDien.CREAM,GiaoDien.NAV); btnClose.addActionListener(e -> winDialog.dispose()); pnlButtons.add(btnStart); pnlButtons.add(btnFinish); pnlButtons.add(btnClose); pnlContent.add(pnlButtons,BorderLayout.SOUTH);
         winDialog.setContentPane(pnlContent); load[0].run(); winDialog.pack(); winDialog.setLocationRelativeTo(null); winDialog.setVisible(true);
-    }
+        javax.swing.Timer refreshTimer = new javax.swing.Timer(3000, e -> {
+            if (winDialog.isShowing() && winDialog.isActive()) {
+                load[0].run();
+            }
+        });
+
+        winDialog.addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowOpened(java.awt.event.WindowEvent e) {
+                refreshTimer.start();
+            }
+
+            @Override
+            public void windowClosed(java.awt.event.WindowEvent e) {
+                refreshTimer.stop();
+            }
+        });
+
+        winDialog.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+            }
 }
