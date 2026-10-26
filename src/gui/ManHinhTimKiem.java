@@ -12,7 +12,6 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
 
-/** Tra cứu bằng các trường tùy chọn, không có thao tác ghi dữ liệu. */
 public final class ManHinhTimKiem extends JPanel {
     @java.io.Serial private static final long serialVersionUID = 1L;
     private final List<String> nhomDuocPhep;
@@ -40,6 +39,7 @@ public final class ManHinhTimKiem extends JPanel {
     private final JRadioButton radNam = new JRadioButton("Nam");
     private final JRadioButton radNu = new JRadioButton("Nữ");
     private final DefaultTableModel model = new DefaultTableModel() {
+        private static final long serialVersionUID = 1L;
         @Override public boolean isCellEditable(int row,int column) { return false; }
     };
     private final JTable tblKetQua = GiaoDien.table(model);
