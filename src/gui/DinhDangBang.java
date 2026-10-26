@@ -7,8 +7,8 @@ import java.util.Locale;
 import javax.swing.*;
 import javax.swing.table.*;
 
-/** Chỉ định dạng hiển thị, giữ nguyên giá trị trong model để sửa và lưu dữ liệu. */
 final class DinhDangBang extends DefaultTableCellRenderer {
+    private static final long serialVersionUID = 1L;
     private final NumberFormat numbers=NumberFormat.getNumberInstance(Locale.forLanguageTag("vi-VN"));
     DinhDangBang() { numbers.setMaximumFractionDigits(2); putClientProperty("html.disable",Boolean.TRUE); }
     static String name(JTable table,int column) {
