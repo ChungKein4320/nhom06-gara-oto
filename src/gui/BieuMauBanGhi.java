@@ -7,8 +7,8 @@ import java.time.LocalDate;
 import java.util.*;
 import javax.swing.*;
 
-/** Biểu mẫu tái sử dụng cho đầu phiếu và từng dòng chi tiết. */
 final class BieuMauBanGhi extends JPanel {
+    private static final long serialVersionUID = 1L;
     private final String table;
     private final boolean existing;
     private final Map<String,JComponent> inputs=new LinkedHashMap<>();

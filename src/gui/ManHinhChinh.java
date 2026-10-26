@@ -1,7 +1,7 @@
 package gui;
+import java.awt.*;
 import javax.swing.*;
 import javax.swing.border.*;
-import java.awt.*;
 public final class ManHinhChinh extends JFrame {
     @java.io.Serial
     private static final long serialVersionUID = 1L;
@@ -132,6 +132,7 @@ public final class ManHinhChinh extends JFrame {
         Color textColor = GiaoDien.MINT;
         Color expandedBg = new Color(0x1D3840);
         JButton btnHeader = new JButton("  " + label) {
+            private static final long serialVersionUID = 1L;
             @Override protected void paintComponent(Graphics g) {
                 Graphics2D q = (Graphics2D) g.create();
                 q.setColor((expanded || getModel().isRollover()) ? expandedBg : GiaoDien.NAV);
@@ -303,6 +304,7 @@ public final class ManHinhChinh extends JFrame {
             pnlBody.add(view,BorderLayout.CENTER);
         } else {
             JPanel pnlViewportWrap=new JPanel(new BorderLayout()) {
+                private static final long serialVersionUID = 1L;
                 @Override public Dimension getPreferredSize() {
                     Dimension d=super.getPreferredSize();
                     if(getParent() instanceof JViewport vp && vp.getWidth()>0) return new Dimension(vp.getWidth(),d.height);
