@@ -9,8 +9,8 @@ import javax.swing.border.*;
 import javax.swing.event.*;
 import javax.swing.plaf.basic.BasicComboBoxUI;
 
-/** Gõ ngay trong ô chọn, chỉ danh sách kết quả xuất hiện phía dưới. */
 class OChonTimKiem<T> extends JComboBox<T> {
+    private static final long serialVersionUID = 1L;
     private static final int CELL_HEIGHT = 34;
     private JTextField txtEditor;
     private JPopupMenu popup;
@@ -24,6 +24,7 @@ class OChonTimKiem<T> extends JComboBox<T> {
         @Override
         protected JButton createArrowButton() {
             JButton btn = new JButton() {
+                private static final long serialVersionUID = 1L;
                 @Override
                 protected void paintComponent(Graphics g) {
                     Graphics2D g2 = (Graphics2D) g.create();
@@ -143,6 +144,7 @@ class OChonTimKiem<T> extends JComboBox<T> {
         setBackground(Color.WHITE);
 
         setRenderer(new DefaultListCellRenderer() {
+            private static final long serialVersionUID = 1L;
             @Override public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
                 JLabel lbl = (JLabel) super.getListCellRendererComponent(list, value, index, isSelected, false);
                 Font base = OChonTimKiem.this.getFont() != null ? OChonTimKiem.this.getFont() : GiaoDien.font(12, false);
@@ -170,16 +172,22 @@ class OChonTimKiem<T> extends JComboBox<T> {
         });
 
         txtEditor.getInputMap().put(KeyStroke.getKeyStroke("ENTER"),"pickResult");
-        txtEditor.getActionMap().put("pickResult",new AbstractAction(){public void actionPerformed(ActionEvent e){choose();}});
+        txtEditor.getActionMap().put("pickResult",new AbstractAction(){
+            private static final long serialVersionUID = 1L;
+            public void actionPerformed(ActionEvent e){choose();}});
         for(int key:new int[]{KeyEvent.VK_DOWN,KeyEvent.VK_UP}) {
             String action="result"+key; txtEditor.getInputMap().put(KeyStroke.getKeyStroke(key,0),action);
-            txtEditor.getActionMap().put(action,new AbstractAction(){public void actionPerformed(ActionEvent e){
+            txtEditor.getActionMap().put(action,new AbstractAction(){
+                private static final long serialVersionUID = 1L;
+                public void actionPerformed(ActionEvent e){
                 if(!isPopupVisible()) { open(true); return; }
                 if(results!=null && !results.isEmpty()) { int next=Math.max(0,Math.min(results.size()-1,lstResults.getSelectedIndex()+(key==KeyEvent.VK_DOWN ? 1 : -1))); lstResults.setSelectedIndex(next); lstResults.ensureIndexIsVisible(next); }
             }});
         }
         txtEditor.getInputMap().put(KeyStroke.getKeyStroke("ESCAPE"),"cancelSearch");
-        txtEditor.getActionMap().put("cancelSearch",new AbstractAction(){public void actionPerformed(ActionEvent e){setPopupVisible(false); restore();}});
+        txtEditor.getActionMap().put("cancelSearch",new AbstractAction(){
+            private static final long serialVersionUID = 1L;
+            public void actionPerformed(ActionEvent e){setPopupVisible(false); restore();}});
 
         txtEditor.addFocusListener(new FocusAdapter(){
             @Override public void focusGained(FocusEvent e){
@@ -270,6 +278,7 @@ class OChonTimKiem<T> extends JComboBox<T> {
             lstResults.setSelectionBackground(GiaoDien.TEAL);
             lstResults.setSelectionForeground(Color.WHITE);
             lstResults.setCellRenderer(new DefaultListCellRenderer() {
+                private static final long serialVersionUID = 1L;
                 @Override public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
                     JLabel lbl = (JLabel) super.getListCellRendererComponent(list, value, index, isSelected, false);
                     Font base = OChonTimKiem.this.getFont() != null ? OChonTimKiem.this.getFont() : GiaoDien.font(13, false);
