@@ -63,6 +63,18 @@ final class BieuMauBanGhi extends JPanel {
             if(field.equals("thoiHanBaoHanh")) label+=" (tháng)";
             pnlCell.add(GiaoDien.label(label,12,true,GiaoDien.TEXT),BorderLayout.NORTH); input.setPreferredSize(new Dimension(260,38)); pnlCell.add(input,BorderLayout.CENTER); add(pnlCell,c); index++;
         }
+        if(!readOnly && (table.equals("ChiTietPhieuBaoGia") || table.equals("ChiTietPhieuSuaChua"))
+                && inputs.get("maPhuTung") instanceof OChonThamChieu part
+                && inputs.get("soLuongPhuTung") instanceof JTextField quantity) {
+            Runnable syncQuantity=() -> {
+                boolean noPart="PT000".equals(part.selectedId());
+                if(noPart) quantity.setText("0");
+                quantity.setEnabled(!noPart);
+                if(!noPart && quantity.getText().trim().equals("0")) quantity.setText("1");
+            };
+            part.addActionListener(e -> syncQuantity.run());
+            syncQuantity.run();
+        }
         inherited=readOnly ? null : TruongKeThua.bind(table,inputs);
         prices=readOnly ? null : GiaDanhMuc.bind(table,inputs);
     }

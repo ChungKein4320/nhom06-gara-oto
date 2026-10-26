@@ -24,7 +24,12 @@ public final class DataRules {
             if(value instanceof Number number) {
                 BigDecimal n=new BigDecimal(number.toString());
                 if(n.signum()<0) fail(field,"Giá trị không được âm: " + field);
-                if(Set.of("soLuongNhap","soLuongPhuTung").contains(field) && n.signum()==0) fail(field,"Số lượng phải lớn hơn 0.");
+                if(field.equals("soLuongNhap") && n.signum()==0) fail(field,"Số lượng phải lớn hơn 0.");
+                if(field.equals("soLuongPhuTung")) {
+                    boolean noPart="PT000".equals(String.valueOf(row.get("maPhuTung")));
+                    if((noPart && n.signum()!=0) || (!noPart && n.signum()==0))
+                        fail(field,noPart ? "PT000 phải có số lượng phụ tùng bằng 0." : "Số lượng phụ tùng phải lớn hơn 0.");
+                }
                 if(field.equals("mucGiam") && n.compareTo(new BigDecimal("100"))>0) fail(field,"Mức giảm phải từ 0 đến 100%.");
                 if(spec[0].equals("decimal")) {
                     String[] size=spec[1].split(","); BigDecimal normalized=n.stripTrailingZeros();
@@ -48,6 +53,13 @@ public final class DataRules {
         dates(row,"ngayLap","ngayHoanThanh",false); dates(row,"ngayLap","thoiGianXacNhan",false);
         dates(row,"ngayBatDauBaoHanh","ngayHetHanBaoHanh",false);
         if(table.equals("ChiTietHoaDon") && row.get("maDichVu")==null && row.get("maPhuTung")==null && creating) fail("maDichVu","Chọn ít nhất dịch vụ hoặc phụ tùng.");
+        if("PT000".equals(String.valueOf(row.get("maPhuTung")))) {
+            if(table.equals("PhuTung") && !creating) fail("maPhuTung","PT000 là mã hệ thống, không được sửa.");
+            if(table.equals("TonKho") || table.equals("ChiTietPhieuNhapKho") || table.equals("ChiTietHoaDon"))
+                fail("maPhuTung","PT000 chỉ dùng để biểu thị hạng mục không sử dụng phụ tùng; không được nhập kho hoặc bán như phụ tùng.");
+            if(table.equals("ChiTietPhieuBaoGia") && row.get("donGiaPhuTung") instanceof Number price && new BigDecimal(price.toString()).signum()!=0)
+                fail("donGiaPhuTung","Đơn giá phụ tùng của PT000 phải bằng 0.");
+        }
     }
     private static void dates(Map<String,Object> row,String start,String end,boolean strict) throws SQLException {
         if(row.get(start) instanceof java.util.Date a && row.get(end) instanceof java.util.Date b && (strict ? !b.after(a) : b.before(a))) fail(end,"Ngày kết thúc không hợp lệ.");

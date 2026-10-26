@@ -36,7 +36,8 @@ final class HopThoaiTienDoSuaChua {
                     boolean done="Hoàn thành".equals(line.get("trangThaiHangMuc")); all &= done;
                     pending |= !"Đạt".equals(line.get("ketQuaNghiemThu"));
                     JPanel pnlLine=GiaoDien.card(new BorderLayout(8,8));
-                    String service=String.valueOf(line.get("maDichVu")),part=String.valueOf(line.get("maPhuTung"));
+                    String service=String.valueOf(line.get("maDichVu"));
+                    String part="PT000".equals(line.get("maPhuTung")) ? "Không sử dụng phụ tùng" : String.valueOf(line.get("maPhuTung"));
                     pnlLine.add(GiaoDien.label(service+" / "+part+" — "+line.get("trangThaiHangMuc")+" — Bảo hành: "+line.get("thoiHanBaoHanh")+" tháng",13,true,DinhDangKeThua.TEXT),BorderLayout.CENTER);
                     boolean needsParts =
                             "Thiếu phụ tùng".equals(line.get("trangThaiHangMuc"));
