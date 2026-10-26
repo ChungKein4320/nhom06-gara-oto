@@ -9,6 +9,7 @@ import javax.swing.table.*;
 final class BoLocTrangThai extends JPanel {
     private final JTable table;
     private final Map<Integer,JComboBox<String>> filters=new LinkedHashMap<>();
+    private final Map<Integer, String> defaultStates = new HashMap<>();
     private String search="";
     private boolean rebuilding,queued;
     private Runnable changed=() -> {};
@@ -38,16 +39,53 @@ final class BoLocTrangThai extends JPanel {
         if(table.getRowSorter()!=null) table.getRowSorter().setSortKeys(null);
         table.clearSelection(); apply();
     }
+    void selectDefault(int column, String state) {
+        JComboBox<String> combo = filters.get(column);
+        if (combo == null) return;
+
+        defaultStates.put(column, state);
+        refresh();
+        combo.setSelectedItem(state);
+    }
     void refresh() {
-        rebuilding=true;
-        for(var entry:filters.entrySet()) {
-            JComboBox<String> combo=entry.getValue(); Object selected=combo.getSelectedItem();
-            Set<String> values=new TreeSet<>();
-            for(int row=0;row<table.getModel().getRowCount();row++) { Object value=table.getModel().getValueAt(row,entry.getKey()); if(value!=null && !value.toString().isBlank()) values.add(value.toString()); }
-            combo.removeAllItems(); combo.addItem("Tất cả"); values.forEach(combo::addItem);
-            combo.setSelectedItem(selected!=null && values.contains(selected.toString()) ? selected : "Tất cả");
+        rebuilding = true;
+        try {
+            for (var entry : filters.entrySet()) {
+                int column = entry.getKey();
+                JComboBox<String> combo = entry.getValue();
+                Object selected = combo.getSelectedItem();
+
+                Set<String> values = new TreeSet<>();
+                for (int row = 0; row < table.getModel().getRowCount(); row++) {
+                    Object value = table.getModel().getValueAt(row, column);
+                    if (value != null && !value.toString().isBlank()) {
+                        values.add(value.toString());
+                    }
+                }
+
+                String defaultState = defaultStates.get(column);
+                if (defaultState != null) {
+                    // Vẫn hiện trạng thái mặc định dù chưa có bản ghi tương ứng.
+                    values.add(defaultState);
+
+                    // Giữ lựa chọn của người dùng khi dữ liệu được tải lại.
+                    if (selected != null && !"Tất cả".equals(selected)) {
+                        values.add(selected.toString());
+                    }
+                }
+
+                combo.removeAllItems();
+                combo.addItem("Tất cả");
+                values.forEach(combo::addItem);
+                combo.setSelectedItem(
+                        selected != null && values.contains(selected.toString())
+                                ? selected : "Tất cả"
+                );
+            }
+        } finally {
+            rebuilding = false;
         }
-        rebuilding=false; apply();
+        apply();
     }
     @SuppressWarnings("unchecked") private void apply() {
         TableRowSorter<TableModel> sorter;
