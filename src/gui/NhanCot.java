@@ -11,6 +11,7 @@ public final class NhanCot {
         String[][] labels = {
             {"khachHangHienThi", "Khách hàng"},
             {"tongThanhToan", "Tổng thanh toán"},
+            {"tongDiemTichLuy", "Tổng điểm tích lũy"},
             {"gioiTinh", "Giới tính"}, {"soKM", "Số km"},
             {"ketQuaChuanDoan", "Kết quả chẩn đoán"}, {"maChiTietHoaDon", "Mã dòng hóa đơn"},
             {"maNhanVien", "Mã nhân viên"}, {"maNV", "Mã nhân viên"},

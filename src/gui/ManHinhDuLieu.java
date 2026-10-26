@@ -1,9 +1,9 @@
 package gui;
 
 import dao.CoSoDAO;
-import dao.ThuongMaiDAO;
-import dao.Schema;
 import dao.QuyTrinhDAO;
+import dao.Schema;
+import dao.ThuongMaiDAO;
 import java.awt.*;
 import java.sql.SQLException;
 import java.util.*;
@@ -66,7 +66,9 @@ public final class ManHinhDuLieu extends JPanel {
                 ? new dao.TonKhoDAO()
                 : tableName.equals("HoaDon")
                         ? new dao.HoaDonDAO()
-                        : new CoSoDAO(tableName);
+                        : tableName.equals("KhachHang")
+                                ? new dao.KhachHangDAO()
+                                : new CoSoDAO(tableName);
     }
 
     public ManHinhDuLieu(String page) {
@@ -85,7 +87,9 @@ public final class ManHinhDuLieu extends JPanel {
                 ? new dao.TonKhoDAO()
                 : tableName.equals("HoaDon")
                         ? new dao.HoaDonDAO()
-                        : new CoSoDAO(tableName);
+                        : tableName.equals("KhachHang")
+                                ? new dao.KhachHangDAO()
+                                : new CoSoDAO(tableName);
 
         fields = Schema.COLUMNS.get(tableName);
         displayFields = tableName.equals("TonKho")
@@ -99,7 +103,12 @@ public final class ManHinhDuLieu extends JPanel {
                             "ngayLap", "tongThanhToan",
                             "trangThaiThanhToan"
                         }
-                        : fields;
+                        : tableName.equals("KhachHang")
+                                ? new String[]{
+                                    "maKhachHang", "hoTenKH", "soDienThoai",
+                                    "gioiTinh", "email", "diaChi", "tongDiemTichLuy"
+                                }
+                                : fields;
 
         JPanel pnlHeading = new JPanel(new GridLayout(2, 1, 0, 5));
         pnlHeading.setOpaque(false);

@@ -1,6 +1,7 @@
 package gui;
 
 import dao.CoSoDAO;
+import dao.KhachHangDAO;
 import dao.Schema;
 import java.awt.*;
 import java.sql.Timestamp;
@@ -50,6 +51,7 @@ public final class ManHinhTimKiem extends JPanel {
     private SwingWorker<List<LinkedHashMap<String,Object>>,Void> worker;
     private String table;
     private String[] fields;
+    private String[] displayFields;
     private int generation;
 
     public ManHinhTimKiem(VaiTro role) {
@@ -88,6 +90,9 @@ public final class ManHinhTimKiem extends JPanel {
         if(!nhomDuocPhep.contains(selected)) return;
         table=selected.equals("Dịch vụ") ? "DichVu" : ManHinhDuLieu.tableFor(selected);
         fields=Arrays.stream(Schema.COLUMNS.get(table)).filter(field -> !field.equals("matKhau")).toArray(String[]::new);
+        displayFields=table.equals("KhachHang")
+                ? Arrays.copyOf(fields,fields.length+1) : fields.clone();
+        if(table.equals("KhachHang")) displayFields[displayFields.length-1]="tongDiemTichLuy";
         inputs.clear(); pnlBieuMau.removeAll();
         for(int i=0;i<fields.length;i++) {
             String field=fields[i],type=Schema.TYPES.get(table).get(field).split(":",2)[0];
@@ -120,7 +125,7 @@ public final class ManHinhTimKiem extends JPanel {
     }
     private void lamMoi() {
         generation++; if(worker!=null) worker.cancel(true);
-        inputs.values().forEach(input -> input.setText("")); model.setDataVector(new Object[0][],NhanCot.forFields(fields));
+        inputs.values().forEach(input -> input.setText("")); model.setDataVector(new Object[0][],NhanCot.forFields(displayFields));
         radTatCa.setSelected(true);
         tblKetQua.clearSelection();
         tblKetQua.scrollRectToVisible(new Rectangle(0,0,1,1));
@@ -135,11 +140,12 @@ public final class ManHinhTimKiem extends JPanel {
         inputs.forEach((field,input) -> { if(!input.getText().isBlank()) criteria.put(field,input.getText().trim()); });
         if(Arrays.asList(fields).contains("gioiTinh") && !radTatCa.isSelected())
             criteria.put("gioiTinh",radNam.isSelected() ? "Nam" : "Nữ");
-        final String selectedTable=table; final String[] selectedFields=fields.clone(); final int request=++generation;
+        final String selectedTable=table; final String[] selectedFields=displayFields.clone(); final int request=++generation;
         btnTimKiem.setEnabled(false); model.setRowCount(0); lblKetQua.setText("Đang tìm kiếm…");
         worker=new SwingWorker<>() {
             @Override protected List<LinkedHashMap<String,Object>> doInBackground() throws Exception {
-                List<LinkedHashMap<String,Object>> rows=new CoSoDAO(selectedTable).getAll();
+                List<LinkedHashMap<String,Object>> rows=(selectedTable.equals("KhachHang")
+                        ? new KhachHangDAO() : new CoSoDAO(selectedTable)).getAll();
                 rows.removeIf(row -> !khopDieuKien(row,criteria)); return rows;
             }
             @Override protected void done() {
