@@ -13,7 +13,7 @@ public final class TongQuanDAO {
             case "Phiếu kiểm tra" -> "SELECT COUNT(*) FROM dbo.PhieuKiemTra";
             case "Báo giá" -> "SELECT COUNT(*) FROM dbo.PhieuBaoGia";
             case "Phiếu sửa chữa" -> "SELECT COUNT(*) FROM dbo.PhieuSuaChua";
-            case "Loại phụ tùng" -> "SELECT COUNT(*) FROM dbo.PhuTung";
+            case "Loại phụ tùng" -> "SELECT COUNT(*) FROM dbo.PhuTung WHERE maPhuTung<>'PT000'";
             case "Sắp hết hàng" -> "SELECT COUNT(*) FROM dbo.TonKho WHERE soLuongHienTai < soLuongToiThieu";
             case "Phiếu nhập" -> "SELECT COUNT(*) FROM dbo.PhieuNhapKho";
             case "Yêu cầu cấp" -> "SELECT COUNT(*) FROM dbo.ChiTietPhieuSuaChua WHERE trangThaiHangMuc = N'Thiếu phụ tùng'";
