@@ -53,7 +53,7 @@ final class BieuMauBanGhi extends JPanel {
             } else {
                 JTextField txtValue=GiaoDien.field("");
                 if(!existing && Set.of("soLuongPhuTung","soLuongNhap","soLuong").contains(field)) value="1";
-                if(!existing && (type.equals("int") || type.equals("decimal")) && value.isEmpty()) value="0";
+                if(!existing && !field.equals("namSanXuat") && (type.equals("int") || type.equals("decimal")) && value.isEmpty()) value="0";
                 txtValue.setText(value); input=txtValue;
             }
             inputs.put(field,input);
@@ -82,6 +82,16 @@ final class BieuMauBanGhi extends JPanel {
         if(inherited!=null) inherited.validate();
         if(prices!=null) prices.validate();
         return KiemTraBieuMau.read(table,inputs,existing);
+    }
+    void removeHorizontalPadding() {
+        setBorder(BorderFactory.createEmptyBorder(8,0,8,0));
+        GridBagLayout layout=(GridBagLayout)getLayout();
+        for(Component component:getComponents()) {
+            GridBagConstraints constraints=layout.getConstraints(component);
+            constraints.insets.left=0;
+            constraints.insets.right=0;
+            layout.setConstraints(component,constraints);
+        }
     }
     static void setEnabledDeep(Component component,boolean enabled) {
         component.setEnabled(enabled);

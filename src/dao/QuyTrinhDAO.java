@@ -155,6 +155,44 @@ public final class QuyTrinhDAO {
             return null;
         });
     }
+    public record IntakeResult(String maPTN,String maKhachHang,String VIN) { }
+    public static IntakeResult createIntake(Map<String,Object> header,boolean createCustomer,String customerId,
+            Map<String,Object> customer,boolean createVehicle,String vehicleId,Map<String,Object> vehicle,
+            List<Map<String,Object>> details) throws SQLException {
+        return transaction(conn -> {
+            require(details!=null && !details.isEmpty(),"Phiếu tiếp nhận phải có ít nhất một yêu cầu dịch vụ.");
+            String resolvedCustomer=customerId;
+            if(createCustomer) {
+                require(customer!=null,"Vui lòng nhập hồ sơ khách hàng mới.");
+                resolvedCustomer=new CoSoDAO("KhachHang").insert(conn,customer);
+            } else {
+                lock(conn,"KhachHang",resolvedCustomer);
+            }
+
+            BigDecimal odometer=new BigDecimal(String.valueOf(header.get("soODO")));
+            String resolvedVin=vehicleId;
+            if(createVehicle) {
+                require(vehicle!=null,"Vui lòng nhập hồ sơ phương tiện mới.");
+                Map<String,Object> vehicleRow=new LinkedHashMap<>(vehicle);
+                vehicleRow.put("soKM",odometer);
+                resolvedVin=new CoSoDAO("PhuongTien").insert(conn,vehicleRow);
+            } else {
+                Map<String,Object> currentVehicle=lock(conn,"PhuongTien",resolvedVin);
+                BigDecimal currentOdometer=(BigDecimal)currentVehicle.get("soKM");
+                require(odometer.compareTo(currentOdometer)>=0,"Số ODO tiếp nhận không được thấp hơn số km đang lưu của phương tiện.");
+                if(odometer.compareTo(currentOdometer)>0)
+                    execute(conn,"UPDATE dbo.PhuongTien SET soKM=? WHERE VIN=?",odometer,resolvedVin);
+            }
+
+            Map<String,Object> receipt=new LinkedHashMap<>(header);
+            receipt.put("maKhachHang",resolvedCustomer);
+            receipt.put("VIN",resolvedVin);
+            guardWrite(conn,"PhieuTiepNhan",receipt,null);
+            String receiptId=new CoSoDAO("PhieuTiepNhan").insert(conn,receipt);
+            insertDetails(conn,"ChiTietPhieuTiepNhan","maPTN",receiptId,details);
+            return new IntakeResult(receiptId,resolvedCustomer,resolvedVin);
+        });
+    }
     private static void idHolderInsert(Connection conn,CoSoDAO dao,Map<String,Object> header,List<Map<String,Object>> details,String child,String fk) throws SQLException {
         insertDetails(conn,child,fk,dao.insert(conn,header),details);
     }

@@ -154,7 +154,8 @@ public final class ManHinhDuLieu extends JPanel {
         pnlToolbar.add(pnlInput, BorderLayout.CENTER);
 
         JButton btnAdd = GiaoDien.button(
-                "Thêm mới", GiaoDien.TEAL, Color.WHITE
+                "Thêm mới",
+                GiaoDien.TEAL, Color.WHITE
         );
         btnAdd.setEnabled(
                 !tableName.startsWith("ChiTiet")
@@ -491,6 +492,11 @@ public final class ManHinhDuLieu extends JPanel {
     }
 
     private void edit(boolean existing) {
+        if (!existing && tableName.equals("PhieuTiepNhan")) {
+            HopThoaiTiepNhanMoi.show(this);
+            load();
+            return;
+        }
         if (existing && tableName.equals("PhieuSuaChua")) {
             Map<String, Object> record = selectedRecord();
             if (record == null) return;

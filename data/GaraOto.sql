@@ -3,7 +3,7 @@ USE [master];
 GO
 IF DB_ID(N'GaraOto') IS NOT NULL
 BEGIN
-    RAISERROR(N'Database GaraOto đã tồn tại. Không thay đổi dữ liệu; hãy dùng database mới.',16,1);
+    PRINT N'Database GaraOto đã tồn tại. Không thay đổi dữ liệu; hãy dùng database mới để tạo lại schema.';
     SET NOEXEC ON;
 END
 ELSE
