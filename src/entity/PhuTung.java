@@ -7,8 +7,10 @@ public class PhuTung {
     private String tenPhuTung;
     private BigDecimal donGia;
     private String loaiPhuTung;
+    private Integer thoiHanBaoHanh;
 
-    public PhuTung() { }
+    public PhuTung() {
+    }
 
     public String getMaPhuTung() {
         return maPhuTung;
@@ -42,4 +44,11 @@ public class PhuTung {
         this.loaiPhuTung = value;
     }
 
+    public Integer getThoiHanBaoHanh() {
+        return thoiHanBaoHanh;
+    }
+
+    public void setThoiHanBaoHanh(Integer value) {
+        this.thoiHanBaoHanh = value;
+    }
 }
