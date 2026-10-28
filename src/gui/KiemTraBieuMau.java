@@ -22,8 +22,41 @@ final class KiemTraBieuMau {
 
     static String userMessage(Throwable error,String table) {
         String message=error==null || error.getMessage()==null ? "Dữ liệu chưa hợp lệ." : error.getMessage();
+        if(error instanceof Issue || error instanceof dao.DataRules.Invalid) return message;
+        if(message.toUpperCase(Locale.ROOT).contains("CK_CHITIETPHIEUKIEMTRA_KETQUA"))
+            return "Kết quả kiểm tra không hợp lệ. Hãy chọn “Đạt”, “Không đạt” hoặc để trống nếu chưa có kết quả.";
         if(table.equals("PhieuTiepNhan") && message.toUpperCase(Locale.ROOT).contains("CK_PHIEUTIEPNHAN_NGAY"))
             return "Ngày tiếp nhận không hợp lệ. Vui lòng chọn ngày, giờ hiện tại hoặc trước đó.";
+        if(table.equals("PhieuTiepNhan") && message.toLowerCase(Locale.ROOT).matches("(?s).*incorrect syntax near (the )?keyword ['\"]?as['\"]?.*"))
+            return "Không thể lưu phiếu do lỗi xử lý dữ liệu. Đây là lỗi của ứng dụng, không phải thông tin bạn nhập; vui lòng cập nhật ứng dụng rồi thử lại.";
+        if(table.equals("PhieuTiepNhan") && message.toLowerCase(Locale.ROOT).matches("(?s).*incorrect syntax near.*"))
+            return "Không thể lưu phiếu do lỗi xử lý dữ liệu. Đây là lỗi của ứng dụng, không phải thông tin bạn nhập; vui lòng cập nhật ứng dụng rồi thử lại.";
+        if(error instanceof SQLException sqlError) {
+            int code=sqlError.getErrorCode();
+            String state=sqlError.getSQLState();
+            if(code==547 && message.toUpperCase(Locale.ROOT).contains("CK_"))
+                return "Thông tin phiếu không hợp lệ. Một giá trị chưa đáp ứng quy định; vui lòng kiểm tra lại các trường và hạng mục.";
+            if(code==547 && message.toUpperCase(Locale.ROOT).contains("FK_"))
+                return "Không thể lưu phiếu vì một thông tin liên quan không còn tồn tại. Hãy tải lại danh sách và chọn lại dữ liệu liên quan.";
+            if(code==2601 || code==2627)
+                return "Mã hoặc thông tin này đã tồn tại. Hãy kiểm tra lại dữ liệu rồi lưu lại.";
+            if(code==515)
+                return "Còn thiếu thông tin bắt buộc. Hãy điền đầy đủ các trường có dấu * rồi lưu lại.";
+            if(code==2628 || code==8152)
+                return "Một nội dung nhập vượt quá độ dài cho phép. Hãy rút ngắn nội dung rồi lưu lại.";
+            if(code==245 || code==8114 || code==8115)
+                return "Một giá trị số không đúng định dạng hoặc vượt giới hạn. Hãy kiểm tra lại các ô số.";
+            if(code==1205)
+                return "Phiếu chưa được lưu vì hệ thống đang xử lý một giao dịch khác. Vui lòng thử lưu lại.";
+            if((state!=null && state.startsWith("08")) || code==53 || code==2)
+                return "Không thể kết nối cơ sở dữ liệu nên phiếu chưa được lưu. Hãy kiểm tra kết nối rồi thử lại.";
+            if(code==102 || code==156)
+                return "Không thể lưu phiếu do lỗi xử lý dữ liệu trong ứng dụng. Vui lòng cập nhật ứng dụng hoặc liên hệ quản trị viên.";
+            if(code!=0 || state!=null) {
+                System.err.println("Lỗi cơ sở dữ liệu khi lưu phiếu. SQLState="+state+", mã lỗi="+code);
+                return "Không thể lưu phiếu do lỗi cơ sở dữ liệu. Phiếu chưa được ghi; vui lòng thử lại hoặc liên hệ quản trị viên (mã lỗi "+code+").";
+            }
+        }
         return message;
     }
 
@@ -86,6 +119,8 @@ final class KiemTraBieuMau {
             if (field.equals("soDienThoai") && !raw.matches("0[35789][0-9]{8}")) throw new Issue(field, "Số điện thoại phải gồm 10 chữ số, đầu số 03, 05, 07, 08 hoặc 09.");
             if (field.equals("email") && !raw.matches("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")) throw new Issue(field, "Email không đúng định dạng.");
             if (field.equals("VIN") && !raw.matches("[A-HJ-NPR-Z0-9]{17}")) throw new Issue(field, "Số khung (VIN) phải gồm 17 ký tự hợp lệ.");
+            if (field.equals("ketQuaKiemTra") && !raw.isEmpty() && !raw.equals("Đạt") && !raw.equals("Không đạt"))
+                throw new Issue(field, "Kết quả kiểm tra không hợp lệ. Hãy chọn “Đạt”, “Không đạt” hoặc để trống nếu chưa có kết quả.");
             values.put(field, value);
         }
         checkDates(values, "ngayTao", "ngayHetHan");

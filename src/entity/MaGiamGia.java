@@ -10,6 +10,8 @@ public class MaGiamGia {
     private Timestamp ngayTao;
     private Timestamp ngayHetHan;
     private String trangThai;
+    private Integer mocDiem;
+    private Timestamp ngayBatDauChuKy;
 
     public MaGiamGia() { }
 
@@ -60,5 +62,10 @@ public class MaGiamGia {
     public void setTrangThai(String value) {
         this.trangThai = value;
     }
+
+    public Integer getMocDiem() { return mocDiem; }
+    public void setMocDiem(Integer value) { this.mocDiem = value; }
+    public Timestamp getNgayBatDauChuKy() { return ngayBatDauChuKy; }
+    public void setNgayBatDauChuKy(Timestamp value) { this.ngayBatDauChuKy = value; }
 
 }

@@ -112,5 +112,5 @@ final class TrinhSuaPhieu {
         }
         return null;
     }
-    private static void error(Component parent,SQLException ex) { JOptionPane.showMessageDialog(parent,ex.getMessage(),"Không thể lưu phiếu",JOptionPane.ERROR_MESSAGE); }
+    private static void error(Component parent,SQLException ex) { JOptionPane.showMessageDialog(parent,KiemTraBieuMau.userMessage(ex,""),"Không thể lưu phiếu",JOptionPane.ERROR_MESSAGE); }
 }
