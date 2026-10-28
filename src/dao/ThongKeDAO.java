@@ -34,8 +34,6 @@ public final class ThongKeDAO {
             group = "d.maDichVu, d.tenDichVu";
         } else if (category >= 3 && category <= 12) {
             // Thống kê theo phiếu sửa chữa hoặc hóa đơn đã thanh toán; không nhân bản số liệu do JOIN.
-            String completed = "p.trangThai IN (N'Đã sửa xong',N'Chờ thanh toán',N'Đã thanh toán',N'Hoàn tất')";
-            String completedItem = "ct.trangThaiHangMuc=N'Hoàn thành' AND p.trangThai<>N'Đã hủy'";
             String repair = " FROM dbo.ChiTietPhieuSuaChua ct JOIN dbo.PhieuSuaChua p ON p.maPSC=ct.maPSC ";
             String paid = "h.trangThaiThanhToan=N'Đã thanh toán'";
             switch (category) {
@@ -157,9 +155,28 @@ public final class ThongKeDAO {
                 sql="SELECT pt.maPhuTung,pt.tenPhuTung,pt.loaiPhuTung,SUM(ct.soLuongPhuTung),COUNT(DISTINCT p.VIN),COUNT(DISTINCT p.maPSC),SUM(ct.soLuongPhuTung*pt.donGia) FROM dbo.ChiTietPhieuSuaChua ct JOIN dbo.PhieuSuaChua p ON p.maPSC=ct.maPSC JOIN dbo.PhuTung pt ON pt.maPhuTung=ct.maPhuTung WHERE "+sua+nhom+" GROUP BY pt.maPhuTung,pt.tenPhuTung,pt.loaiPhuTung ORDER BY 4 DESC"; }
             case 6 -> { cot=new String[]{"Loại phụ tùng", "Số loại mã", "Số lượng đã thay", "Số xe", "Giá trị theo đơn giá (đ)"};
                 sql="SELECT pt.loaiPhuTung,COUNT(DISTINCT pt.maPhuTung),SUM(ct.soLuongPhuTung),COUNT(DISTINCT p.VIN),SUM(ct.soLuongPhuTung*pt.donGia) FROM dbo.ChiTietPhieuSuaChua ct JOIN dbo.PhieuSuaChua p ON p.maPSC=ct.maPSC JOIN dbo.PhuTung pt ON pt.maPhuTung=ct.maPhuTung WHERE "+sua+" GROUP BY pt.loaiPhuTung ORDER BY 3 DESC"; }
-            case 7,8 -> { cot=new String[]{loai==7?"Hãng xe":"Hãng xe",loai==7?"Số xe duy nhất":"Dòng xe", "Số phiếu sửa chữa"};
-                if(loai==7) {cot=new String[]{"Hãng xe","Số xe duy nhất","Số phiếu sửa chữa"};sql="SELECT x.hangXe,COUNT(DISTINCT p.VIN),COUNT(DISTINCT p.maPSC) FROM dbo.PhieuSuaChua p JOIN dbo.PhuongTien x ON x.VIN=p.VIN WHERE p.trangThai<>N'Đã hủy' AND p.ngayLap>=? AND p.ngayLap<? GROUP BY x.hangXe ORDER BY 2 DESC";}
-                else {cot=new String[]{"Hãng xe","Dòng xe","Số xe duy nhất","Số phiếu sửa chữa"};sql="SELECT x.hangXe,x.dongXe,COUNT(DISTINCT p.VIN),COUNT(DISTINCT p.maPSC) FROM dbo.PhieuSuaChua p JOIN dbo.PhuongTien x ON x.VIN=p.VIN WHERE p.trangThai<>N'Đã hủy' AND p.ngayLap>=? AND p.ngayLap<? GROUP BY x.hangXe,x.dongXe ORDER BY 3 DESC";} }
+            case 7,8 -> { 
+                if(loai==7) {
+                    cot=new String[]{
+                        "Hãng xe",
+                        "Số xe duy nhất",
+                        "Số phiếu sửa chữa"
+                    };
+                    sql="SELECT x.hangXe,COUNT(DISTINCT p.VIN),COUNT(DISTINCT p.maPSC) " 
+                        + "FROM dbo.PhieuSuaChua p " 
+                        + "JOIN dbo.PhuongTien x ON x.VIN=p.VIN " 
+                        + "WHERE p.trangThai<>N'Đã hủy' " 
+                        + "AND p.ngayLap>=? AND p.ngayLap<? "  
+                        + "GROUP BY x.hangXe ORDER BY 2 DESC";
+                }
+                else {
+                    cot=new String[]{
+                        "Hãng xe",
+                        "Dòng xe",
+                        "Số xe duy nhất",
+                        "Số phiếu sửa chữa"
+                    };
+                    sql="SELECT x.hangXe,x.dongXe,COUNT(DISTINCT p.VIN),COUNT(DISTINCT p.maPSC) FROM dbo.PhieuSuaChua p JOIN dbo.PhuongTien x ON x.VIN=p.VIN WHERE p.trangThai<>N'Đã hủy' AND p.ngayLap>=? AND p.ngayLap<? GROUP BY x.hangXe,x.dongXe ORDER BY 3 DESC";} }
             case 9 -> {cot=new String[]{"Mã khách hàng","Tên khách hàng","Số hóa đơn","Tổng thanh toán (đ)","Bình quân/hóa đơn (đ)"};sql="SELECT k.maKhachHang,k.hoTenKH,COUNT(*),SUM("+tongHD+"),AVG("+tongHD+") FROM dbo.HoaDon h JOIN dbo.KhachHang k ON k.maKhachHang=h.maKhachHang WHERE "+daTra+" GROUP BY k.maKhachHang,k.hoTenKH ORDER BY 4 DESC";}
             case 10 -> {cot=new String[]{"Mã nhân viên","Nhân viên kỹ thuật","Số phiếu hoàn thành","Số xe","Số hạng mục hoàn thành"};sql="SELECT n.maNhanVien,n.hoTenNV,COUNT(DISTINCT p.maPSC),COUNT(DISTINCT p.VIN),COUNT(ct.maDichVu) FROM dbo.PhieuSuaChua p JOIN dbo.NhanVien n ON n.maNhanVien=p.maNhanVien LEFT JOIN dbo.ChiTietPhieuSuaChua ct ON ct.maPSC=p.maPSC AND ct.trangThaiHangMuc=N'Hoàn thành' WHERE p.trangThai IN (N'Đã sửa xong',N'Chờ thanh toán',N'Đã thanh toán',N'Hoàn tất') AND p.ngayLap>=? AND p.ngayLap<? GROUP BY n.maNhanVien,n.hoTenNV ORDER BY 3 DESC";}
             case 11 -> {cot=new String[]{"Mã nhân viên","Nhân viên thu ngân","Số hóa đơn đã thu","Tổng tiền đã thu (đ)","Bình quân/hóa đơn (đ)"};sql="SELECT n.maNhanVien,n.hoTenNV,COUNT(*),SUM("+tongHD+"),AVG("+tongHD+") FROM dbo.HoaDon h JOIN dbo.NhanVien n ON n.maNhanVien=h.maNhanVien WHERE "+daTra+" GROUP BY n.maNhanVien,n.hoTenNV ORDER BY 4 DESC";}
