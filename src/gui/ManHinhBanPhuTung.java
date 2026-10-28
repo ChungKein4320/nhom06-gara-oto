@@ -27,6 +27,11 @@ public final class ManHinhBanPhuTung extends JPanel {
     private final JTable tblCart=GiaoDien.table(cartModel);
     private final JTextField txtCode=GiaoDien.field("Nhập mã phụ tùng, ví dụ PT001 rồi Enter");
     private final JComboBox<LuaChonDuLieu.Choice> cmbCustomers=new OChonTimKiem<>();
+    private final JTextField txtCustomerName=new JTextField();
+    private final JTextField txtCustomerPhone=new JTextField();
+    private final JComboBox<String> cmbCustomerGender=new JComboBox<>(new String[]{"Nam","Nữ"});
+    private final JTextField txtCustomerEmail=new JTextField();
+    private final JTextField txtCustomerAddress=new JTextField();
     private final String employeeId;
     private final JPanel pnlCategories=new JPanel(new FlowLayout(FlowLayout.LEFT,6,4));
     private final JPanel pnlProducts=new JPanel() {
@@ -42,6 +47,7 @@ public final class ManHinhBanPhuTung extends JPanel {
     private final JButton btnConfirm=GiaoDien.button("Xác nhận bán",GiaoDien.TEAL,Color.WHITE);
     private String category="Tất cả";
     private boolean loading;
+    private boolean updatingCustomerFields;
     private Set<String> blockedParts=new HashSet<>();
 
     public ManHinhBanPhuTung() { this(null,true); }
@@ -107,12 +113,30 @@ public final class ManHinhBanPhuTung extends JPanel {
         pnlFooter.setBorder(new EmptyBorder(8,12,8,12));
         JPanel pnlChoices=new JPanel(new GridBagLayout()); pnlChoices.setOpaque(false);
         GridBagConstraints constraints=new GridBagConstraints(); constraints.fill=GridBagConstraints.HORIZONTAL; constraints.insets=new Insets(0,0,0,8);
-        pnlChoices.add(GiaoDien.label("Khách hàng",12,true,GiaoDien.TEXT),constraints);
+        pnlChoices.add(GiaoDien.label("Khách hàng có sẵn (để trống nếu tạo khách mới)",12,true,GiaoDien.TEXT),constraints);
         constraints.weightx=1; pnlChoices.add(cmbCustomers,constraints);
         pnlFooter.add(pnlChoices,BorderLayout.NORTH);
+        JPanel pnlCustomerForm=new JPanel(new GridLayout(2,5,8,3)); pnlCustomerForm.setOpaque(false);
+        pnlCustomerForm.add(GiaoDien.label("Họ tên khách hàng *",11,true,GiaoDien.TEXT));
+        pnlCustomerForm.add(GiaoDien.label("Số điện thoại *",11,true,GiaoDien.TEXT));
+        pnlCustomerForm.add(GiaoDien.label("Giới tính *",11,true,GiaoDien.TEXT));
+        pnlCustomerForm.add(GiaoDien.label("Email *",11,true,GiaoDien.TEXT));
+        pnlCustomerForm.add(GiaoDien.label("Địa chỉ",11,true,GiaoDien.TEXT));
+        pnlCustomerForm.add(txtCustomerName); pnlCustomerForm.add(txtCustomerPhone);
+        pnlCustomerForm.add(cmbCustomerGender); pnlCustomerForm.add(txtCustomerEmail); pnlCustomerForm.add(txtCustomerAddress);
+        pnlFooter.add(pnlCustomerForm,BorderLayout.CENTER);
+        JPanel pnlBottom=new JPanel(new BorderLayout(10,4)); pnlBottom.setOpaque(false);
         JPanel pnlSummary=new JPanel(new BorderLayout(10,4)); pnlSummary.setOpaque(false); pnlSummary.add(lblTotal,BorderLayout.CENTER); pnlSummary.add(btnConfirm,BorderLayout.EAST);
-        pnlFooter.add(pnlSummary,BorderLayout.CENTER); pnlFooter.add(lblStatus,BorderLayout.SOUTH); add(pnlFooter,BorderLayout.SOUTH);
-        cmbCustomers.addActionListener(e -> { if(!loading) loadInvoiceContext(); });
+        pnlBottom.add(pnlSummary,BorderLayout.CENTER); pnlBottom.add(lblStatus,BorderLayout.SOUTH); pnlFooter.add(pnlBottom,BorderLayout.SOUTH); add(pnlFooter,BorderLayout.SOUTH);
+        cmbCustomers.addActionListener(e -> { if(!loading) { loadCustomerForm(); loadInvoiceContext(); } });
+        javax.swing.event.DocumentListener customerInputListener=new javax.swing.event.DocumentListener() {
+            private void changed() { if(!updatingCustomerFields) refreshCart(); }
+            @Override public void insertUpdate(javax.swing.event.DocumentEvent e) { changed(); }
+            @Override public void removeUpdate(javax.swing.event.DocumentEvent e) { changed(); }
+            @Override public void changedUpdate(javax.swing.event.DocumentEvent e) { changed(); }
+        };
+        for(JTextField field:List.of(txtCustomerName,txtCustomerPhone,txtCustomerEmail,txtCustomerAddress)) field.getDocument().addDocumentListener(customerInputListener);
+        cmbCustomerGender.addActionListener(e -> { if(!updatingCustomerFields) refreshCart(); });
         tblCart.getSelectionModel().addListSelectionListener(e -> { int row=selectedRow(); if(row>=0) spnQuantity.setValue(quantities.get(cartModel.getValueAt(row,0).toString())); });
         btnConfirm.addActionListener(e -> sell()); refreshCart();
         if(fetch) load();
@@ -160,7 +184,50 @@ public final class ManHinhBanPhuTung extends JPanel {
             buildCategories();
         } catch(SQLException ex) { products.clear(); cmbCustomers.removeAllItems(); error(ex); }
         finally { loading=false; }
-        loadInvoiceContext(); refreshCart();
+        loadCustomerForm(); loadInvoiceContext(); refreshCart();
+    }
+    private void loadCustomerForm() {
+        String customer=LuaChonDuLieu.id(cmbCustomers);
+        updatingCustomerFields=true;
+        try {
+            boolean isExisting=customer!=null && !customer.isBlank();
+            for(JComponent input:List.of(txtCustomerName,txtCustomerPhone,cmbCustomerGender,txtCustomerEmail,txtCustomerAddress)) input.setEnabled(!isExisting);
+            if(!isExisting) {
+                txtCustomerName.setText(""); txtCustomerPhone.setText(""); cmbCustomerGender.setSelectedItem("Nam");
+                txtCustomerEmail.setText(""); txtCustomerAddress.setText("");
+                lblStatus.setText("Nhập thông tin khách hàng mới hoặc chọn khách hàng có sẵn.");
+                return;
+            }
+            try(Connection conn=KetNoiCSDL.getConnection(); PreparedStatement ps=conn.prepareStatement("SELECT hoTenKH,soDienThoai,gioiTinh,email,diaChi FROM dbo.KhachHang WHERE maKhachHang=?")) {
+                ps.setString(1,customer);
+                try(ResultSet rs=ps.executeQuery()) {
+                    if(!rs.next()) throw new SQLException("Không tìm thấy khách hàng đã chọn. Vui lòng tải lại danh sách.");
+                    txtCustomerName.setText(rs.getString("hoTenKH")); txtCustomerPhone.setText(rs.getString("soDienThoai"));
+                    cmbCustomerGender.setSelectedItem(rs.getBoolean("gioiTinh") ? "Nam" : "Nữ");
+                    txtCustomerEmail.setText(rs.getString("email")); txtCustomerAddress.setText(Objects.toString(rs.getString("diaChi"),""));
+                }
+            }
+        } catch(SQLException ex) { lblStatus.setText(ex.getMessage()); }
+        finally { updatingCustomerFields=false; }
+        refreshCart();
+    }
+    private boolean newCustomerFormValid() {
+        String name=txtCustomerName.getText().trim(), phone=txtCustomerPhone.getText().trim();
+        String email=txtCustomerEmail.getText().trim(), address=txtCustomerAddress.getText().trim();
+        return !name.isBlank() && name.length()<=100
+            && phone.matches("0[35789][0-9]{8}")
+            && email.length()<=254 && email.matches("[^\\s@]+@[^\\s@]+\\.[^\\s@]+")
+            && address.length()<=255;
+    }
+    private Map<String,Object> newCustomerValues() {
+        Map<String,Object> customer=new LinkedHashMap<>();
+        customer.put("hoTenKH",txtCustomerName.getText().trim());
+        customer.put("soDienThoai",txtCustomerPhone.getText().trim());
+        customer.put("gioiTinh","Nam".equals(cmbCustomerGender.getSelectedItem()));
+        customer.put("email",txtCustomerEmail.getText().trim());
+        String address=txtCustomerAddress.getText().trim();
+        if(!address.isBlank()) customer.put("diaChi",address);
+        return customer;
     }
     private void loadInvoiceContext() {
         blockedParts=new HashSet<>();
@@ -235,18 +302,24 @@ public final class ManHinhBanPhuTung extends JPanel {
         lblTotal.setText("<html>Tiền hàng: "+format(subtotal)+" &nbsp; | &nbsp; VAT 8%: "+format(vat)+"<br>Cộng: "+format(subtotal.add(vat))+"</html>");
         lblTotal.setToolTipText("Tiền hàng và VAT 8%; mã giảm giá được chọn trong chi tiết hóa đơn.");
         String customer=LuaChonDuLieu.id(cmbCustomers);
-        btnConfirm.setEnabled(!loading && valid && customer!=null && !customer.isBlank());
-        if(customer==null || customer.isBlank()) lblStatus.setText("Vui lòng chọn khách hàng để lập hóa đơn bán phụ tùng.");
+        boolean hasExistingCustomer=customer!=null && !customer.isBlank();
+        boolean customerValid=hasExistingCustomer || newCustomerFormValid();
+        btnConfirm.setEnabled(!loading && valid && customerValid);
+        if(!hasExistingCustomer && !newCustomerFormValid()) lblStatus.setText("Nhập họ tên, số điện thoại hợp lệ và email để lập hóa đơn.");
         else if(!quantities.isEmpty() && !valid) lblStatus.setText("Có dòng đổi giá, thiếu tồn hoặc đã có trong hóa đơn. Bỏ dòng và chọn lại.");
     }
     private String format(BigDecimal amount) { return money.format(amount)+" đ"; }
     private void sell() {
         if(!btnConfirm.isEnabled()) return;
-        if(JOptionPane.showConfirmDialog(this,"Lập hóa đơn bán "+quantities.size()+" loại phụ tùng cho "+cmbCustomers.getSelectedItem()+"?","Xác nhận bán phụ tùng",JOptionPane.YES_NO_OPTION)!=JOptionPane.YES_OPTION) return;
+        String customer=LuaChonDuLieu.id(cmbCustomers);
+        String customerName=customer==null || customer.isBlank() ? txtCustomerName.getText().trim() : String.valueOf(cmbCustomers.getSelectedItem());
+        if(JOptionPane.showConfirmDialog(this,"Lập hóa đơn bán "+quantities.size()+" loại phụ tùng cho "+customerName+"?","Xác nhận bán phụ tùng",JOptionPane.YES_NO_OPTION)!=JOptionPane.YES_OPTION) return;
         List<ThuongMaiDAO.SaleItem> items=quantities.entrySet().stream().map(e -> new ThuongMaiDAO.SaleItem(e.getKey(),e.getValue(),cartPrices.get(e.getKey()))).toList();
         btnConfirm.setEnabled(false);
         try {
-            String invoice=ThuongMaiDAO.createPartsInvoice(LuaChonDuLieu.id(cmbCustomers),employeeId,items);
+            String invoice=customer==null || customer.isBlank()
+                ? ThuongMaiDAO.createPartsInvoice(newCustomerValues(),employeeId,items)
+                : ThuongMaiDAO.createPartsInvoice(customer,employeeId,items);
             quantities.clear(); cartPrices.clear(); load(); lblStatus.setText("Đã lập "+invoice+"; tiếp tục thanh toán trong chi tiết hóa đơn.");
             showSaleInvoice(invoice);
         } catch(SQLException ex) { error(ex); load(); }
