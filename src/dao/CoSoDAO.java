@@ -37,6 +37,7 @@ public class CoSoDAO {
     }
     public String previewNextId() throws SQLException {
         if (Schema.KEYS.get(table).length != 1 || Schema.IDENTITY.contains(table) || primary.equals("VIN")) return "";
+        if (usesReusableCodes()) return prefix() + String.format(Locale.ROOT,"%03d",nextAvailableNumber());
         try (Connection conn = KetNoiCSDL.getConnection(); PreparedStatement ps = conn.prepareStatement(
                 "SELECT CASE WHEN current_value IS NULL THEN CONVERT(int,start_value) ELSE CONVERT(int,current_value)+1 END FROM sys.sequences WHERE name=? AND schema_id=SCHEMA_ID('dbo')")) {
             ps.setString(1,"Seq_" + table);
@@ -54,6 +55,32 @@ public class CoSoDAO {
             default -> throw new IllegalArgumentException("Không có sequence cho " + table);
         };
     }
+    private boolean usesReusableCodes() { return table.equals("KhachHang") || table.equals("PhieuTiepNhan"); }
+    private int nextAvailableNumber() throws SQLException {
+        String sql=";WITH Numbers(n) AS (SELECT CONVERT(int,1) UNION ALL SELECT n+1 FROM Numbers WHERE n<999) "+
+                "SELECT MIN(n) FROM Numbers WHERE NOT EXISTS (SELECT 1 FROM dbo.["+table+"]"+
+                " AS currentRows WHERE currentRows.["+primary+"]=?+RIGHT('000'+CONVERT(varchar(3),Numbers.n),3)) OPTION (MAXRECURSION 1000)";
+        try(Connection conn=KetNoiCSDL.getConnection(); PreparedStatement ps=conn.prepareStatement(sql)) {
+            ps.setString(1,prefix());
+            try(ResultSet rs=ps.executeQuery()) {
+                if(!rs.next() || rs.getObject(1)==null) throw new SQLException("Đã hết dải mã cho bảng "+table+".");
+                return rs.getInt(1);
+            }
+        }
+    }
+    private int nextAvailableNumber(Connection conn) throws SQLException {
+        String lockHint=" WITH (TABLOCKX,HOLDLOCK)";
+        String sql=";WITH Numbers(n) AS (SELECT CONVERT(int,1) UNION ALL SELECT n+1 FROM Numbers WHERE n<999) "+
+                "SELECT MIN(n) FROM Numbers WHERE NOT EXISTS (SELECT 1 FROM dbo.["+table+"]"+lockHint+
+                " AS currentRows WHERE currentRows.["+primary+"]=?+RIGHT('000'+CONVERT(varchar(3),Numbers.n),3)) OPTION (MAXRECURSION 1000)";
+        try(PreparedStatement ps=conn.prepareStatement(sql)) {
+            ps.setString(1,prefix());
+            try(ResultSet rs=ps.executeQuery()) {
+                if(!rs.next() || rs.getObject(1)==null) throw new SQLException("Đã hết dải mã cho bảng "+table+".");
+                return rs.getInt(1);
+            }
+        }
+    }
     public void insert(Map<String,Object> row) throws SQLException { insert(row,null); }
     public void insert(Map<String,Object> row, String preview) throws SQLException {
         QuyTrinhDAO.transaction(conn -> { insert(conn,row); return null; });
@@ -63,8 +90,12 @@ public class CoSoDAO {
         Map<String,Object> row = new LinkedHashMap<>(values);
         if (Schema.IDENTITY.contains(table)) row.remove(primary);
         else if (Schema.KEYS.get(table).length == 1 && !primary.equals("VIN")) {
-            try (Statement ps = conn.createStatement(); ResultSet rs = ps.executeQuery("SELECT NEXT VALUE FOR dbo.[Seq_" + table + "]")) {
-                rs.next(); row.put(primary,prefix() + String.format(Locale.ROOT,"%03d",rs.getInt(1)));
+            if(usesReusableCodes()) {
+                row.put(primary,prefix()+String.format(Locale.ROOT,"%03d",nextAvailableNumber(conn)));
+            } else {
+                try (Statement ps = conn.createStatement(); ResultSet rs = ps.executeQuery("SELECT NEXT VALUE FOR dbo.[Seq_" + table + "]")) {
+                    rs.next(); row.put(primary,prefix() + String.format(Locale.ROOT,"%03d",rs.getInt(1)));
+                }
             }
         }
         DataRules.validate(table,row,true);

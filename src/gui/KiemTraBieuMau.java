@@ -5,6 +5,7 @@ import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -19,6 +20,13 @@ final class KiemTraBieuMau {
     }
     private KiemTraBieuMau() { }
 
+    static String userMessage(Throwable error,String table) {
+        String message=error==null || error.getMessage()==null ? "Dữ liệu chưa hợp lệ." : error.getMessage();
+        if(table.equals("PhieuTiepNhan") && message.toUpperCase(Locale.ROOT).contains("CK_PHIEUTIEPNHAN_NGAY"))
+            return "Ngày tiếp nhận không hợp lệ. Vui lòng chọn ngày, giờ hiện tại hoặc trước đó.";
+        return message;
+    }
+
     static Map<String, Object> read(String table, Map<String, JComponent> inputs, boolean existing) throws Issue {
         Map<String, Object> values = new LinkedHashMap<>();
         String primary = Schema.PRIMARY.get(table);
@@ -26,6 +34,10 @@ final class KiemTraBieuMau {
             if (!inputs.containsKey(field)) continue;
             if (field.equals(primary) && (existing || !field.equals("VIN"))) continue;
             if (inputs.get(field) instanceof OChonThamChieu cmbCombo) cmbCombo.validateSelection();
+            if(inputs.get(field) instanceof JCheckBox checkBox) {
+                values.put(field,checkBox.isSelected());
+                continue;
+            }
             String raw = text(inputs.get(field));
             String label = NhanCot.forField(field);
             if (raw.isEmpty()) {
@@ -124,7 +136,11 @@ final class KiemTraBieuMau {
             if (suffix.equalsIgnoreCase("SDT")) return "soDienThoai";
             if (suffix.equalsIgnoreCase("Ten") && table.equals("PhuongThucThanhToan")) return "tenPhuongThuc";
             if (suffix.equalsIgnoreCase("SoLuong") && table.equals("TonKho")) return "soLuongHienTai";
-            if (suffix.equalsIgnoreCase("Ngay")) return table.equals("PhieuSuaChua") ? "ngayHoanThanh" : "ngayHetHan";
+            if (suffix.equalsIgnoreCase("Ngay")) return switch (table) {
+                case "PhieuSuaChua" -> "ngayHoanThanh";
+                case "PhieuTiepNhan" -> "ngayTiepNhan";
+                default -> "ngayHetHan";
+            };
             for (String field : Schema.COLUMNS.get(table)) {
                 if (field.equalsIgnoreCase(suffix) || field.equalsIgnoreCase("ten" + suffix) || field.equalsIgnoreCase("ma" + suffix)) return field;
             }

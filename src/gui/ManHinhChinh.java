@@ -122,8 +122,7 @@ public final class ManHinhChinh extends JFrame {
             case "Phiếu tiếp nhận", "Phiếu kiểm tra", "Phiếu báo giá", "Phiếu sửa chữa", "Bảo hành", "Lịch nhắc bảo dưỡng" -> "NHÂN VIÊN KỸ THUẬT";
             case "Tồn kho", "Cấp phát phụ tùng", "Nhập kho phụ tùng", "Lịch sử sửa chữa" -> "NHÂN VIÊN KHO";
             case "Hóa đơn", "Lịch sử tích điểm", "Khuyến mãi/Tích điểm", "Phụ tùng" -> "NHÂN VIÊN BÁN HÀNG";
-            case "Nhà cung cấp", "Nhân viên", "Khách hàng", "Phương tiện", "Danh mục dịch vụ", "Danh mục phụ tùng", "Tài khoản", "Khuyến mãi" -> "NHÂN VIÊN QUẢN LÝ";
-            case "Thống kê" -> "BÁO CÁO";
+            case "Nhà cung cấp", "Nhân viên", "Khách hàng", "Phương tiện", "Danh mục dịch vụ", "Danh mục phụ tùng", "Tài khoản", "Khuyến mãi", "Thống kê" -> "NHÂN VIÊN QUẢN LÝ";
             default -> null;
         };
     }

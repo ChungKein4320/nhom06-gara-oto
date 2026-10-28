@@ -3,7 +3,7 @@ USE [master];
 GO
 IF DB_ID(N'GaraOto') IS NOT NULL
 BEGIN
-    RAISERROR(N'Database GaraOto đã tồn tại. Không thay đổi dữ liệu; hãy dùng database mới.',16,1);
+    PRINT N'Database GaraOto đã tồn tại. Không thay đổi dữ liệu; hãy dùng database mới để tạo lại schema.';
     SET NOEXEC ON;
 END
 ELSE
@@ -121,7 +121,8 @@ CREATE TABLE dbo.[PhuTung] (
     CONSTRAINT [CK_PhuTung_Ma] CHECK (DATALENGTH([maPhuTung]) = 5 AND [maPhuTung] COLLATE Latin1_General_100_BIN2 LIKE 'PT[0-9][0-9][0-9]'),
     CONSTRAINT [CK_PhuTung_Ten] CHECK (LEN(LTRIM(RTRIM([tenPhuTung]))) > 0),
     CONSTRAINT [CK_PhuTung_Gia] CHECK (donGia>=0),
-    CONSTRAINT [CK_PhuTung_Loai] CHECK (LEN(LTRIM(RTRIM([loaiPhuTung]))) > 0)
+    CONSTRAINT [CK_PhuTung_Loai] CHECK (LEN(LTRIM(RTRIM([loaiPhuTung]))) > 0),
+    CONSTRAINT [CK_PhuTung_PT000] CHECK ([maPhuTung]<>'PT000' OR ([tenPhuTung]=N'Không sử dụng phụ tùng' AND [donGia]=0 AND [loaiPhuTung]=N'Hệ thống'))
 );
 
 -- 06. NhaCungCap
@@ -173,7 +174,8 @@ CREATE TABLE dbo.[TonKho] (
     CONSTRAINT [UQ_TonKho_PhuTung] UNIQUE ([maPhuTung]),
     CONSTRAINT [CK_TonKho_Ma] CHECK (DATALENGTH([maTonKho]) = 6 AND [maTonKho] COLLATE Latin1_General_100_BIN2 LIKE 'TKH[0-9][0-9][0-9]'),
     CONSTRAINT [CK_TonKho_SoLuong] CHECK (soLuongHienTai>=0),
-    CONSTRAINT [CK_TonKho_ToiThieu] CHECK (soLuongToiThieu>=0)
+    CONSTRAINT [CK_TonKho_ToiThieu] CHECK (soLuongToiThieu>=0),
+    CONSTRAINT [CK_TonKho_KhongPT000] CHECK ([maPhuTung]<>'PT000')
 );
 
 -- 10. MaGiamGia
@@ -225,7 +227,7 @@ CREATE TABLE dbo.[PhieuKiemTra] (
     [VIN] varchar(17) NOT NULL,
     [ngayKiemTra] datetime2(0) NOT NULL,
     CONSTRAINT [PK_PhieuKiemTra] PRIMARY KEY ([maPKT]),
-    CONSTRAINT [UQ_PhieuKiemTra_HoSo] UNIQUE ([maPKT], [VIN]),
+    CONSTRAINT [UQ_PhieuKiemTra_HoSo] UNIQUE ([maPKT], [maKhachHang], [VIN]),
     CONSTRAINT [CK_PhieuKiemTra_Ma] CHECK (DATALENGTH([maPKT]) = 6 AND [maPKT] COLLATE Latin1_General_100_BIN2 LIKE 'PKT[0-9][0-9][0-9]'),
     CONSTRAINT [CK_PhieuKiemTra_Ngay] CHECK (ngayKiemTra<=SYSDATETIME())
 );
@@ -247,6 +249,7 @@ CREATE TABLE dbo.[ChiTietPhieuKiemTra] (
 CREATE TABLE dbo.[PhieuBaoGia] (
     [maBaoGia] varchar(6) NOT NULL CONSTRAINT [DF_PhieuBaoGia_Ma] DEFAULT ('PBG' + RIGHT('000' + CONVERT(varchar(3), NEXT VALUE FOR dbo.[Seq_PhieuBaoGia]),3)),
     [maPKT] varchar(6) NOT NULL,
+    [maKhachHang] varchar(5) NOT NULL,
     [maNhanVien] varchar(5) NOT NULL,
     [VIN] varchar(17) NOT NULL,
     [ngayLap] datetime2(0) NOT NULL,
@@ -254,7 +257,7 @@ CREATE TABLE dbo.[PhieuBaoGia] (
     [thoiGianXacNhan] datetime2(0) NULL,
     [trangThai] nvarchar(50) NOT NULL,
     CONSTRAINT [PK_PhieuBaoGia] PRIMARY KEY ([maBaoGia]),
-    CONSTRAINT [UQ_PhieuBaoGia_HoSo] UNIQUE ([maBaoGia], [VIN]),
+    CONSTRAINT [UQ_PhieuBaoGia_HoSo] UNIQUE ([maBaoGia], [maKhachHang], [VIN]),
     CONSTRAINT [CK_PhieuBaoGia_Ma] CHECK (DATALENGTH([maBaoGia]) = 6 AND [maBaoGia] COLLATE Latin1_General_100_BIN2 LIKE 'PBG[0-9][0-9][0-9]'),
     CONSTRAINT [CK_PhieuBaoGia_Ngay] CHECK (ngayLap<=SYSDATETIME() AND ngayHetHan>=ngayLap AND (thoiGianXacNhan IS NULL OR thoiGianXacNhan>=ngayLap)),
     CONSTRAINT [CK_PhieuBaoGia_TrangThai] CHECK ([trangThai] IN (N'Còn hiệu lực', N'Hết hiệu lực', N'Đã xác nhận'))
@@ -270,8 +273,8 @@ CREATE TABLE dbo.[ChiTietPhieuBaoGia] (
     [chiPhiNhanCong] decimal(18,2) NOT NULL,
     [trangThai] nvarchar(100) NOT NULL,
     CONSTRAINT [PK_ChiTietPhieuBaoGia] PRIMARY KEY ([maBaoGia], [maDichVu], [maPhuTung]),
-    CONSTRAINT [CK_ChiTietPhieuBaoGia_SoLuong] CHECK (soLuongPhuTung>0),
-    CONSTRAINT [CK_ChiTietPhieuBaoGia_DonGia] CHECK (donGiaPhuTung>=0),
+    CONSTRAINT [CK_ChiTietPhieuBaoGia_SoLuong] CHECK (([maPhuTung]='PT000' AND soLuongPhuTung=0) OR ([maPhuTung]<>'PT000' AND soLuongPhuTung>0)),
+    CONSTRAINT [CK_ChiTietPhieuBaoGia_DonGia] CHECK (donGiaPhuTung>=0 AND ([maPhuTung]<>'PT000' OR donGiaPhuTung=0)),
     CONSTRAINT [CK_ChiTietPhieuBaoGia_NhanCong] CHECK (chiPhiNhanCong>=0),
     CONSTRAINT [CK_ChiTietPhieuBaoGia_TrangThai] CHECK ([trangThai] IN (N'Chờ xác nhận', N'Chờ sửa chữa', N'Thiếu phụ tùng + Chờ xác nhận'))
 );
@@ -306,7 +309,7 @@ CREATE TABLE dbo.[ChiTietPhieuSuaChua] (
     [ngayHetHanBaoHanh] datetime2(0) NULL,
     CONSTRAINT [PK_ChiTietPhieuSuaChua] PRIMARY KEY ([maPSC], [maDichVu], [maPhuTung]),
     CONSTRAINT [CK_ChiTietPhieuSuaChua_TrangThai] CHECK ([trangThaiHangMuc] IN (N'Đang sửa chữa', N'Thiếu phụ tùng', N'Hoàn thành')),
-    CONSTRAINT [CK_ChiTietPhieuSuaChua_SoLuong] CHECK (soLuongPhuTung>0),
+    CONSTRAINT [CK_ChiTietPhieuSuaChua_SoLuong] CHECK (([maPhuTung]='PT000' AND soLuongPhuTung=0) OR ([maPhuTung]<>'PT000' AND soLuongPhuTung>0)),
     CONSTRAINT [CK_ChiTietPhieuSuaChua_KetQua] CHECK ([ketQuaNghiemThu] IN (N'Đạt', N'Không đạt')),
     CONSTRAINT [CK_ChiTietPhieuSuaChua_ThoiHan] CHECK (thoiHanBaoHanh>=0),
     CONSTRAINT [CK_ChiTietPhieuSuaChua_NgayBaoHanh] CHECK ((ngayBatDauBaoHanh IS NULL AND ngayHetHanBaoHanh IS NULL) OR (ngayBatDauBaoHanh IS NOT NULL AND ngayHetHanBaoHanh IS NOT NULL AND ngayHetHanBaoHanh>=ngayBatDauBaoHanh))
@@ -333,7 +336,8 @@ CREATE TABLE dbo.[ChiTietPhieuNhapKho] (
     [donGiaNhap] decimal(18,2) NOT NULL,
     CONSTRAINT [PK_ChiTietPhieuNhapKho] PRIMARY KEY ([maPNK], [maPhuTung]),
     CONSTRAINT [CK_ChiTietPhieuNhapKho_SoLuong] CHECK (soLuongNhap>0),
-    CONSTRAINT [CK_ChiTietPhieuNhapKho_DonGia] CHECK (donGiaNhap>=0)
+    CONSTRAINT [CK_ChiTietPhieuNhapKho_DonGia] CHECK (donGiaNhap>=0),
+    CONSTRAINT [CK_ChiTietPhieuNhapKho_KhongPT000] CHECK ([maPhuTung]<>'PT000')
 );
 
 -- 21. HoaDon
@@ -370,6 +374,7 @@ CREATE TABLE dbo.[ChiTietHoaDon] (
     [donGia] decimal(18,2) NOT NULL,
     CONSTRAINT [PK_ChiTietHoaDon] PRIMARY KEY ([maChiTietHoaDon]),
     CONSTRAINT [CK_ChiTietHoaDon_NoiDung] CHECK (maDichVu IS NOT NULL OR maPhuTung IS NOT NULL),
+    CONSTRAINT [CK_ChiTietHoaDon_KhongPT000] CHECK (maPhuTung IS NULL OR maPhuTung<>'PT000'),
     CONSTRAINT [CK_ChiTietHoaDon_SoLuong] CHECK (soLuong>=0),
     CONSTRAINT [CK_ChiTietHoaDon_DonGia] CHECK (donGia>=0)
 );
@@ -431,12 +436,13 @@ ALTER TABLE dbo.[PhieuKiemTra] WITH CHECK ADD CONSTRAINT [FK_PhieuKiemTra_HoSoTi
 ALTER TABLE dbo.[PhieuKiemTra] WITH CHECK ADD CONSTRAINT [FK_PhieuKiemTra_NhanVien] FOREIGN KEY ([maNhanVien]) REFERENCES dbo.[NhanVien] ([maNhanVien]);
 ALTER TABLE dbo.[ChiTietPhieuKiemTra] WITH CHECK ADD CONSTRAINT [FK_ChiTietPhieuKiemTra_PhieuKiemTra] FOREIGN KEY ([maPKT]) REFERENCES dbo.[PhieuKiemTra] ([maPKT]);
 ALTER TABLE dbo.[ChiTietPhieuKiemTra] WITH CHECK ADD CONSTRAINT [FK_ChiTietPhieuKiemTra_DichVu] FOREIGN KEY ([maDichVu]) REFERENCES dbo.[DichVu] ([maDichVu]);
-ALTER TABLE dbo.[PhieuBaoGia] WITH CHECK ADD CONSTRAINT [FK_PhieuBaoGia_HoSoKiemTra] FOREIGN KEY ([maPKT], [VIN]) REFERENCES dbo.[PhieuKiemTra] ([maPKT], [VIN]);
+ALTER TABLE dbo.[PhieuBaoGia] WITH CHECK ADD CONSTRAINT [FK_PhieuBaoGia_HoSoKiemTra] FOREIGN KEY ([maPKT], [maKhachHang], [VIN]) REFERENCES dbo.[PhieuKiemTra] ([maPKT], [maKhachHang], [VIN]);
+ALTER TABLE dbo.[PhieuBaoGia] WITH CHECK ADD CONSTRAINT [FK_PhieuBaoGia_KhachHang] FOREIGN KEY ([maKhachHang]) REFERENCES dbo.[KhachHang] ([maKhachHang]);
 ALTER TABLE dbo.[PhieuBaoGia] WITH CHECK ADD CONSTRAINT [FK_PhieuBaoGia_NhanVien] FOREIGN KEY ([maNhanVien]) REFERENCES dbo.[NhanVien] ([maNhanVien]);
 ALTER TABLE dbo.[ChiTietPhieuBaoGia] WITH CHECK ADD CONSTRAINT [FK_ChiTietPhieuBaoGia_PhieuBaoGia] FOREIGN KEY ([maBaoGia]) REFERENCES dbo.[PhieuBaoGia] ([maBaoGia]);
 ALTER TABLE dbo.[ChiTietPhieuBaoGia] WITH CHECK ADD CONSTRAINT [FK_ChiTietPhieuBaoGia_DichVu] FOREIGN KEY ([maDichVu]) REFERENCES dbo.[DichVu] ([maDichVu]);
 ALTER TABLE dbo.[ChiTietPhieuBaoGia] WITH CHECK ADD CONSTRAINT [FK_ChiTietPhieuBaoGia_PhuTung] FOREIGN KEY ([maPhuTung]) REFERENCES dbo.[PhuTung] ([maPhuTung]);
-ALTER TABLE dbo.[PhieuSuaChua] WITH CHECK ADD CONSTRAINT [FK_PhieuSuaChua_HoSoBaoGia] FOREIGN KEY ([maBaoGia], [VIN]) REFERENCES dbo.[PhieuBaoGia] ([maBaoGia], [VIN]);
+ALTER TABLE dbo.[PhieuSuaChua] WITH CHECK ADD CONSTRAINT [FK_PhieuSuaChua_HoSoBaoGia] FOREIGN KEY ([maBaoGia], [maKhachHang], [VIN]) REFERENCES dbo.[PhieuBaoGia] ([maBaoGia], [maKhachHang], [VIN]);
 ALTER TABLE dbo.[PhieuSuaChua] WITH CHECK ADD CONSTRAINT [FK_PhieuSuaChua_KhachHang] FOREIGN KEY ([maKhachHang]) REFERENCES dbo.[KhachHang] ([maKhachHang]);
 ALTER TABLE dbo.[PhieuSuaChua] WITH CHECK ADD CONSTRAINT [FK_PhieuSuaChua_NhanVien] FOREIGN KEY ([maNhanVien]) REFERENCES dbo.[NhanVien] ([maNhanVien]);
 ALTER TABLE dbo.[ChiTietPhieuSuaChua] WITH CHECK ADD CONSTRAINT [FK_ChiTietPhieuSuaChua_PhieuSuaChua] FOREIGN KEY ([maPSC]) REFERENCES dbo.[PhieuSuaChua] ([maPSC]);
@@ -516,6 +522,41 @@ BEGIN
     IF EXISTS(SELECT 1 FROM inserted i JOIN dbo.PhieuSuaChua sc ON sc.maPSC=i.maPSC
               WHERE sc.ngayHoanThanh IS NOT NULL AND i.ngayBatDauBaoHanh<sc.ngayHoanThanh)
         THROW 51005,N'Ngày bắt đầu bảo hành không được trước ngày hoàn thành sửa chữa.',1;
+END;
+GO
+CREATE TRIGGER dbo.TR_ChiTietBaoGia_PT000 ON dbo.ChiTietPhieuBaoGia AFTER INSERT, UPDATE AS
+BEGIN
+    SET NOCOUNT ON;
+    IF EXISTS (
+        SELECT c.maBaoGia,c.maDichVu
+        FROM dbo.ChiTietPhieuBaoGia c
+        JOIN (SELECT DISTINCT maBaoGia,maDichVu FROM inserted) i
+          ON i.maBaoGia=c.maBaoGia AND i.maDichVu=c.maDichVu
+        GROUP BY c.maBaoGia,c.maDichVu
+        HAVING SUM(CASE WHEN c.maPhuTung='PT000' THEN 1 ELSE 0 END)>0
+           AND SUM(CASE WHEN c.maPhuTung<>'PT000' THEN 1 ELSE 0 END)>0
+    ) THROW 51008,N'Một dịch vụ trong báo giá không thể đồng thời có PT000 và phụ tùng thật.',1;
+END;
+GO
+CREATE TRIGGER dbo.TR_ChiTietPSC_PT000 ON dbo.ChiTietPhieuSuaChua AFTER INSERT, UPDATE AS
+BEGIN
+    SET NOCOUNT ON;
+    IF EXISTS (
+        SELECT c.maPSC,c.maDichVu
+        FROM dbo.ChiTietPhieuSuaChua c
+        JOIN (SELECT DISTINCT maPSC,maDichVu FROM inserted) i
+          ON i.maPSC=c.maPSC AND i.maDichVu=c.maDichVu
+        GROUP BY c.maPSC,c.maDichVu
+        HAVING SUM(CASE WHEN c.maPhuTung='PT000' THEN 1 ELSE 0 END)>0
+           AND SUM(CASE WHEN c.maPhuTung<>'PT000' THEN 1 ELSE 0 END)>0
+    ) THROW 51009,N'Một dịch vụ trong phiếu sửa chữa không thể đồng thời có PT000 và phụ tùng thật.',1;
+END;
+GO
+CREATE TRIGGER dbo.TR_PhuTung_PT000 ON dbo.PhuTung AFTER UPDATE, DELETE AS
+BEGIN
+    SET NOCOUNT ON;
+    IF EXISTS (SELECT 1 FROM deleted WHERE maPhuTung='PT000')
+        THROW 51010,N'PT000 là mã hệ thống, không được sửa hoặc xóa.',1;
 END;
 GO
 CREATE TRIGGER dbo.TR_LichSuTichDiem_KhachHang ON dbo.LichSuTichDiem AFTER INSERT, UPDATE AS
@@ -753,9 +794,10 @@ VALUES
     (N'DV019', N'Chăm sóc ngoại thất', N'Dịch vụ chăm sóc ngoại thất theo yêu cầu khách hàng.', 1200000.00, N'Ngừng hoạt động'),
     (N'DV020', N'Kiểm tra kỹ thuật chuyên sâu', NULL, 2500000.00, N'Ngừng hoạt động');
 
--- PhuTung: 40 bản ghi
+-- PhuTung: 41 bản ghi (PT000 là mã hệ thống, không có tồn kho)
 INSERT INTO dbo.[PhuTung] ([maPhuTung], [tenPhuTung], [donGia], [loaiPhuTung])
 VALUES
+    (N'PT000', N'Không sử dụng phụ tùng', 0.00, N'Hệ thống'),
     (N'PT001', N'Dầu động cơ 5W-30', 850000.00, N'Dầu nhớt'),
     (N'PT002', N'Lọc dầu Toyota', 180000.00, N'Bộ lọc'),
     (N'PT003', N'Má phanh trước', 950000.00, N'Hệ thống phanh'),
@@ -1500,8 +1542,9 @@ VALUES
     (N'PKT090', N'DV006', N'Vệ sinh điều hòa', N'Chẩn đoán sơ bộ đã ghi nhận; chờ hoàn tất phép kiểm tra.', NULL);
 
 -- PhieuBaoGia: 80 bản ghi
-INSERT INTO dbo.[PhieuBaoGia] ([maBaoGia], [maPKT], [maNhanVien], [VIN], [ngayLap], [ngayHetHan], [thoiGianXacNhan], [trangThai])
-VALUES
+INSERT INTO dbo.[PhieuBaoGia] ([maBaoGia], [maPKT], [maKhachHang], [maNhanVien], [VIN], [ngayLap], [ngayHetHan], [thoiGianXacNhan], [trangThai])
+SELECT v.[maBaoGia], v.[maPKT], kt.[maKhachHang], v.[maNhanVien], v.[VIN], v.[ngayLap], v.[ngayHetHan], v.[thoiGianXacNhan], v.[trangThai]
+FROM (VALUES
     (N'PBG001', N'PKT001', N'NV001', N'MR0BT9F31JA310001', DATEADD(minute,540,DATEADD(day,-2,@NgayMau)), DATEADD(minute,1439,DATEADD(day,2,@NgayMau)), DATEADD(minute,555,DATEADD(day,-2,@NgayMau)), N'Đã xác nhận'),
     (N'PBG002', N'PKT002', N'NV001', N'MRHGM6627FA310002', DATEADD(minute,540,DATEADD(day,-2,@NgayMau)), DATEADD(minute,1439,DATEADD(day,2,@NgayMau)), DATEADD(minute,555,DATEADD(day,-2,@NgayMau)), N'Đã xác nhận'),
     (N'PBG003', N'PKT003', N'NV001', N'KMHCT41B5JA310003', DATEADD(minute,540,DATEADD(day,-2,@NgayMau)), DATEADD(minute,1439,DATEADD(day,2,@NgayMau)), DATEADD(minute,555,DATEADD(day,-2,@NgayMau)), N'Đã xác nhận'),
@@ -1581,7 +1624,9 @@ VALUES
     (N'PBG077', N'PKT077', N'NV001', N'JM3KF2W77HA310005', DATEADD(minute,540,DATEADD(day,-371,@NgayMau)), DATEADD(minute,1439,DATEADD(day,-367,@NgayMau)), NULL, N'Hết hiệu lực'),
     (N'PBG078', N'PKT078', N'NV001', N'MNCUMFF55FA310006', DATEADD(minute,540,DATEADD(day,-384,@NgayMau)), DATEADD(minute,1439,DATEADD(day,-380,@NgayMau)), NULL, N'Hết hiệu lực'),
     (N'PBG079', N'PKT079', N'NV001', N'MK2NC1W48KA310007', DATEADD(minute,540,DATEADD(day,-397,@NgayMau)), DATEADD(minute,1439,DATEADD(day,-393,@NgayMau)), NULL, N'Hết hiệu lực'),
-    (N'PBG080', N'PKT080', N'NV001', N'MHYANC226MA310008', DATEADD(minute,540,DATEADD(day,-410,@NgayMau)), DATEADD(minute,1439,DATEADD(day,-406,@NgayMau)), NULL, N'Hết hiệu lực');
+    (N'PBG080', N'PKT080', N'NV001', N'MHYANC226MA310008', DATEADD(minute,540,DATEADD(day,-410,@NgayMau)), DATEADD(minute,1439,DATEADD(day,-406,@NgayMau)), NULL, N'Hết hiệu lực')
+) AS v([maBaoGia], [maPKT], [maNhanVien], [VIN], [ngayLap], [ngayHetHan], [thoiGianXacNhan], [trangThai])
+JOIN dbo.[PhieuKiemTra] kt ON kt.[maPKT]=v.[maPKT] AND kt.[VIN]=v.[VIN];
 
 -- ChiTietPhieuBaoGia: 168 bản ghi
 INSERT INTO dbo.[ChiTietPhieuBaoGia] ([maBaoGia], [maDichVu], [maPhuTung], [soLuongPhuTung], [donGiaPhuTung], [chiPhiNhanCong], [trangThai])
@@ -2428,7 +2473,7 @@ UNION ALL SELECT N'Tồn kho đúng tối thiểu',COUNT(*) FROM dbo.TonKho WHER
 UNION ALL SELECT N'Tồn kho trên tối thiểu',COUNT(*) FROM dbo.TonKho WHERE soLuongHienTai>soLuongToiThieu
 UNION ALL SELECT N'Nhà cung cấp không email',COUNT(*) FROM dbo.NhaCungCap WHERE email IS NULL
 UNION ALL SELECT N'Dịch vụ miễn phí',COUNT(*) FROM dbo.DichVu WHERE donGia=0
-UNION ALL SELECT N'Phụ tùng miễn phí',COUNT(*) FROM dbo.PhuTung WHERE donGia=0
+UNION ALL SELECT N'Phụ tùng miễn phí',COUNT(*) FROM dbo.PhuTung WHERE donGia=0 AND maPhuTung<>'PT000'
 UNION ALL SELECT N'Hóa đơn không mã giảm',COUNT(*) FROM dbo.HoaDon WHERE maGiamGia IS NULL
 UNION ALL SELECT N'Hóa đơn có mã giảm',COUNT(*) FROM dbo.HoaDon WHERE maGiamGia IS NOT NULL
 UNION ALL SELECT N'Chi tiết chỉ dịch vụ',COUNT(*) FROM dbo.ChiTietHoaDon WHERE maDichVu IS NOT NULL AND maPhuTung IS NULL

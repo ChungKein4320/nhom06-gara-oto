@@ -70,6 +70,7 @@ public final class ThuongMaiDAO {
         Set<String> codes=new HashSet<>();
         for(SaleItem item:basket) {
             QuyTrinhDAO.require(item!=null && item.part()!=null && item.quantity()>0 && item.expectedPrice()!=null && item.expectedPrice().signum()>=0,"Phụ tùng hoặc số lượng không hợp lệ.");
+            QuyTrinhDAO.require(!"PT000".equals(item.part()),"PT000 là mã biểu thị không sử dụng phụ tùng, không thể bán.");
             QuyTrinhDAO.require(codes.add(item.part()),"Giỏ hàng có mã phụ tùng trùng.");
         }
         return QuyTrinhDAO.transaction(conn -> {
@@ -100,6 +101,7 @@ public final class ThuongMaiDAO {
         Set<String> codes=new HashSet<>();
         for(SaleItem item:basket) {
             QuyTrinhDAO.require(item.part()!=null && item.quantity()>0 && item.expectedPrice()!=null && item.expectedPrice().signum()>=0,"Phụ tùng hoặc số lượng không hợp lệ.");
+            QuyTrinhDAO.require(!"PT000".equals(item.part()),"PT000 là mã biểu thị không sử dụng phụ tùng, không thể bán.");
             QuyTrinhDAO.require(codes.add(item.part()),"Giỏ hàng có mã phụ tùng trùng.");
         }
         QuyTrinhDAO.transaction(conn -> {
@@ -129,6 +131,7 @@ public final class ThuongMaiDAO {
         });
     }
     public static void allocate(String repair,String service,String part) throws SQLException {
+        QuyTrinhDAO.require(!"PT000".equals(part),"PT000 không phải phụ tùng cần cấp phát.");
         QuyTrinhDAO.transaction(conn -> {
             Map<String,Object> header=QuyTrinhDAO.lock(conn,"PhieuSuaChua",repair);
             QuyTrinhDAO.require(Set.of("Chờ sửa chữa","Đang sửa chữa").contains(String.valueOf(header.get("trangThai"))),"Không thể cấp phát cho phiếu đã hoàn thành/hủy.");

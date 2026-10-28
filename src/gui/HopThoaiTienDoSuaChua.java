@@ -36,7 +36,8 @@ final class HopThoaiTienDoSuaChua {
                     boolean done="Hoàn thành".equals(line.get("trangThaiHangMuc")); all &= done;
                     pending |= !"Đạt".equals(line.get("ketQuaNghiemThu"));
                     JPanel pnlLine=GiaoDien.card(new BorderLayout(8,8));
-                    String service=String.valueOf(line.get("maDichVu")),part=String.valueOf(line.get("maPhuTung"));
+                    String service=String.valueOf(line.get("maDichVu"));
+                    String part="PT000".equals(line.get("maPhuTung")) ? "Không sử dụng phụ tùng" : String.valueOf(line.get("maPhuTung"));
                     pnlLine.add(GiaoDien.label(service+" / "+part+" — "+line.get("trangThaiHangMuc")+" — Bảo hành: "+line.get("thoiHanBaoHanh")+" tháng",13,true,DinhDangKeThua.TEXT),BorderLayout.CENTER);
                     boolean needsParts =
                             "Thiếu phụ tùng".equals(line.get("trangThaiHangMuc"));
@@ -57,19 +58,17 @@ final class HopThoaiTienDoSuaChua {
                     );
 
                     btnDone.addActionListener(e -> {
-                        JSpinner spnMonths = new JSpinner(new SpinnerNumberModel(
-                                ((Number) line.get("thoiHanBaoHanh")).intValue(),
-                                0, 1200, 1
-                        ));
+                        JComboBox<String> cboWarranty = new JComboBox<>(
+                                new String[]{"2 năm", "5 năm", "10 năm"}
+                        );
+                        int[] warrantyMonths = {24, 60, 120};
 
                         JPanel pnlWarranty = new JPanel(new BorderLayout(8, 8));
                         pnlWarranty.add(
-                                new JLabel(
-                                        "Thời hạn bảo hành hạng mục (tháng, 0 = không bảo hành)"
-                                ),
+                                new JLabel("Thời hạn bảo hành hạng mục"),
                                 BorderLayout.NORTH
                         );
-                        pnlWarranty.add(spnMonths);
+                        pnlWarranty.add(cboWarranty, BorderLayout.CENTER);
 
                         if (JOptionPane.showConfirmDialog(
                                 winDialog,
@@ -81,10 +80,9 @@ final class HopThoaiTienDoSuaChua {
                         }
 
                         try {
-                            spnMonths.commitEdit();
                             QuyTrinhDAO.completeRepairItem(
                                     id, service, part,
-                                    ((Number) spnMonths.getValue()).intValue()
+                                    warrantyMonths[cboWarranty.getSelectedIndex()]
                             );
                             load[0].run();
                         } catch (Exception ex) {

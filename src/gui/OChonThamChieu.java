@@ -3,6 +3,7 @@ package gui;
 import dao.Schema;
 import java.sql.SQLException;
 import java.util.Map;
+import java.util.Set;
 import javax.swing.*;
 import javax.swing.event.PopupMenuEvent;
 import javax.swing.event.PopupMenuListener;
@@ -48,6 +49,8 @@ final class OChonThamChieu extends OChonTimKiem<LuaChonDuLieu.Choice> {
         };
         String filter=owner.equals("LichBaoHanh") && field.equals("maPSC")
                 ? " WHERE [trangThai]=N'Hoàn tất'" : "";
+        if(target.equals("PhuTung") && Set.of("TonKho","ChiTietPhieuNhapKho","ChiTietHoaDon").contains(owner))
+            filter=" WHERE [maPhuTung]<>'PT000'";
         query = "SELECT [" + primary + "], CONCAT([" + primary + "], N' — ', " + description
                 + ") FROM dbo.[" + target + "]" + filter + " ORDER BY [" + primary + "]";
         setFont(GiaoDien.font(12, false));

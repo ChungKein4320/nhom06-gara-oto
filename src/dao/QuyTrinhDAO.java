@@ -106,7 +106,7 @@ public final class QuyTrinhDAO {
             }
             case "PhieuBaoGia" -> {
                 Map<String,Object> check=lock(conn,"PhieuKiemTra",row.get("maPKT"));
-                equal(row,check,"VIN"); chronological(row,"ngayLap",check,"ngayKiemTra");
+                equal(row,check,"maKhachHang","VIN"); chronological(row,"ngayLap",check,"ngayKiemTra");
             }
             case "PhieuSuaChua" -> {
                 Map<String,Object> quote=lock(conn,"PhieuBaoGia",row.get("maBaoGia"));
@@ -155,6 +155,44 @@ public final class QuyTrinhDAO {
             return null;
         });
     }
+    public record IntakeResult(String maPTN,String maKhachHang,String VIN) { }
+    public static IntakeResult createIntake(Map<String,Object> header,boolean createCustomer,String customerId,
+            Map<String,Object> customer,boolean createVehicle,String vehicleId,Map<String,Object> vehicle,
+            List<Map<String,Object>> details) throws SQLException {
+        return transaction(conn -> {
+            require(details!=null && !details.isEmpty(),"Phiếu tiếp nhận phải có ít nhất một yêu cầu dịch vụ.");
+            String resolvedCustomer=customerId;
+            if(createCustomer) {
+                require(customer!=null,"Vui lòng nhập hồ sơ khách hàng mới.");
+                resolvedCustomer=new CoSoDAO("KhachHang").insert(conn,customer);
+            } else {
+                lock(conn,"KhachHang",resolvedCustomer);
+            }
+
+            BigDecimal odometer=new BigDecimal(String.valueOf(header.get("soODO")));
+            String resolvedVin=vehicleId;
+            if(createVehicle) {
+                require(vehicle!=null,"Vui lòng nhập hồ sơ phương tiện mới.");
+                Map<String,Object> vehicleRow=new LinkedHashMap<>(vehicle);
+                vehicleRow.put("soKM",odometer);
+                resolvedVin=new CoSoDAO("PhuongTien").insert(conn,vehicleRow);
+            } else {
+                Map<String,Object> currentVehicle=lock(conn,"PhuongTien",resolvedVin);
+                BigDecimal currentOdometer=(BigDecimal)currentVehicle.get("soKM");
+                require(odometer.compareTo(currentOdometer)>=0,"Số ODO tiếp nhận không được thấp hơn số km đang lưu của phương tiện.");
+                if(odometer.compareTo(currentOdometer)>0)
+                    execute(conn,"UPDATE dbo.PhuongTien SET soKM=? WHERE VIN=?",odometer,resolvedVin);
+            }
+
+            Map<String,Object> receipt=new LinkedHashMap<>(header);
+            receipt.put("maKhachHang",resolvedCustomer);
+            receipt.put("VIN",resolvedVin);
+            guardWrite(conn,"PhieuTiepNhan",receipt,null);
+            String receiptId=new CoSoDAO("PhieuTiepNhan").insert(conn,receipt);
+            insertDetails(conn,"ChiTietPhieuTiepNhan","maPTN",receiptId,details);
+            return new IntakeResult(receiptId,resolvedCustomer,resolvedVin);
+        });
+    }
     private static void idHolderInsert(Connection conn,CoSoDAO dao,Map<String,Object> header,List<Map<String,Object>> details,String child,String fk) throws SQLException {
         insertDetails(conn,child,fk,dao.insert(conn,header),details);
     }
@@ -185,7 +223,9 @@ public final class QuyTrinhDAO {
             for(Map<String,Object> line:quoted) {
                 Map<String,Object> detail=new LinkedHashMap<>();
                 detail.put("maPSC",id); detail.put("maDichVu",line.get("maDichVu")); detail.put("maPhuTung",line.get("maPhuTung"));
-                detail.put("soLuongPhuTung",line.get("soLuongPhuTung")); detail.put("trangThaiHangMuc","Thiếu phụ tùng"); detail.put("ketQuaNghiemThu","Không đạt"); detail.put("thoiHanBaoHanh",0);
+                detail.put("soLuongPhuTung",line.get("soLuongPhuTung"));
+                detail.put("trangThaiHangMuc","PT000".equals(line.get("maPhuTung")) ? "Đang sửa chữa" : "Thiếu phụ tùng");
+                detail.put("ketQuaNghiemThu","Không đạt"); detail.put("thoiHanBaoHanh",0);
                 new CoSoDAO("ChiTietPhieuSuaChua").insert(conn,detail);
             }
             return id;
@@ -253,7 +293,9 @@ public final class QuyTrinhDAO {
                 Map<String,Object> price=one(conn,"SELECT donGiaPhuTung,chiPhiNhanCong FROM dbo.ChiTietPhieuBaoGia WHERE maBaoGia=? AND maDichVu=? AND maPhuTung=?",repair.get("maBaoGia"),line.get("maDichVu"),line.get("maPhuTung"));
                 BigDecimal unit=(BigDecimal)price.get("donGiaPhuTung"); int quantity=((Number)line.get("soLuongPhuTung")).intValue();
                 parts=parts.add(unit.multiply(BigDecimal.valueOf(quantity)));
-                lines.add(Map.of("maDichVu",line.get("maDichVu"),"maPhuTung",line.get("maPhuTung"),"soLuong",quantity,"donGia",unit));
+                if(!"PT000".equals(line.get("maPhuTung"))) {
+                    lines.add(Map.of("maDichVu",line.get("maDichVu"),"maPhuTung",line.get("maPhuTung"),"soLuong",quantity,"donGia",unit));
+                }
                 serviceFees.merge(line.get("maDichVu"),(BigDecimal)price.get("chiPhiNhanCong"),BigDecimal::add);
             }
             for(var fee:serviceFees.entrySet()) { labor=labor.add(fee.getValue()); lines.add(Map.of("maDichVu",fee.getKey(),"soLuong",1,"donGia",fee.getValue())); }
@@ -302,10 +344,10 @@ public final class QuyTrinhDAO {
             require(Set.of("Chờ sửa chữa","Đang sửa chữa").contains(String.valueOf(repair.get("trangThai"))),"Chỉ hủy phiếu trước nghiệm thu.");
             require(!exists(conn,"SELECT 1 FROM dbo.HoaDon WHERE maPSC=?",id),"Phiếu đã có hóa đơn, không thể hủy.");
             List<LinkedHashMap<String,Object>> lines=new CoSoDAO("ChiTietPhieuSuaChua").getAll(conn,Map.of("maPSC",id));
-            for(Map<String,Object> line:lines) if(Set.of("Đang sửa chữa","Hoàn thành").contains(String.valueOf(line.get("trangThaiHangMuc")))) {
+            for(Map<String,Object> line:lines) if(!"PT000".equals(line.get("maPhuTung")) && Set.of("Đang sửa chữa","Hoàn thành").contains(String.valueOf(line.get("trangThaiHangMuc")))) {
                 require(execute(conn,"UPDATE dbo.TonKho SET soLuongHienTai=soLuongHienTai+? WHERE maPhuTung=?",line.get("soLuongPhuTung"),line.get("maPhuTung"))==1,"Không thể hoàn tồn kho cho phụ tùng đã cấp.");
             }
-            execute(conn,"UPDATE dbo.ChiTietPhieuSuaChua SET trangThaiHangMuc=N'Thiếu phụ tùng' WHERE maPSC=?",id);
+            execute(conn,"UPDATE dbo.ChiTietPhieuSuaChua SET trangThaiHangMuc=N'Thiếu phụ tùng' WHERE maPSC=? AND maPhuTung<>'PT000'",id);
             execute(conn,"UPDATE dbo.PhieuSuaChua SET trangThai=N'Đã hủy' WHERE maPSC=?",id); return null;
         });
     }
