@@ -7,6 +7,7 @@ public class LichSuTichDiem {
     private String maKhachHang;
     private String maHoaDon;
     private Timestamp ngayTichDiem;
+    private Timestamp ngayHetHan;
     private Integer soDiem;
     private String lyDo;
 
@@ -43,6 +44,9 @@ public class LichSuTichDiem {
     public void setNgayTichDiem(Timestamp value) {
         this.ngayTichDiem = value;
     }
+
+    public Timestamp getNgayHetHan() { return ngayHetHan; }
+    public void setNgayHetHan(Timestamp value) { this.ngayHetHan = value; }
 
     public Integer getSoDiem() {
         return soDiem;

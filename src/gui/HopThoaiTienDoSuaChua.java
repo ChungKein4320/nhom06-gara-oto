@@ -37,8 +37,11 @@ final class HopThoaiTienDoSuaChua {
                     pending |= !"Đạt".equals(line.get("ketQuaNghiemThu"));
                     JPanel pnlLine=GiaoDien.card(new BorderLayout(8,8));
                     String service=String.valueOf(line.get("maDichVu"));
-                    String part="PT000".equals(line.get("maPhuTung")) ? "Không sử dụng phụ tùng" : String.valueOf(line.get("maPhuTung"));
-                    pnlLine.add(GiaoDien.label(service+" / "+part+" — "+line.get("trangThaiHangMuc")+" — Bảo hành: "+line.get("thoiHanBaoHanh")+" tháng",13,true,DinhDangKeThua.TEXT),BorderLayout.CENTER);
+                    String partId=String.valueOf(line.get("maPhuTung"));
+                    String partLabel="PT000".equals(partId) ? "Không sử dụng phụ tùng" : partId;
+                    int currentWarrantyMonths=((Number)line.get("thoiHanBaoHanh")).intValue();
+                    String warrantyText=currentWarrantyMonths==0 ? "Không bảo hành" : "Bảo hành: "+currentWarrantyMonths+" tháng";
+                    pnlLine.add(GiaoDien.label(service+" / "+partLabel+" — "+line.get("trangThaiHangMuc")+" — "+warrantyText,13,true,DinhDangKeThua.TEXT),BorderLayout.CENTER);
                     boolean needsParts =
                             "Thiếu phụ tùng".equals(line.get("trangThaiHangMuc"));
 
@@ -59,33 +62,56 @@ final class HopThoaiTienDoSuaChua {
 
                     btnDone.addActionListener(e -> {
                         JComboBox<String> cboWarranty = new JComboBox<>(
-                                new String[]{"2 năm", "5 năm", "10 năm"}
+                                new String[]{"2 năm", "5 năm", "10 năm", "Không bảo hành"}
                         );
-                        int[] warrantyMonths = {24, 60, 120};
+                        int[] warrantyMonths = {24, 60, 120, 0};
 
                         JPanel pnlWarranty = new JPanel(new BorderLayout(8, 8));
+                        int issued = ((Number) line.get("soLuongCapPhat")).intValue();
+                        int priorReturned = ((Number) line.get("soLuongHoanTra")).intValue();
+                        JTextField txtUsed = new JTextField(String.valueOf(issued-priorReturned));
                         pnlWarranty.add(
                                 new JLabel("Thời hạn bảo hành hạng mục"),
                                 BorderLayout.NORTH
                         );
                         pnlWarranty.add(cboWarranty, BorderLayout.CENTER);
+                        if (!"PT000".equals(line.get("maPhuTung"))) {
+                            JPanel pnlInputs = new JPanel(new GridLayout(0, 1, 4, 4));
+                            pnlInputs.add(new JLabel("Số phụ tùng thực tế đã sử dụng (phần còn lại sẽ ghi nhận trả kho):"));
+                            pnlInputs.add(txtUsed);
+                            pnlInputs.add(new JLabel("Thời hạn bảo hành hạng mục"));
+                            pnlInputs.add(cboWarranty);
+                            pnlWarranty.removeAll();
+                            pnlWarranty.add(pnlInputs, BorderLayout.CENTER);
+                        }
 
                         if (JOptionPane.showConfirmDialog(
                                 winDialog,
                                 pnlWarranty,
-                                "Xác nhận đã sửa " + service + " / " + part,
+                                "Xác nhận đã sửa " + service + " / " + partLabel,
                                 JOptionPane.OK_CANCEL_OPTION
                         ) != JOptionPane.OK_OPTION) {
                             return;
                         }
 
                         try {
+                            int used = "PT000".equals(line.get("maPhuTung"))
+                                    ? 0 : Integer.parseInt(txtUsed.getText().trim());
+                            String warehouseEmployee = null;
+                            if (!"PT000".equals(line.get("maPhuTung")) && used+priorReturned < issued) {
+                                warehouseEmployee = ThaoTacNghiepVu.choose(
+                                        winDialog, "NhanVien", "maNhanVien",
+                                        "Nhân viên kho xác nhận phụ tùng trả"
+                                );
+                                if (warehouseEmployee == null) return;
+                            }
                             QuyTrinhDAO.completeRepairItem(
-                                    id, service, part,
-                                    warrantyMonths[cboWarranty.getSelectedIndex()]
+                                    id, service, partId,
+                                    warrantyMonths[cboWarranty.getSelectedIndex()], used,
+                                    warehouseEmployee
                             );
                             load[0].run();
-                        } catch (Exception ex) {
+                        } catch (NumberFormatException | SQLException ex) {
                             JOptionPane.showMessageDialog(
                                     winDialog, ex.getMessage(),
                                     "Không thể xác nhận", JOptionPane.ERROR_MESSAGE

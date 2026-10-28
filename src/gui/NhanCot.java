@@ -19,6 +19,7 @@ public final class NhanCot {
             {"soDienThoai", "Số điện thoại"}, {"email", "Email"},
             {"diaChi", "Địa chỉ"}, {"vaiTro", "Vai trò"}, {"trangThai", "Trạng thái"},
             {"maKhachHang", "Mã khách hàng"}, {"hoTenKH", "Họ tên khách hàng"},
+            {"maKhachHangChuHienTai", "Mã chủ xe hiện tại"}, {"maNguoiDuyetHuy", "Nhân viên duyệt hủy"}, {"lyDoHuy", "Lý do hủy"},
             {"VIN", "Số khung (VIN)"}, {"bienSo", "Biển số"}, {"hangXe", "Hãng xe"},
             {"dongXe", "Dòng xe"}, {"mauXe", "Màu xe"}, {"namSanXuat", "Năm sản xuất"},
             {"soMay", "Số máy"}, {"soKm", "Số km"},
@@ -43,6 +44,8 @@ public final class NhanCot {
             {"yeuCauDichVu", "Yêu cầu dịch vụ"}, {"hangMucKiemTra", "Hạng mục kiểm tra"},
             {"ketQuaChanDoan", "Kết quả chẩn đoán"}, {"ketQuaKiemTra", "Kết quả kiểm tra"},
             {"soLuongPhuTung", "Số lượng phụ tùng"}, {"donGiaPhuTung", "Đơn giá phụ tùng"},
+            {"soLuongCapPhat", "Số lượng cấp phát"}, {"soLuongSuDung", "Số lượng sử dụng"}, {"soLuongHoanTra", "Số lượng hoàn trả"},
+            {"ngayCapPhat", "Ngày cấp phát"}, {"maNhanVienCapPhat", "Nhân viên cấp phát"}, {"ngayHoanTra", "Ngày hoàn trả"}, {"maNhanVienXacNhanHoanTra", "Nhân viên xác nhận hoàn trả"},
             {"chiPhiNhanCong", "Chi phí nhân công"}, {"trangThaiHangMuc", "Trạng thái hạng mục"},
             {"ketQuaNghiemThu", "Kết quả nghiệm thu"},
             {"ngayBatDauBaoHanh", "Ngày bắt đầu bảo hành"}, {"thoiHanBaoHanh", "Thời hạn bảo hành"},
@@ -53,9 +56,11 @@ public final class NhanCot {
             {"thueVAT", "Thuế VAT"}, {"giamGia", "Giảm giá"},
             {"trangThaiThanhToan", "Trạng thái thanh toán"}, {"soLuong", "Số lượng"},
             {"maLBH", "Mã lịch bảo hành"}, {"ngayXuLy", "Ngày xử lý"},
+            {"mocDiem", "Mốc điểm"}, {"ngayBatDauChuKy", "Ngày đầu chu kỳ"},
             {"ketQuaXuLy", "Kết quả xử lý"}, {"ghiChu", "Ghi chú"},
             {"maLichNhac", "Mã lịch nhắc"}, {"ngayNhac", "Ngày nhắc"}, {"noiDung", "Nội dung"},
             {"maLichSuTD", "Mã lịch sử tích điểm"}, {"ngayTichDiem", "Ngày tích điểm"},
+            {"ngayHetHan", "Ngày hết hạn"},
             {"soDiem", "Số điểm"}, {"lyDo", "Lý do"}
         };
         for (String[] label : labels) LABELS.put(label[0], label[1]);

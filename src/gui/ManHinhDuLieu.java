@@ -33,7 +33,6 @@ public final class ManHinhDuLieu extends JPanel {
         ROUTES.put("Hóa đơn", "HoaDon");
         ROUTES.put("Lịch sử tích điểm", "LichSuTichDiem");
         ROUTES.put("Khuyến mãi/Tích điểm", "LichSuTichDiem");
-        ROUTES.put("Phụ tùng", "PhuTung");
         ROUTES.put("Nhà cung cấp", "NhaCungCap");
         ROUTES.put("Nhân viên", "NhanVien");
         ROUTES.put("Khách hàng", "KhachHang");
@@ -49,6 +48,7 @@ public final class ManHinhDuLieu extends JPanel {
     }
 
     private final String tableName;
+    private final String employeeId;
     private transient CoSoDAO dao;
     private final JTable tblTable;
     private final DefaultTableModel model;
@@ -72,6 +72,11 @@ public final class ManHinhDuLieu extends JPanel {
     }
 
     public ManHinhDuLieu(String page) {
+        this(page,null);
+    }
+
+    public ManHinhDuLieu(String page,String employeeId) {
+        this.employeeId=employeeId;
         setLayout(new BorderLayout(0, 18));
         setBackground(GiaoDien.BG);
         setBorder(new EmptyBorder(26, 26, 26, 26));
@@ -231,14 +236,12 @@ public final class ManHinhDuLieu extends JPanel {
 
         btnEdit.setEnabled(
                 !tableName.startsWith("ChiTiet")
-                && !Set.of(
-                        "HoaDon", "LichSuTichDiem"
-                ).contains(tableName)
+                && !Set.of("HoaDon", "LichSuTichDiem").contains(tableName)
         );
         btnDelete.setEnabled(
                 !tableName.startsWith("ChiTiet")
                 && QuyTrinhDAO.detailTable(tableName) == null
-                && !tableName.equals("LichSuTichDiem")
+                && !Set.of("LichSuTichDiem").contains(tableName)
         );
 
         btnRefresh.addActionListener(e -> lamMoi());
@@ -269,6 +272,9 @@ public final class ManHinhDuLieu extends JPanel {
             );
             btnAllocate.addActionListener(e -> allocate());
             pnlButtons.add(btnAllocate);
+            JButton btnReturn = GiaoDien.button("Ghi nhận trả kho", GiaoDien.CREAM, GiaoDien.NAV);
+            btnReturn.addActionListener(e -> recordReturn());
+            pnlButtons.add(btnReturn);
         }
 
         if (!Set.of("TonKho", "HoaDon").contains(tableName)) {
@@ -356,7 +362,6 @@ public final class ManHinhDuLieu extends JPanel {
         String defaultState = switch (page) {
             case "Phiếu báo giá" -> "Còn hiệu lực";
             case "Phiếu sửa chữa" -> "Chờ sửa chữa";
-            case "Cấp phát phụ tùng" -> "Thiếu phụ tùng";
             default -> null;
         };
 
@@ -480,7 +485,7 @@ public final class ManHinhDuLieu extends JPanel {
             ThuongMaiDAO.allocate(
                     String.valueOf(model.getValueAt(row, 0)),
                     String.valueOf(model.getValueAt(row, 1)),
-                    String.valueOf(model.getValueAt(row, 2))
+                    String.valueOf(model.getValueAt(row, 2)), employeeId
             );
             load();
         } catch (SQLException ex) {
@@ -488,6 +493,31 @@ public final class ManHinhDuLieu extends JPanel {
                     this, ex.getMessage(),
                     "Không thể cấp phát", JOptionPane.ERROR_MESSAGE
             );
+        }
+    }
+
+    private void recordReturn() {
+        int selected=tblTable.getSelectedRow();
+        if(selected<0) { JOptionPane.showMessageDialog(this,"Vui lòng chọn hạng mục cần ghi nhận trả kho."); return; }
+        int row=tblTable.convertRowIndexToModel(selected);
+        try {
+            int issued=Integer.parseInt(String.valueOf(model.getValueAt(row,Arrays.asList(displayFields).indexOf("soLuongCapPhat"))));
+            int used=Integer.parseInt(String.valueOf(model.getValueAt(row,Arrays.asList(displayFields).indexOf("soLuongSuDung"))));
+            int returned=Integer.parseInt(String.valueOf(model.getValueAt(row,Arrays.asList(displayFields).indexOf("soLuongHoanTra"))));
+            int remaining=issued-used-returned;
+            if(remaining<=0) throw new SQLException("Hạng mục không còn số lượng phụ tùng có thể trả.");
+            String quantity=JOptionPane.showInputDialog(this,"Số phụ tùng thực tế nhận lại (còn có thể trả: "+remaining+"):",remaining);
+            if(quantity==null) return;
+            String employee=employeeId;
+            if(employee==null || employee.isBlank()) employee=ThaoTacNghiepVu.choose(this,"NhanVien","maNhanVien","Nhân viên kho xác nhận hàng trả");
+            if(employee==null) return;
+            QuyTrinhDAO.recordPartReturn(
+                    String.valueOf(model.getValueAt(row,0)),String.valueOf(model.getValueAt(row,1)),
+                    String.valueOf(model.getValueAt(row,2)),Integer.parseInt(quantity.trim()),employee
+            );
+            load();
+        } catch(Exception ex) {
+            JOptionPane.showMessageDialog(this,ex.getMessage(),"Không thể ghi nhận trả kho",JOptionPane.ERROR_MESSAGE);
         }
     }
 

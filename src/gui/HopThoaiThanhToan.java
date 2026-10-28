@@ -77,10 +77,11 @@ final class HopThoaiThanhToan extends JDialog {
                 }
             }
             try(PreparedStatement ps=conn.prepareStatement("SELECT maPhuongThuc,tenPhuongThuc FROM dbo.PhuongThucThanhToan ORDER BY maPhuongThuc");ResultSet rs=ps.executeQuery()) {
+                boolean cashAdded=false,qrAdded=false;
                 while(rs.next()) {
                     String name=rs.getString(2),lower=name.toLowerCase(Locale.ROOT);
-                    if(lower.contains("tiền mặt")) cmbMethod.addItem(new Method(rs.getString(1),"Tiền mặt",false));
-                    else if(lower.contains("qr") || lower.contains("chuyển khoản")) cmbMethod.addItem(new Method(rs.getString(1),"QR chuyển khoản",true));
+                    if(lower.contains("tiền mặt") && !cashAdded) { cmbMethod.addItem(new Method(rs.getString(1),"Tiền mặt",false)); cashAdded=true; }
+                    else if(lower.contains("qr") && !qrAdded) { cmbMethod.addItem(new Method(rs.getString(1),"QR chuyển khoản",true)); qrAdded=true; }
                 }
             }
             if(cmbMethod.getItemCount()==0) throw new SQLException("Chưa có phương thức Tiền mặt/QR Code trong dữ liệu.");
