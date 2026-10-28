@@ -1,7 +1,7 @@
 package gui;
+import java.awt.*;
 import javax.swing.*;
 import javax.swing.border.*;
-import java.awt.*;
 public final class ManHinhChinh extends JFrame {
     @java.io.Serial
     private static final long serialVersionUID = 1L;
@@ -122,8 +122,7 @@ public final class ManHinhChinh extends JFrame {
             case "Phiếu tiếp nhận", "Phiếu kiểm tra", "Phiếu báo giá", "Phiếu sửa chữa", "Bảo hành", "Lịch nhắc bảo dưỡng" -> "NHÂN VIÊN KỸ THUẬT";
             case "Tồn kho", "Cấp phát phụ tùng", "Nhập kho phụ tùng", "Lịch sử sửa chữa" -> "NHÂN VIÊN KHO";
             case "Hóa đơn", "Lịch sử tích điểm", "Khuyến mãi/Tích điểm", "Phụ tùng" -> "NHÂN VIÊN BÁN HÀNG";
-            case "Nhà cung cấp", "Nhân viên", "Khách hàng", "Phương tiện", "Danh mục dịch vụ", "Danh mục phụ tùng", "Tài khoản", "Khuyến mãi" -> "NHÂN VIÊN QUẢN LÝ";
-            case "Thống kê" -> "BÁO CÁO";
+            case "Nhà cung cấp", "Nhân viên", "Khách hàng", "Phương tiện", "Danh mục dịch vụ", "Danh mục phụ tùng", "Tài khoản", "Khuyến mãi", "Thống kê" -> "NHÂN VIÊN QUẢN LÝ";
             default -> null;
         };
     }
@@ -132,6 +131,7 @@ public final class ManHinhChinh extends JFrame {
         Color textColor = GiaoDien.MINT;
         Color expandedBg = new Color(0x1D3840);
         JButton btnHeader = new JButton("  " + label) {
+            private static final long serialVersionUID = 1L;
             @Override protected void paintComponent(Graphics g) {
                 Graphics2D q = (Graphics2D) g.create();
                 q.setColor((expanded || getModel().isRollover()) ? expandedBg : GiaoDien.NAV);
@@ -303,6 +303,7 @@ public final class ManHinhChinh extends JFrame {
             pnlBody.add(view,BorderLayout.CENTER);
         } else {
             JPanel pnlViewportWrap=new JPanel(new BorderLayout()) {
+                private static final long serialVersionUID = 1L;
                 @Override public Dimension getPreferredSize() {
                     Dimension d=super.getPreferredSize();
                     if(getParent() instanceof JViewport vp && vp.getWidth()>0) return new Dimension(vp.getWidth(),d.height);

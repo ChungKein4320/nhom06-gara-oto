@@ -5,8 +5,8 @@ import java.util.*;
 import javax.swing.*;
 import javax.swing.table.*;
 
-/** Kết hợp tìm kiếm và từng cột trạng thái mà không thay đổi model dữ liệu. */
 final class BoLocTrangThai extends JPanel {
+    private static final long serialVersionUID = 1L;
     private final JTable table;
     private final Map<Integer,JComboBox<String>> filters=new LinkedHashMap<>();
     private final Map<Integer, String> defaultStates = new HashMap<>();
@@ -65,10 +65,8 @@ final class BoLocTrangThai extends JPanel {
 
                 String defaultState = defaultStates.get(column);
                 if (defaultState != null) {
-                    // Vẫn hiện trạng thái mặc định dù chưa có bản ghi tương ứng.
                     values.add(defaultState);
 
-                    // Giữ lựa chọn của người dùng khi dữ liệu được tải lại.
                     if (selected != null && !"Tất cả".equals(selected)) {
                         values.add(selected.toString());
                     }

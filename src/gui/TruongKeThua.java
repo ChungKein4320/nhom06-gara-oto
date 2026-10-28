@@ -13,7 +13,7 @@ final class TruongKeThua {
     static Link link(String table) {
         return switch(table) {
             case "PhieuKiemTra" -> new Link("maPTN","PhieuTiepNhan","maKhachHang","VIN");
-            case "PhieuBaoGia" -> new Link("maPKT","PhieuKiemTra","VIN");
+            case "PhieuBaoGia" -> new Link("maPKT","PhieuKiemTra","maKhachHang","VIN");
             case "PhieuSuaChua" -> new Link("maBaoGia","PhieuBaoGia","maKhachHang","VIN");
             case "HoaDon","LichBaoHanh","LichNhacBaoDuong" -> new Link("maPSC","PhieuSuaChua","maKhachHang","VIN");
             default -> null;
