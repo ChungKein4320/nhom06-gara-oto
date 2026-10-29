@@ -36,33 +36,12 @@ final class HopThoaiTienDoSuaChua {
                     boolean done="Hoàn thành".equals(line.get("trangThaiHangMuc")); all &= done;
                     pending |= !"Đạt".equals(line.get("ketQuaNghiemThu"));
                     JPanel pnlLine=GiaoDien.card(new BorderLayout(8,8));
-                    String service = String.valueOf(line.get("maDichVu"));
-                    String partId = String.valueOf(line.get("maPhuTung"));
-                    boolean noPart = "PT000".equals(partId);
-
-                    String part = noPart ? "Không sử dụng phụ tùng" : partId;
-                    int quantity = ((Number) line.get("soLuongPhuTung")).intValue();
-                    int savedMonths = ((Number) line.get("thoiHanBaoHanh")).intValue();
-
-                    String warrantyText = savedMonths > 0
-                            ? savedMonths + " tháng"
-                            : "Không bảo hành";
-
-                    JPanel pnlInfo = new JPanel(new GridLayout(2, 1, 0, 5));
-                    pnlInfo.setOpaque(false);
-
-                    pnlInfo.add(GiaoDien.label(
-                            service + " / " + part + " — " + line.get("trangThaiHangMuc"),
-                            13, true, DinhDangKeThua.TEXT
-                    ));
-
-                    pnlInfo.add(GiaoDien.label(
-                            "Số lượng phụ tùng: " + quantity
-                                    + " — Bảo hành: " + warrantyText,
-                            12, false, DinhDangKeThua.TEXT
-                    ));
-
-                    pnlLine.add(pnlInfo, BorderLayout.CENTER);
+                    String service=String.valueOf(line.get("maDichVu"));
+                    String partId=String.valueOf(line.get("maPhuTung"));
+                    String partLabel="PT000".equals(partId) ? "Không sử dụng phụ tùng" : partId;
+                    int currentWarrantyMonths=((Number)line.get("thoiHanBaoHanh")).intValue();
+                    String warrantyText=currentWarrantyMonths==0 ? "Không bảo hành" : "Bảo hành: "+currentWarrantyMonths+" tháng";
+                    pnlLine.add(GiaoDien.label(service+" / "+partLabel+" — "+line.get("trangThaiHangMuc")+" — "+warrantyText,13,true,DinhDangKeThua.TEXT),BorderLayout.CENTER);
                     boolean needsParts =
                             "Thiếu phụ tùng".equals(line.get("trangThaiHangMuc"));
 
@@ -82,50 +61,29 @@ final class HopThoaiTienDoSuaChua {
                     );
 
                     btnDone.addActionListener(e -> {
-                    try {
-                        int months = 0;
+                        JComboBox<String> cboWarranty = new JComboBox<>(
+                                new String[]{"2 năm", "5 năm", "10 năm", "Không bảo hành"}
+                        );
+                        int[] warrantyMonths = {24, 60, 120, 0};
 
-                        // Lấy thời hạn bảo hành từ đúng phụ tùng của hạng mục.
-                        // Mở kết nối riêng vì kết nối tải màn hình đã đóng.
-                        if (!noPart) {
-                            try (Connection warrantyConn = KetNoiCSDL.getConnection()) {
-                                var parts = new CoSoDAO("PhuTung").getAll(
-                                        warrantyConn,
-                                        Map.of("maPhuTung", partId)
-                                );
-
-                                if (parts.isEmpty()) {
-                                    throw new SQLException(
-                                            "Không tìm thấy phụ tùng " + partId
-                                    );
-                                }
-
-                                Object value = parts.get(0).get("thoiHanBaoHanh");
-                                if (!(value instanceof Number)) {
-                                    throw new SQLException(
-                                            "Phụ tùng chưa có thời hạn bảo hành hợp lệ."
-                                    );
-                                }
-
-                                months = ((Number) value).intValue();
-
-                                if (months < 0) {
-                                    throw new SQLException(
-                                            "Thời hạn bảo hành không được âm."
-                                    );
-                                }
-                            }
+                        JPanel pnlWarranty = new JPanel(new BorderLayout(8, 8));
+                        int issued = ((Number) line.get("soLuongCapPhat")).intValue();
+                        int priorReturned = ((Number) line.get("soLuongHoanTra")).intValue();
+                        JTextField txtUsed = new JTextField(String.valueOf(issued-priorReturned));
+                        pnlWarranty.add(
+                                new JLabel("Thời hạn bảo hành hạng mục"),
+                                BorderLayout.NORTH
+                        );
+                        pnlWarranty.add(cboWarranty, BorderLayout.CENTER);
+                        if (!"PT000".equals(line.get("maPhuTung"))) {
+                            JPanel pnlInputs = new JPanel(new GridLayout(0, 1, 4, 4));
+                            pnlInputs.add(new JLabel("Số phụ tùng thực tế đã sử dụng (phần còn lại sẽ ghi nhận trả kho):"));
+                            pnlInputs.add(txtUsed);
+                            pnlInputs.add(new JLabel("Thời hạn bảo hành hạng mục"));
+                            pnlInputs.add(cboWarranty);
+                            pnlWarranty.removeAll();
+                            pnlWarranty.add(pnlInputs, BorderLayout.CENTER);
                         }
-
-                        String warrantyDisplay = months == 0
-                                ? "Không bảo hành"
-                                : months + " tháng";
-
-                        JPanel pnlWarranty = new JPanel(new GridLayout(0, 1, 0, 8));
-                        pnlWarranty.add(new JLabel("Phụ tùng: " + part));
-                        pnlWarranty.add(new JLabel(
-                                "Thời hạn bảo hành: " + warrantyDisplay
-                        ));
 
                         Object[] options = {"Xác nhận", "Hủy"};
 

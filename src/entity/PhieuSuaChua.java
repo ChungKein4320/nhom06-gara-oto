@@ -11,6 +11,8 @@ public class PhieuSuaChua {
     private Timestamp ngayLap;
     private Timestamp ngayHoanThanh;
     private String trangThai;
+    private String lyDoHuy;
+    private String maNguoiDuyetHuy;
 
     public PhieuSuaChua() { }
 
@@ -77,5 +79,10 @@ public class PhieuSuaChua {
     public void setTrangThai(String value) {
         this.trangThai = value;
     }
+
+    public String getLyDoHuy() { return lyDoHuy; }
+    public void setLyDoHuy(String value) { this.lyDoHuy = value; }
+    public String getMaNguoiDuyetHuy() { return maNguoiDuyetHuy; }
+    public void setMaNguoiDuyetHuy(String value) { this.maNguoiDuyetHuy = value; }
 
 }

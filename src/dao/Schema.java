@@ -26,7 +26,7 @@ public final class Schema {
                 "diaChi=nvarchar:255");
         define("PhuongTien", new String[] { "VIN" },
                 new String[] { "VIN", "bienSo", "hangXe", "dongXe", "mauXe", "namSanXuat", "soMay", "soKM" },
-                "VIN=varchar:17", "bienSo=varchar:8", "hangXe=nvarchar:100", "dongXe=nvarchar:100", "mauXe=nvarchar:50",
+                "VIN=varchar:17", "bienSo=varchar:8", "maKhachHangChuHienTai=varchar:5", "hangXe=nvarchar:100", "dongXe=nvarchar:100", "mauXe=nvarchar:50",
                 "namSanXuat=int:", "soMay=varchar:100", "soKM=decimal:12,2");
         define("DichVu", new String[] { "maDichVu" }, new String[] { "maDichVu", "tenDichVu", "donGia", "trangThai" },
                 "maDichVu=varchar:5", "tenDichVu=nvarchar:150", "moTa=nvarchar:500", "donGia=decimal:18,2",
@@ -48,9 +48,9 @@ public final class Schema {
                 new String[] { "maTonKho", "maPhuTung", "soLuongHienTai", "soLuongToiThieu" }, "maTonKho=varchar:6",
                 "maPhuTung=varchar:5", "soLuongHienTai=int:", "soLuongToiThieu=int:");
         define("MaGiamGia", new String[] { "maGiamGia" },
-                new String[] { "maGiamGia", "maKhachHang", "mucGiam", "ngayTao", "ngayHetHan", "trangThai" },
+                new String[] { "maGiamGia", "maKhachHang", "mucGiam", "ngayTao", "ngayHetHan", "trangThai", "mocDiem", "ngayBatDauChuKy" },
                 "maGiamGia=varchar:6", "maKhachHang=varchar:5", "mucGiam=decimal:5,2", "ngayTao=datetime2:0",
-                "ngayHetHan=datetime2:0", "trangThai=nvarchar:50");
+                "ngayHetHan=datetime2:0", "trangThai=nvarchar:50", "mocDiem=int:", "ngayBatDauChuKy=datetime2:0");
         define("PhieuTiepNhan", new String[] { "maPTN" },
                 new String[] { "maPTN", "maKhachHang", "maNhanVien", "VIN", "ngayTiepNhan", "soODO" },
                 "maPTN=varchar:6", "maKhachHang=varchar:5", "maNhanVien=varchar:5", "VIN=varchar:17",
@@ -80,12 +80,14 @@ public final class Schema {
         define("PhieuSuaChua", new String[] { "maPSC" },
                 new String[] { "maPSC", "maBaoGia", "maKhachHang", "VIN", "maNhanVien", "ngayLap", "trangThai" },
                 "maPSC=varchar:6", "maBaoGia=varchar:6", "maKhachHang=varchar:5", "VIN=varchar:17",
-                "maNhanVien=varchar:5", "ngayLap=datetime2:0", "ngayHoanThanh=datetime2:0", "trangThai=nvarchar:50");
+                "maNhanVien=varchar:5", "maNguoiDuyetHuy=varchar:5", "ngayLap=datetime2:0", "ngayHoanThanh=datetime2:0", "trangThai=nvarchar:50", "lyDoHuy=nvarchar:500");
         define("ChiTietPhieuSuaChua", new String[] { "maPSC", "maDichVu", "maPhuTung" },
                 new String[] { "maPSC", "maDichVu", "maPhuTung", "trangThaiHangMuc", "soLuongPhuTung",
                         "ketQuaNghiemThu", "thoiHanBaoHanh" },
                 "maPSC=varchar:6", "maDichVu=varchar:5", "maPhuTung=varchar:5", "trangThaiHangMuc=nvarchar:50",
-                "soLuongPhuTung=int:", "ketQuaNghiemThu=nvarchar:20", "ngayBatDauBaoHanh=datetime2:0",
+                "soLuongPhuTung=int:", "soLuongCapPhat=int:", "soLuongSuDung=int:", "soLuongHoanTra=int:",
+                "ngayCapPhat=datetime2:0", "maNhanVienCapPhat=varchar:5", "ngayHoanTra=datetime2:0",
+                "maNhanVienXacNhanHoanTra=varchar:5", "ketQuaNghiemThu=nvarchar:20", "ngayBatDauBaoHanh=datetime2:0",
                 "thoiHanBaoHanh=int:", "ngayHetHanBaoHanh=datetime2:0");
         define("PhieuNhapKho", new String[] { "maPNK" },
                 new String[] { "maPNK", "maNCC", "maNhanVien", "ngayNhap", "trangThai" }, "maPNK=varchar:6",
@@ -107,7 +109,7 @@ public final class Schema {
                 "donGia=decimal:18,2");
         define("LichBaoHanh", new String[] { "maLBH" },
                 new String[] { "maLBH", "maPSC", "maNhanVien", "maKhachHang", "VIN", "ngayXuLy", "ketQuaXuLy" },
-                "maLBH=varchar:6", "maPSC=varchar:6", "maNhanVien=varchar:5", "maKhachHang=varchar:5", "VIN=varchar:17",
+                "maLBH=varchar:6", "maPSC=varchar:6", "maDichVu=varchar:5", "maPhuTung=varchar:5", "maNhanVien=varchar:5", "maKhachHang=varchar:5", "VIN=varchar:17",
                 "ngayXuLy=datetime2:0", "ketQuaXuLy=nvarchar:500", "ghiChu=nvarchar:500");
         define("LichNhacBaoDuong", new String[] { "maLichNhac" },
                 new String[] { "maLichNhac", "maKhachHang", "maPSC", "VIN", "ngayNhac", "noiDung", "trangThai" },
@@ -116,7 +118,7 @@ public final class Schema {
         define("LichSuTichDiem", new String[] { "maLichSuTD" },
                 new String[] { "maLichSuTD", "maKhachHang", "maHoaDon", "ngayTichDiem", "soDiem", "lyDo" },
                 "maLichSuTD=varchar:5", "maKhachHang=varchar:5", "maHoaDon=varchar:5", "ngayTichDiem=datetime2:0",
-                "soDiem=int:", "lyDo=nvarchar:255");
+                "ngayHetHan=datetime2:0", "soDiem=int:", "lyDo=nvarchar:255");
     }
 
     private static void define(String table, String[] keys, String[] required, String... specs) {
