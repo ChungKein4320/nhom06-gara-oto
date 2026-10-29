@@ -6,11 +6,9 @@ import java.awt.*;
 import java.awt.event.*;
 import java.awt.image.BufferedImage;
 import java.math.BigDecimal;
-import java.net.*;
 import java.sql.*;
 import java.text.NumberFormat;
 import java.util.Locale;
-import java.util.concurrent.CancellationException;
 import javax.imageio.ImageIO;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -25,7 +23,6 @@ final class HopThoaiThanhToan extends JDialog {
     private final JLabel lblQr=new JLabel("",SwingConstants.CENTER);
     private final JLabel lblInstruction=new JLabel("",SwingConstants.CENTER);
     private final JButton btnConfirm=GiaoDien.button("Xác nhận đã nhận tiền",GiaoDien.TEAL,Color.WHITE);
-    private final JButton btnReload=GiaoDien.button("Tải lại",GiaoDien.CREAM,GiaoDien.NAV);
     private final JButton btnClose=GiaoDien.button("Đóng",GiaoDien.CREAM,GiaoDien.NAV);
     private SwingWorker<BufferedImage,Void> qrWorker;
     private BigDecimal total;
@@ -55,11 +52,13 @@ final class HopThoaiThanhToan extends JDialog {
         // Reserve space before packing, including when cash is selected first.
         lblInstruction.setPreferredSize(new Dimension(500,90));
         pnlTransfer.add(lblInstruction,BorderLayout.SOUTH); pnlRoot.add(pnlTransfer,BorderLayout.CENTER);
-        JPanel pnlButtons=new JPanel(new GridLayout(2,2,8,8)); pnlButtons.setOpaque(false);
-        pnlButtons.add(new JLabel()); pnlButtons.add(btnReload); pnlButtons.add(btnClose); pnlButtons.add(btnConfirm); pnlRoot.add(pnlButtons,BorderLayout.SOUTH);
+        JPanel pnlButtons = new JPanel(new GridLayout(1, 2, 8, 8));
+        pnlButtons.setOpaque(false);
+        pnlButtons.add(btnClose);
+        pnlButtons.add(btnConfirm);
+        pnlRoot.add(pnlButtons, BorderLayout.SOUTH);
         setContentPane(pnlRoot);
         cmbMethod.addActionListener(e -> { if(!loading) showMethod(); });
-        btnReload.addActionListener(e -> reload());
         btnClose.addActionListener(e -> close()); btnConfirm.addActionListener(e -> confirm());
     }
     private boolean reload() {
@@ -94,37 +93,84 @@ final class HopThoaiThanhToan extends JDialog {
         showMethod(); return true;
     }
     private void showMethod() {
-        cancelQr(); qrReady=false; lblQr.setIcon(null); btnConfirm.setEnabled(false);
-        Method method=(Method)cmbMethod.getSelectedItem(); if(method==null || total==null) return;
-        if(!method.qr()) {
-            lblQr.setText("<html><div style='text-align:center'>THANH TOÁN TIỀN MẶT<br><br>Nhận đủ tiền từ khách trước khi xác nhận.</div></html>");
-            lblInstruction.setText(scannedCustomer==null ? "Không quét mã khách hàng — không tích điểm." : "Đã quét "+scannedCustomer+" — tích điểm khi thanh toán."); btnConfirm.setEnabled(!busy); return;
+        cancelQr();
+        qrReady = false;
+        lblQr.setIcon(null);
+        lblQr.setText("");
+        btnConfirm.setEnabled(false);
+
+        Method method = (Method) cmbMethod.getSelectedItem();
+        if (method == null || total == null) return;
+
+        if (!method.qr()) {
+            lblQr.setText(
+                    "<html><div style='text-align:center'>"
+                    + "THANH TOÁN TIỀN MẶT<br><br>"
+                    + "Nhận đủ tiền từ khách trước khi xác nhận."
+                    + "</div></html>"
+            );
+
+            lblInstruction.setText(
+                    scannedCustomer == null
+                            ? "Không quét mã khách hàng — không tích điểm."
+                            : "Đã quét " + scannedCustomer
+                                    + " — tích điểm khi thanh toán."
+            );
+
+            btnConfirm.setEnabled(!busy);
+            return;
         }
-        lblInstruction.setText("<html><div style='text-align:center'>"+MaThanhToanNganHang.BANK+" • "+MaThanhToanNganHang.ACCOUNT+"<br>"+MaThanhToanNganHang.OWNER+"<br>Nội dung: THANH TOAN "+invoice+"<br>Kiểm tra tiền đã vào tài khoản trước khi xác nhận.</div></html>");
-        final URI uri;
-        try { uri=MaThanhToanNganHang.imageUri(invoice,total); }
-        catch(IllegalArgumentException ex) { lblQr.setText(ex.getMessage()); return; }
-        lblQr.setText("Đang tải mã QR…");
-        qrWorker=new SwingWorker<>() {
-            @Override protected BufferedImage doInBackground() throws Exception {
-                HttpURLConnection connection=(HttpURLConnection)uri.toURL().openConnection();
-                connection.setConnectTimeout(8000); connection.setReadTimeout(10000);
-                try(var stream=connection.getInputStream()) {
-                    BufferedImage qr=ImageIO.read(stream);
-                    if(qr==null) throw new java.io.IOException("Dịch vụ không trả về ảnh QR hợp lệ.");
-                    return qr;
-                } finally { connection.disconnect(); }
+
+        String amountText = NumberFormat.getNumberInstance(
+                Locale.forLanguageTag("vi-VN")
+        ).format(total);
+
+        lblInstruction.setText(
+                "<html><div style='text-align:center'>"
+                + "Số tiền cần chuyển: " + amountText + " đ<br>"
+                + "Nội dung: THANH TOAN " + invoice + "<br>"
+                + "Số tài khoản: " + MaThanhToanNganHang.ACCOUNT + "<br>"
+                + "Tên tài khoản: " + MaThanhToanNganHang.OWNER
+                + "</div></html>"
+        );
+
+        try {
+            java.net.URL resource = HopThoaiThanhToan.class.getResource(
+                    "/IMG/QR_ThanhToan.jpg"
+            );
+
+            if (resource == null) {
+                throw new java.io.IOException(
+                        "Không tìm thấy ảnh /IMG/QR_ThanhToan.jpg"
+                );
             }
-            @Override protected void done() {
-                if(isCancelled()) return;
-                try {
-                    BufferedImage qr=get(); lblQr.setText("");
-                    lblQr.setIcon(new ImageIcon(qr.getScaledInstance(280,280,Image.SCALE_SMOOTH)));
-                    qrReady=true; btnConfirm.setEnabled(!busy);
-                } catch(CancellationException ignored) { }
-                catch(Exception ex) { lblQr.setText("Không tải được QR. Kiểm tra mạng và nhấn Tải lại."); }
+
+            BufferedImage qr = ImageIO.read(resource);
+            if (qr == null) {
+                throw new java.io.IOException("File QR không phải ảnh hợp lệ.");
             }
-        }; qrWorker.execute();
+
+            // Giữ đúng tỷ lệ ảnh.
+            double scale = Math.min(
+                    320.0 / qr.getWidth(),
+                    320.0 / qr.getHeight()
+            );
+
+            int width = Math.max(1, (int) Math.round(qr.getWidth() * scale));
+            int height = Math.max(1, (int) Math.round(qr.getHeight() * scale));
+
+            lblQr.setIcon(new ImageIcon(
+                    qr.getScaledInstance(width, height, Image.SCALE_REPLICATE)
+            ));
+
+            qrReady = true;
+            btnConfirm.setEnabled(!busy);
+        } catch (Exception ex) {
+            lblQr.setIcon(null);
+            lblQr.setText("Không đọc được ảnh QR.");
+            lblQr.setToolTipText(ex.getMessage());
+            error(ex);
+        }
     }
     private void confirm() {
         Method method=(Method)cmbMethod.getSelectedItem();
@@ -140,7 +186,7 @@ final class HopThoaiThanhToan extends JDialog {
             }
         }.execute();
     }
-    private void toggle(boolean enabled) { cmbMethod.setEnabled(enabled); btnConfirm.setEnabled(enabled); btnReload.setEnabled(enabled); btnClose.setEnabled(enabled); }
+    private void toggle(boolean enabled) { cmbMethod.setEnabled(enabled); btnConfirm.setEnabled(enabled); btnClose.setEnabled(enabled); }
     private void cancelQr() { if(qrWorker!=null) qrWorker.cancel(true); }
     private void close() { if(!busy) { cancelQr(); dispose(); } }
     private void error(Throwable ex) { JOptionPane.showMessageDialog(this,ex.getMessage(),"Không thể thanh toán",JOptionPane.ERROR_MESSAGE); }

@@ -332,11 +332,55 @@ public final class ManHinhHoaDon extends JPanel {
         catch(SQLException ex) { JOptionPane.showMessageDialog(this,ex.getMessage(),"Không thể áp dụng mã giảm giá",JOptionPane.ERROR_MESSAGE); loadSelected(); }
     }
     private void scanCustomer() {
-        String code=txtLoyalty.getText().trim().toUpperCase(Locale.ROOT); scannedCustomer=null;
-        if(!txtLoyalty.isEnabled() || !code.matches("KH[0-9]{3}") || !code.equals(invoiceCustomer)) {
-            lblLoyalty.setText("Mã quét không khớp khách hàng của hóa đơn — chưa đăng ký tích điểm.");return;
+        String code = txtLoyalty.getText().trim().toUpperCase(Locale.ROOT);
+        scannedCustomer = null;
+
+        if (!txtLoyalty.isEnabled()
+                || !code.matches("KH[0-9]{3}")
+                || !code.equals(invoiceCustomer)) {
+            lblLoyalty.setText(
+                    "Mã quét không khớp khách hàng của hóa đơn."
+            );
+            return;
         }
-        scannedCustomer=code;lblLoyalty.setText("Đã nhận: "+lblInfo[1].getText()+" — tích điểm sau thanh toán thành công.");txtLoyalty.setText("");
+
+        String sql =
+                "SELECT k.hoTenKH, COALESCE(d.tongDiemTichLuy, 0) AS tongDiem "
+                + "FROM dbo.KhachHang k "
+                + "LEFT JOIN dbo.vw_KhachHangDiemTichLuy d "
+                + "ON d.maKhachHang = k.maKhachHang "
+                + "WHERE k.maKhachHang = ?";
+
+        try (Connection conn = KetNoiCSDL.getConnection();
+            PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, code);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    throw new SQLException("Không tìm thấy khách hàng.");
+                }
+
+                long totalPoints = rs.getLong("tongDiem");
+
+                scannedCustomer = code;
+                lblLoyalty.setText(
+                        "Đã nhận: " + code + " — " + rs.getString("hoTenKH")
+                        + " | Tổng điểm hiện tại: " + totalPoints
+                        + " | Cộng điểm mới sau thanh toán."
+                );
+
+                txtLoyalty.setText("");
+            }
+        } catch (SQLException ex) {
+            lblLoyalty.setText("Không đọc được tổng điểm — chưa đăng ký tích điểm.");
+            JOptionPane.showMessageDialog(
+                    this,
+                    ex.getMessage(),
+                    "Không thể đọc điểm",
+                    JOptionPane.ERROR_MESSAGE
+            );
+        }
     }
     private void loadCoupons(Connection connection,String customer,String applied) throws SQLException {
         loadingCoupons=true;
