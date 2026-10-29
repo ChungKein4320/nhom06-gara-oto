@@ -360,9 +360,10 @@ public final class ManHinhDuLieu extends JPanel {
 
         // Chọn bộ lọc mặc định một lần khi mở trang.
         String defaultState = switch (page) {
-            case "Phiếu báo giá" -> "Còn hiệu lực";
-            case "Phiếu sửa chữa" -> "Chờ sửa chữa";
-            default -> null;
+        case "Phiếu báo giá" -> "Còn hiệu lực";
+        case "Phiếu sửa chữa" -> "Chờ sửa chữa";
+        case "Cấp phát phụ tùng" -> "Chờ sửa chữa";
+        default -> null;
         };
 
         if (defaultState != null) {
@@ -386,8 +387,12 @@ public final class ManHinhDuLieu extends JPanel {
 
     private void load() {
         try {
-            model.setRowCount(0);
-            List<LinkedHashMap<String, Object>> rows = dao.getAll();
+                if ("ChiTietPhieuSuaChua".equals(tableName)) {
+                QuyTrinhDAO.refreshRepairShortages();
+                }
+
+        model.setRowCount(0);
+        List<LinkedHashMap<String, Object>> rows = dao.getAll();
 
             for (Map<String, Object> row : rows) {
                 if (tableName.equals("HoaDon")) {
