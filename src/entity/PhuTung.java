@@ -86,12 +86,4 @@ public class PhuTung {
                 + ", loaiPhuTung=" + loaiPhuTung
                 + ", thoiHanBaoHanh=" + thoiHanBaoHanh + "]";
     }
-
-    public Integer getThoiHanBaoHanh() {
-        return thoiHanBaoHanh;
-    }
-
-    public void setThoiHanBaoHanh(Integer value) {
-        this.thoiHanBaoHanh = value;
-    }
 }
