@@ -10,8 +10,24 @@ public class MaGiamGia {
     private Timestamp ngayTao;
     private Timestamp ngayHetHan;
     private String trangThai;
+    private Integer mocDiem;
+    private Timestamp ngayBatDauChuKy;
 
     public MaGiamGia() { }
+
+    public MaGiamGia(String maGiamGia, String maKhachHang, BigDecimal mucGiam, Timestamp ngayTao, Timestamp ngayHetHan,
+			String trangThai, Integer mocDiem, Timestamp ngayBatDauChuKy) {
+		super();
+		this.maGiamGia = maGiamGia;
+		this.maKhachHang = maKhachHang;
+		this.mucGiam = mucGiam;
+		this.ngayTao = ngayTao;
+		this.ngayHetHan = ngayHetHan;
+		this.trangThai = trangThai;
+		this.mocDiem = mocDiem;
+		this.ngayBatDauChuKy = ngayBatDauChuKy;
+	}
+    
 
     public String getMaGiamGia() {
         return maGiamGia;
@@ -34,6 +50,8 @@ public class MaGiamGia {
     }
 
     public void setMucGiam(BigDecimal value) {
+        if (value == null || value.compareTo(java.math.BigDecimal.ZERO) < 0 || value.compareTo(new java.math.BigDecimal("100")) > 0)
+            throw new IllegalArgumentException("Mức giảm phải từ 0 đến 100 phần trăm");
         this.mucGiam = value;
     }
 
@@ -42,6 +60,8 @@ public class MaGiamGia {
     }
 
     public void setNgayTao(Timestamp value) {
+        if (value == null || value.after(new java.sql.Timestamp(System.currentTimeMillis())))
+            throw new IllegalArgumentException("Ngày tạo không được lớn hơn hiện tại");
         this.ngayTao = value;
     }
 
@@ -50,6 +70,8 @@ public class MaGiamGia {
     }
 
     public void setNgayHetHan(Timestamp value) {
+        if (value == null) throw new IllegalArgumentException("Ngày hết hạn không được rỗng");
+        if (ngayTao != null && !value.after(ngayTao)) throw new IllegalArgumentException("Ngày hết hạn phải sau ngày tạo");
         this.ngayHetHan = value;
     }
 
@@ -58,7 +80,34 @@ public class MaGiamGia {
     }
 
     public void setTrangThai(String value) {
-        this.trangThai = value;
+        if (value == null || value.isBlank()) throw new IllegalArgumentException("Trạng thái không được rỗng");
+        this.trangThai = value.trim();
+    }
+
+    public Integer getMocDiem() { return mocDiem; }
+    public void setMocDiem(Integer value) { this.mocDiem = value; }
+    public Timestamp getNgayBatDauChuKy() { return ngayBatDauChuKy; }
+    public void setNgayBatDauChuKy(Timestamp value) { this.ngayBatDauChuKy = value; }
+    
+    public boolean kiemTraHieuLuc() {
+        if (ngayHetHan == null) {
+            return false;
+        }
+
+        Timestamp hienTai = new Timestamp(System.currentTimeMillis());
+        return !ngayHetHan.before(hienTai);
+    }
+
+    @Override
+    public String toString() {
+        return "MaGiamGia [maGiamGia=" + maGiamGia
+                + ", maKhachHang=" + maKhachHang
+                + ", mucGiam=" + mucGiam
+                + ", ngayTao=" + ngayTao
+                + ", ngayHetHan=" + ngayHetHan
+                + ", trangThai=" + trangThai
+                + ", mocDiem=" + mocDiem
+                + ", ngayBatDauChuKy=" + ngayBatDauChuKy + "]";
     }
 
 }

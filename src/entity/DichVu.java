@@ -11,6 +11,15 @@ public class DichVu {
 
     public DichVu() { }
 
+    public DichVu(String maDichVu, String tenDichVu, String moTa, BigDecimal donGia, String trangThai) {
+		super();
+		this.maDichVu = maDichVu;
+		this.tenDichVu = tenDichVu;
+		this.moTa = moTa;
+		this.donGia = donGia;
+		this.trangThai = trangThai;
+	}
+
     public String getMaDichVu() {
         return maDichVu;
     }
@@ -24,7 +33,11 @@ public class DichVu {
     }
 
     public void setTenDichVu(String value) {
-        this.tenDichVu = value;
+        if (value == null || value.isBlank())
+            throw new IllegalArgumentException("Tên dịch vụ không được để trống");
+        if (value.trim().length() > 150)
+            throw new IllegalArgumentException("Tên dịch vụ không được quá 150 ký tự");
+        this.tenDichVu = value.trim();
     }
 
     public String getMoTa() {
@@ -32,6 +45,8 @@ public class DichVu {
     }
 
     public void setMoTa(String value) {
+        if (value != null && value.length() > 500)
+            throw new IllegalArgumentException("Mô tả không được quá 500 ký tự");
         this.moTa = value;
     }
 
@@ -40,6 +55,10 @@ public class DichVu {
     }
 
     public void setDonGia(BigDecimal value) {
+        if (value == null || value.signum() < 0)
+            throw new IllegalArgumentException("Đơn giá dịch vụ phải là số không âm");
+        if (value.scale() > 2 || value.precision() - value.scale() > 16)
+            throw new IllegalArgumentException("Đơn giá quá lớn, vui lòng nhập giá trị nhỏ hơn.");
         this.donGia = value;
     }
 
@@ -48,7 +67,24 @@ public class DichVu {
     }
 
     public void setTrangThai(String value) {
-        this.trangThai = value;
+        if (value == null || value.isBlank())
+            throw new IllegalArgumentException("Trạng thái dịch vụ không được để trống");
+        if (value.trim().length() > 50)
+            throw new IllegalArgumentException("Trạng thái dịch vụ không được quá 50 ký tự");
+        this.trangThai = value.trim();
+    }
+
+    public void capNhatDonGia(BigDecimal donGiaMoi) {
+        setDonGia(donGiaMoi);
+    }
+
+    @Override
+    public String toString() {
+        return "DichVu [maDichVu=" + maDichVu
+                + ", tenDichVu=" + tenDichVu
+                + ", moTa=" + moTa
+                + ", donGia=" + donGia
+                + ", trangThai=" + trangThai + "]";
     }
 
 }
