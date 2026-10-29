@@ -658,7 +658,7 @@ public final class ManHinhDuLieu extends JPanel {
                 }
 
                 if (auto || (i == 0 && existing)) {
-                    txtInput.setBackground(new Color(0xE5F0EE));
+                DinhDangKeThua.lock(txtInput);
                 }
 
                 input = txtInput;

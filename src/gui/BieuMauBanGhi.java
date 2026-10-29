@@ -93,13 +93,18 @@ final class BieuMauBanGhi extends JPanel {
             layout.setConstraints(component,constraints);
         }
     }
-    static void setEnabledDeep(Component component,boolean enabled) {
+    static void setEnabledDeep(Component component, boolean enabled) {
         component.setEnabled(enabled);
-        if(!enabled) {
-            component.setForeground(DinhDangKeThua.TEXT);
-            if(component instanceof javax.swing.text.JTextComponent text) { text.setDisabledTextColor(DinhDangKeThua.TEXT); text.setBackground(DinhDangKeThua.BACKGROUND); }
+
+        if (component instanceof Container container) {
+            for (Component child : container.getComponents()) {
+                setEnabledDeep(child, enabled);
+            }
         }
-        if(component instanceof Container container) for(Component child:container.getComponents()) setEnabledDeep(child,enabled);
+
+        if (!enabled) {
+            DinhDangKeThua.applyStyle(component);
+        }
     }
     void lockField(String field) { if(inputs.get(field)!=null) DinhDangKeThua.lock(inputs.get(field)); }
     @Override public Dimension getPreferredSize() {

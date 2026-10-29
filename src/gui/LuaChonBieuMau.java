@@ -40,7 +40,7 @@ public final class LuaChonBieuMau {
         // Thanh toán phải được xác nhận qua nghiệp vụ riêng, không đổi ở biểu mẫu.
         if (("HoaDon".equals(table) && "trangThaiThanhToan".equals(field))
                 || (field.equals("trangThai") && java.util.Set.of("PhieuBaoGia", "PhieuSuaChua", "PhieuNhapKho").contains(table))) {
-            cmbCombo.setEnabled(false);
+            DinhDangKeThua.lock(cmbCombo);
         }
         return cmbCombo;
     }
