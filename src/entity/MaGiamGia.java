@@ -110,9 +110,4 @@ public class MaGiamGia {
                 + ", ngayBatDauChuKy=" + ngayBatDauChuKy + "]";
     }
 
-    public Integer getMocDiem() { return mocDiem; }
-    public void setMocDiem(Integer value) { this.mocDiem = value; }
-    public Timestamp getNgayBatDauChuKy() { return ngayBatDauChuKy; }
-    public void setNgayBatDauChuKy(Timestamp value) { this.ngayBatDauChuKy = value; }
-
 }
