@@ -35,8 +35,19 @@ public final class ManHinhHoaDon extends JPanel {
     private final JLabel lblLoyalty=GiaoDien.label("Chưa quét mã — không tích điểm.",12,true,GiaoDien.TEAL);
     private String scannedCustomer,invoiceCustomer,loadedInvoice;
     private final DefaultTableModel services = model();
-    private final DefaultTableModel parts = model();
     private final NumberFormat money = NumberFormat.getNumberInstance(Locale.forLanguageTag("vi-VN"));
+    private final DefaultTableModel parts = new DefaultTableModel(
+            new String[]{
+                "STT", "Mã", "Tên", "Số lượng",
+                "Đơn giá", "Thành tiền", "Ngày hết hạn bảo hành"
+            },
+            0
+    ) {
+        @Override
+        public boolean isCellEditable(int row, int column) {
+            return false;
+        }
+    };
 
     public ManHinhHoaDon() {
         this(null);
@@ -237,11 +248,22 @@ public final class ManHinhHoaDon extends JPanel {
                     } else throw new SQLException("Không tìm thấy hóa đơn "+id+".");
                 }
             }
-            String detailSql = "SELECT ct.maDichVu, dv.tenDichVu, ct.maPhuTung, pt.tenPhuTung, "
-                    + "ct.soLuong, ct.donGia FROM dbo.ChiTietHoaDon ct "
-                    + "LEFT JOIN dbo.DichVu dv ON dv.maDichVu = ct.maDichVu "
-                    + "LEFT JOIN dbo.PhuTung pt ON pt.maPhuTung = ct.maPhuTung "
-                    + "WHERE ct.maHoaDon = ? ORDER BY ct.maDichVu";
+            String detailSql =
+                "SELECT ct.maDichVu, dv.tenDichVu, "
+                + "ct.maPhuTung, pt.tenPhuTung, "
+                + "ct.soLuong, ct.donGia, "
+                + "sc.maPSC AS maPSCBoHanh, "
+                + "sc.thoiHanBaoHanh, sc.ngayHetHanBaoHanh "
+                + "FROM dbo.ChiTietHoaDon ct "
+                + "JOIN dbo.HoaDon h ON h.maHoaDon=ct.maHoaDon "
+                + "LEFT JOIN dbo.DichVu dv ON dv.maDichVu=ct.maDichVu "
+                + "LEFT JOIN dbo.PhuTung pt ON pt.maPhuTung=ct.maPhuTung "
+                + "LEFT JOIN dbo.ChiTietPhieuSuaChua sc "
+                + "ON sc.maPSC=h.maPSC "
+                + "AND sc.maDichVu=ct.maDichVu "
+                + "AND sc.maPhuTung=ct.maPhuTung "
+                + "WHERE ct.maHoaDon=? "
+                + "ORDER BY ct.maDichVu, ct.maPhuTung";
             try (PreparedStatement statement = connection.prepareStatement(detailSql)) {
                 statement.setString(1, id);
                 try (ResultSet result = statement.executeQuery()) {
@@ -255,8 +277,30 @@ public final class ManHinhHoaDon extends JPanel {
                             services.addRow(new Object[] {serviceIndex++, result.getString("maDichVu"),
                                     result.getString("tenDichVu"), quantity, format(price), format(price * quantity)});
                         } else {
-                            parts.addRow(new Object[] {partIndex++, partCode,
-                                    result.getString("tenPhuTung"), quantity, format(price), format(price * quantity)});
+                            Timestamp warrantyEnd = result.getTimestamp("ngayHetHanBaoHanh");
+                            String warrantyText;
+
+                            if (result.getString("maPSCBoHanh") == null) {
+                                warrantyText = "—";
+                            } else if (result.getInt("thoiHanBaoHanh") == 0) {
+                                warrantyText = "Không bảo hành";
+                            } else if (warrantyEnd == null) {
+                                warrantyText = "Chưa xác định";
+                            } else {
+                                warrantyText = warrantyEnd.toLocalDateTime().format(
+                                        java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")
+                                );
+                            }
+
+                            parts.addRow(new Object[]{
+                                partIndex++,
+                                partCode,
+                                result.getString("tenPhuTung"),
+                                quantity,
+                                format(price),
+                                format(price * quantity),
+                                warrantyText
+                            });
                         }
                     }
                 }
