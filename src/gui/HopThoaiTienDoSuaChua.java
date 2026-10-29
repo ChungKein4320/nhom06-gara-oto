@@ -36,9 +36,33 @@ final class HopThoaiTienDoSuaChua {
                     boolean done="Hoàn thành".equals(line.get("trangThaiHangMuc")); all &= done;
                     pending |= !"Đạt".equals(line.get("ketQuaNghiemThu"));
                     JPanel pnlLine=GiaoDien.card(new BorderLayout(8,8));
-                    String service=String.valueOf(line.get("maDichVu"));
-                    String part="PT000".equals(line.get("maPhuTung")) ? "Không sử dụng phụ tùng" : String.valueOf(line.get("maPhuTung"));
-                    pnlLine.add(GiaoDien.label(service+" / "+part+" — "+line.get("trangThaiHangMuc")+" — Bảo hành: "+line.get("thoiHanBaoHanh")+" tháng",13,true,DinhDangKeThua.TEXT),BorderLayout.CENTER);
+                    String service = String.valueOf(line.get("maDichVu"));
+                    String partId = String.valueOf(line.get("maPhuTung"));
+                    boolean noPart = "PT000".equals(partId);
+
+                    String part = noPart ? "Không sử dụng phụ tùng" : partId;
+                    int quantity = ((Number) line.get("soLuongPhuTung")).intValue();
+                    int savedMonths = ((Number) line.get("thoiHanBaoHanh")).intValue();
+
+                    String warrantyText = savedMonths > 0
+                            ? savedMonths + " tháng"
+                            : "Không bảo hành";
+
+                    JPanel pnlInfo = new JPanel(new GridLayout(2, 1, 0, 5));
+                    pnlInfo.setOpaque(false);
+
+                    pnlInfo.add(GiaoDien.label(
+                            service + " / " + part + " — " + line.get("trangThaiHangMuc"),
+                            13, true, DinhDangKeThua.TEXT
+                    ));
+
+                    pnlInfo.add(GiaoDien.label(
+                            "Số lượng phụ tùng: " + quantity
+                                    + " — Bảo hành: " + warrantyText,
+                            12, false, DinhDangKeThua.TEXT
+                    ));
+
+                    pnlLine.add(pnlInfo, BorderLayout.CENTER);
                     boolean needsParts =
                             "Thiếu phụ tùng".equals(line.get("trangThaiHangMuc"));
 
@@ -58,40 +82,81 @@ final class HopThoaiTienDoSuaChua {
                     );
 
                     btnDone.addActionListener(e -> {
-                        JComboBox<String> cboWarranty = new JComboBox<>(
-                                new String[]{"2 năm", "5 năm", "10 năm"}
-                        );
-                        int[] warrantyMonths = {24, 60, 120};
+                    try {
+                        int months = 0;
 
-                        JPanel pnlWarranty = new JPanel(new BorderLayout(8, 8));
-                        pnlWarranty.add(
-                                new JLabel("Thời hạn bảo hành hạng mục"),
-                                BorderLayout.NORTH
-                        );
-                        pnlWarranty.add(cboWarranty, BorderLayout.CENTER);
+                        // Lấy thời hạn bảo hành từ đúng phụ tùng của hạng mục.
+                        // Mở kết nối riêng vì kết nối tải màn hình đã đóng.
+                        if (!noPart) {
+                            try (Connection warrantyConn = KetNoiCSDL.getConnection()) {
+                                var parts = new CoSoDAO("PhuTung").getAll(
+                                        warrantyConn,
+                                        Map.of("maPhuTung", partId)
+                                );
 
-                        if (JOptionPane.showConfirmDialog(
+                                if (parts.isEmpty()) {
+                                    throw new SQLException(
+                                            "Không tìm thấy phụ tùng " + partId
+                                    );
+                                }
+
+                                Object value = parts.get(0).get("thoiHanBaoHanh");
+                                if (!(value instanceof Number)) {
+                                    throw new SQLException(
+                                            "Phụ tùng chưa có thời hạn bảo hành hợp lệ."
+                                    );
+                                }
+
+                                months = ((Number) value).intValue();
+
+                                if (months < 0) {
+                                    throw new SQLException(
+                                            "Thời hạn bảo hành không được âm."
+                                    );
+                                }
+                            }
+                        }
+
+                        String warrantyDisplay = months == 0
+                                ? "Không bảo hành"
+                                : months + " tháng";
+
+                        JPanel pnlWarranty = new JPanel(new GridLayout(0, 1, 0, 8));
+                        pnlWarranty.add(new JLabel("Phụ tùng: " + part));
+                        pnlWarranty.add(new JLabel(
+                                "Thời hạn bảo hành: " + warrantyDisplay
+                        ));
+
+                        Object[] options = {"Xác nhận", "Hủy"};
+
+                        int choice = JOptionPane.showOptionDialog(
                                 winDialog,
                                 pnlWarranty,
                                 "Xác nhận đã sửa " + service + " / " + part,
-                                JOptionPane.OK_CANCEL_OPTION
-                        ) != JOptionPane.OK_OPTION) {
-                            return;
-                        }
+                                JOptionPane.DEFAULT_OPTION,
+                                JOptionPane.QUESTION_MESSAGE,
+                                null,
+                                options,
+                                options[0]
+                        );
 
-                        try {
-                            QuyTrinhDAO.completeRepairItem(
-                                    id, service, part,
-                                    warrantyMonths[cboWarranty.getSelectedIndex()]
-                            );
-                            load[0].run();
-                        } catch (Exception ex) {
-                            JOptionPane.showMessageDialog(
-                                    winDialog, ex.getMessage(),
-                                    "Không thể xác nhận", JOptionPane.ERROR_MESSAGE
-                            );
-                        }
-                    });
+                        // Bấm Hủy hoặc đóng cửa sổ thì không lưu.
+                        if (choice != 0) return;
+
+                        QuyTrinhDAO.completeRepairItem(
+                                id, service, partId, months
+                        );
+
+                        load[0].run();
+                    } catch (Exception ex) {
+                        JOptionPane.showMessageDialog(
+                                winDialog,
+                                ex.getMessage(),
+                                "Không thể xác nhận",
+                                JOptionPane.ERROR_MESSAGE
+                        );
+                    }
+                });
                     pnlLine.add(btnDone,BorderLayout.EAST); pnlLine.setMaximumSize(new Dimension(Integer.MAX_VALUE,85)); pnlRows.add(pnlLine); pnlRows.add(Box.createVerticalStrut(6));
                 }
                 btnFinish.setEnabled((ongoing || "Đã sửa xong".equals(header.get("trangThai"))) && all && pending); pnlRows.revalidate(); pnlRows.repaint();

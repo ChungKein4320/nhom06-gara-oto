@@ -21,7 +21,14 @@ final class ThaoTacNghiepVu {
             default -> new String[0];
         };
         if(actions.length==0) return;
-        boolean direct=Set.of("PhieuTiepNhan","PhieuKiemTra","PhieuBaoGia","PhieuSuaChua","PhieuNhapKho").contains(table);
+        boolean direct = Set.of(
+                "PhieuTiepNhan",
+                "PhieuKiemTra",
+                "PhieuBaoGia",
+                "PhieuSuaChua",
+                "PhieuNhapKho",
+                "LichNhacBaoDuong"
+        ).contains(table);
         if(direct) {
             for(String action:actions) installButton(pnlButtons,table,selection,refresh,parent,action,null);
         } else {

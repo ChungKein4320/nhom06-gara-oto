@@ -254,7 +254,7 @@ public final class QuyTrinhDAO {
         });
     }
     public static void completeRepairItem(String id,String service,String part,int months) throws SQLException {
-        require(months==24 || months==60 || months==120,"Thời hạn bảo hành phải là 24, 60 hoặc 120 tháng.");
+        require(months >= 0, "Thời hạn bảo hành không được âm.");
         transaction(conn -> {
             Map<String,Object> repair=lock(conn,"PhieuSuaChua",id);
             require("Đang sửa chữa".equals(repair.get("trangThai")),"Chỉ xác nhận hạng mục của phiếu đang sửa chữa.");
