@@ -41,7 +41,29 @@ final class HopThoaiTienDoSuaChua {
                     String partLabel="PT000".equals(partId) ? "Không sử dụng phụ tùng" : partId;
                     int currentWarrantyMonths=((Number)line.get("thoiHanBaoHanh")).intValue();
                     String warrantyText=currentWarrantyMonths==0 ? "Không bảo hành" : "Bảo hành: "+currentWarrantyMonths+" tháng";
-                    pnlLine.add(GiaoDien.label(service+" / "+partLabel+" — "+line.get("trangThaiHangMuc")+" — "+warrantyText,13,true,DinhDangKeThua.TEXT),BorderLayout.CENTER);
+                    int quantity = ((Number) line.get("soLuongPhuTung")).intValue();
+                    int usedQuantity = ((Number) line.get("soLuongSuDung")).intValue();
+
+                    JPanel pnlInfo = new JPanel(new GridLayout(2, 1, 0, 5));
+                    pnlInfo.setOpaque(false);
+
+                    pnlInfo.add(GiaoDien.label(
+                            service + " / " + partLabel
+                                    + " — " + line.get("trangThaiHangMuc"),
+                            13, true, DinhDangKeThua.TEXT
+                    ));
+
+                    String quantityText = "Số lượng phụ tùng: " + quantity;
+                    if (done) {
+                        quantityText += " — Đã sử dụng: " + usedQuantity;
+                    }
+
+                    pnlInfo.add(GiaoDien.label(
+                            quantityText + " — " + warrantyText,
+                            12, false, DinhDangKeThua.TEXT
+                    ));
+
+                    pnlLine.add(pnlInfo, BorderLayout.CENTER);
                     boolean needsParts =
                             "Thiếu phụ tùng".equals(line.get("trangThaiHangMuc"));
 
@@ -61,36 +83,56 @@ final class HopThoaiTienDoSuaChua {
                     );
 
                     btnDone.addActionListener(e -> {
-                        JComboBox<String> cboWarranty = new JComboBox<>(
-                                new String[]{"2 năm", "5 năm", "10 năm", "Không bảo hành"}
-                        );
-                        int[] warrantyMonths = {24, 60, 120, 0};
+                    try {
+                        int months = 0;
 
-                        JPanel pnlWarranty = new JPanel(new BorderLayout(8, 8));
-                        int issued = ((Number) line.get("soLuongCapPhat")).intValue();
-                        int priorReturned = ((Number) line.get("soLuongHoanTra")).intValue();
-                        JTextField txtUsed = new JTextField(String.valueOf(issued-priorReturned));
-                        pnlWarranty.add(
-                                new JLabel("Thời hạn bảo hành hạng mục"),
-                                BorderLayout.NORTH
-                        );
-                        pnlWarranty.add(cboWarranty, BorderLayout.CENTER);
-                        if (!"PT000".equals(line.get("maPhuTung"))) {
-                            JPanel pnlInputs = new JPanel(new GridLayout(0, 1, 4, 4));
-                            pnlInputs.add(new JLabel("Số phụ tùng thực tế đã sử dụng (phần còn lại sẽ ghi nhận trả kho):"));
-                            pnlInputs.add(txtUsed);
-                            pnlInputs.add(new JLabel("Thời hạn bảo hành hạng mục"));
-                            pnlInputs.add(cboWarranty);
-                            pnlWarranty.removeAll();
-                            pnlWarranty.add(pnlInputs, BorderLayout.CENTER);
+                        if (!"PT000".equals(partId)) {
+                            try (Connection warrantyConn = KetNoiCSDL.getConnection()) {
+                                var parts = new CoSoDAO("PhuTung").getAll(
+                                        warrantyConn,
+                                        Map.of("maPhuTung", partId)
+                                );
+
+                                if (parts.isEmpty()) {
+                                    throw new SQLException(
+                                            "Không tìm thấy phụ tùng " + partId
+                                    );
+                                }
+
+                                Object value = parts.get(0).get("thoiHanBaoHanh");
+
+                                if (!(value instanceof Number)) {
+                                    throw new SQLException(
+                                            "Thời hạn bảo hành của phụ tùng không hợp lệ."
+                                    );
+                                }
+
+                                months = ((Number) value).intValue();
+
+                                if (months < 0) {
+                                    throw new SQLException(
+                                            "Thời hạn bảo hành không được âm."
+                                    );
+                                }
+                            }
                         }
+
+                        String warrantyDisplay = months == 0
+                                ? "Không bảo hành"
+                                : months + " tháng";
+
+                        JPanel pnlWarranty = new JPanel(new GridLayout(0, 1, 0, 8));
+                        pnlWarranty.add(new JLabel("Phụ tùng: " + partLabel));
+                        pnlWarranty.add(new JLabel(
+                                "Thời hạn bảo hành: " + warrantyDisplay
+                        ));
 
                         Object[] options = {"Xác nhận", "Hủy"};
 
                         int choice = JOptionPane.showOptionDialog(
                                 winDialog,
                                 pnlWarranty,
-                                "Xác nhận đã sửa " + service + " / " + part,
+                                "Xác nhận đã sửa " + service + " / " + partLabel,
                                 JOptionPane.DEFAULT_OPTION,
                                 JOptionPane.QUESTION_MESSAGE,
                                 null,
@@ -98,7 +140,6 @@ final class HopThoaiTienDoSuaChua {
                                 options[0]
                         );
 
-                        // Bấm Hủy hoặc đóng cửa sổ thì không lưu.
                         if (choice != 0) return;
 
                         QuyTrinhDAO.completeRepairItem(

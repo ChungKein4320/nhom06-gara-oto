@@ -269,25 +269,73 @@ public final class QuyTrinhDAO {
             execute(conn,"UPDATE dbo.PhieuSuaChua SET trangThai=N'Đang sửa chữa' WHERE maPSC=?",id); return null;
         });
     }
-    public static void completeRepairItem(String id,String service,String part,int months) throws SQLException {
-        require(months >= 0, "Thời hạn bảo hành không được âm.");
-        transaction(conn -> {
-            Map<String,Object> repair=lock(conn,"PhieuSuaChua",id);
-            require("Đang sửa chữa".equals(repair.get("trangThai")),"Chỉ xác nhận hạng mục của phiếu đang sửa chữa.");
-            Map<String,Object> line=one(conn,"SELECT * FROM dbo.ChiTietPhieuSuaChua WITH (UPDLOCK,HOLDLOCK) WHERE maPSC=? AND maDichVu=? AND maPhuTung=?",id,service,part);
-            int issued=((Number)line.get("soLuongCapPhat")).intValue();
-            int actualUsed="PT000".equals(part) ? 0 : (used<0 ? issued : used);
-            int priorReturn=((Number)line.get("soLuongHoanTra")).intValue();
-            require(actualUsed>=0 && actualUsed+priorReturn<=issued,"Số phụ tùng sử dụng cộng đã trả vượt số đã cấp phát.");
-            int additionalReturn=issued-actualUsed-priorReturn;
-            int returned=priorReturn+additionalReturn;
-            if(additionalReturn>0) {
-                require(returnEmployee!=null && exists(conn,"SELECT 1 FROM dbo.NhanVien WHERE maNhanVien=? AND trangThai=N'Đang làm' AND vaiTro IN (N'Nhân viên kho',N'Nhân viên quản lý',N'Quản trị viên')",returnEmployee),"Chọn nhân viên kho/quản lý đang làm để xác nhận phụ tùng trả về.");
-                require(execute(conn,"UPDATE dbo.TonKho SET soLuongHienTai=soLuongHienTai+? WHERE maPhuTung=?",additionalReturn,part)==1,"Không tìm thấy tồn kho để ghi nhận trả phụ tùng.");
-            }
-            require(execute(conn,"UPDATE dbo.ChiTietPhieuSuaChua SET soLuongSuDung=?,soLuongHoanTra=?,ngayHoanTra=CASE WHEN ?>0 THEN COALESCE(ngayHoanTra,?) ELSE NULL END,maNhanVienXacNhanHoanTra=CASE WHEN ?>0 THEN COALESCE(maNhanVienXacNhanHoanTra,?) ELSE NULL END,trangThaiHangMuc=N'Hoàn thành',thoiHanBaoHanh=?,ketQuaNghiemThu=N'Không đạt',ngayBatDauBaoHanh=NULL,ngayHetHanBaoHanh=NULL WHERE maPSC=? AND maDichVu=? AND maPhuTung=? AND trangThaiHangMuc=N'Đang sửa chữa'",actualUsed,returned,returned,now(conn),returned,additionalReturn>0?returnEmployee:null,months,id,service,part)==1,"Hạng mục chưa cấp phát hoặc đã hoàn thành."); return null;
-        });
-    }
+    public static void completeRepairItem(
+        String id, String service, String part, int months
+        ) throws SQLException {
+            require(months >= 0, "Thời hạn bảo hành không được âm.");
+
+            transaction(conn -> {
+                Map<String, Object> repair = lock(conn, "PhieuSuaChua", id);
+
+                require(
+                        "Đang sửa chữa".equals(repair.get("trangThai")),
+                        "Chỉ xác nhận hạng mục của phiếu đang sửa chữa."
+                );
+
+                Map<String, Object> line = one(
+                        conn,
+                        "SELECT * FROM dbo.ChiTietPhieuSuaChua "
+                                + "WITH (UPDLOCK,HOLDLOCK) "
+                                + "WHERE maPSC=? AND maDichVu=? AND maPhuTung=?",
+                        id, service, part
+                );
+
+                require(
+                        "Đang sửa chữa".equals(line.get("trangThaiHangMuc")),
+                        "Hạng mục chưa cấp phát hoặc đã hoàn thành."
+                );
+
+                int issued = ((Number) line.get("soLuongCapPhat")).intValue();
+                int returned = ((Number) line.get("soLuongHoanTra")).intValue();
+
+                require(
+                        issued >= 0 && returned >= 0 && returned <= issued,
+                        "Số lượng cấp phát hoặc hoàn trả không hợp lệ."
+                );
+
+                boolean noPart = "PT000".equals(part);
+
+                require(
+                        !noPart || (issued == 0 && returned == 0),
+                        "Hạng mục không dùng phụ tùng phải có số lượng bằng 0."
+                );
+
+                require(
+                        noPart || issued > 0,
+                        "Hạng mục chưa được ghi nhận cấp phát phụ tùng."
+                );
+
+                int actualUsed = noPart ? 0 : issued - returned;
+                int actualMonths = noPart ? 0 : months;
+
+                int updated = execute(
+                        conn,
+                        "UPDATE dbo.ChiTietPhieuSuaChua "
+                                + "SET soLuongSuDung=?, "
+                                + "trangThaiHangMuc=N'Hoàn thành', "
+                                + "thoiHanBaoHanh=?, "
+                                + "ketQuaNghiemThu=N'Không đạt', "
+                                + "ngayBatDauBaoHanh=NULL, "
+                                + "ngayHetHanBaoHanh=NULL "
+                                + "WHERE maPSC=? AND maDichVu=? AND maPhuTung=? "
+                                + "AND trangThaiHangMuc=N'Đang sửa chữa'",
+                        actualUsed, actualMonths, id, service, part
+                );
+
+                require(updated == 1, "Không thể xác nhận hạng mục.");
+                return null;
+            });
+        }
     public static void finishRepair(String id) throws SQLException {
         acceptRepair(id);
     }
