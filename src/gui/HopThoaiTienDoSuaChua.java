@@ -85,39 +85,36 @@ final class HopThoaiTienDoSuaChua {
                             pnlWarranty.add(pnlInputs, BorderLayout.CENTER);
                         }
 
-                        if (JOptionPane.showConfirmDialog(
+                        Object[] options = {"Xác nhận", "Hủy"};
+
+                        int choice = JOptionPane.showOptionDialog(
                                 winDialog,
                                 pnlWarranty,
-                                "Xác nhận đã sửa " + service + " / " + partLabel,
-                                JOptionPane.OK_CANCEL_OPTION
-                        ) != JOptionPane.OK_OPTION) {
-                            return;
-                        }
+                                "Xác nhận đã sửa " + service + " / " + part,
+                                JOptionPane.DEFAULT_OPTION,
+                                JOptionPane.QUESTION_MESSAGE,
+                                null,
+                                options,
+                                options[0]
+                        );
 
-                        try {
-                            int used = "PT000".equals(line.get("maPhuTung"))
-                                    ? 0 : Integer.parseInt(txtUsed.getText().trim());
-                            String warehouseEmployee = null;
-                            if (!"PT000".equals(line.get("maPhuTung")) && used+priorReturned < issued) {
-                                warehouseEmployee = ThaoTacNghiepVu.choose(
-                                        winDialog, "NhanVien", "maNhanVien",
-                                        "Nhân viên kho xác nhận phụ tùng trả"
-                                );
-                                if (warehouseEmployee == null) return;
-                            }
-                            QuyTrinhDAO.completeRepairItem(
-                                    id, service, partId,
-                                    warrantyMonths[cboWarranty.getSelectedIndex()], used,
-                                    warehouseEmployee
-                            );
-                            load[0].run();
-                        } catch (NumberFormatException | SQLException ex) {
-                            JOptionPane.showMessageDialog(
-                                    winDialog, ex.getMessage(),
-                                    "Không thể xác nhận", JOptionPane.ERROR_MESSAGE
-                            );
-                        }
-                    });
+                        // Bấm Hủy hoặc đóng cửa sổ thì không lưu.
+                        if (choice != 0) return;
+
+                        QuyTrinhDAO.completeRepairItem(
+                                id, service, partId, months
+                        );
+
+                        load[0].run();
+                    } catch (Exception ex) {
+                        JOptionPane.showMessageDialog(
+                                winDialog,
+                                ex.getMessage(),
+                                "Không thể xác nhận",
+                                JOptionPane.ERROR_MESSAGE
+                        );
+                    }
+                });
                     pnlLine.add(btnDone,BorderLayout.EAST); pnlLine.setMaximumSize(new Dimension(Integer.MAX_VALUE,85)); pnlRows.add(pnlLine); pnlRows.add(Box.createVerticalStrut(6));
                 }
                 btnFinish.setEnabled((ongoing || "Đã sửa xong".equals(header.get("trangThai"))) && all && pending); pnlRows.revalidate(); pnlRows.repaint();

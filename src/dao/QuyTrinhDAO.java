@@ -270,10 +270,7 @@ public final class QuyTrinhDAO {
         });
     }
     public static void completeRepairItem(String id,String service,String part,int months) throws SQLException {
-        completeRepairItem(id,service,part,months,-1, null);
-    }
-    public static void completeRepairItem(String id,String service,String part,int months,int used,String returnEmployee) throws SQLException {
-        require(months==0 || months==24 || months==60 || months==120,"Thời hạn bảo hành phải là không bảo hành, 24, 60 hoặc 120 tháng.");
+        require(months >= 0, "Thời hạn bảo hành không được âm.");
         transaction(conn -> {
             Map<String,Object> repair=lock(conn,"PhieuSuaChua",id);
             require("Đang sửa chữa".equals(repair.get("trangThai")),"Chỉ xác nhận hạng mục của phiếu đang sửa chữa.");
