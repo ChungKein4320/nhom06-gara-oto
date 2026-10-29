@@ -3,6 +3,7 @@ package gui;
 import dao.ThongKeDAO;
 import dao.ThongKeDAO.Bucket;
 import java.awt.*;
+import java.awt.event.MouseEvent;
 import java.awt.geom.Path2D;
 import java.math.BigDecimal;
 import java.text.NumberFormat;
@@ -17,10 +18,9 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
 
-/** Thống kê theo kỳ; số liệu được tải từ database ngoài luồng giao diện. */
 public final class ManHinhThongKe extends JPanel {
     @java.io.Serial private static final long serialVersionUID = 1L;
-    private final JComboBox<String> cmbCategory = new OChonTimKiem<>(new String[]{"Doanh thu","Số lượng khách hàng","Khách hàng","Dịch vụ","Phụ tùng","Phương tiện","Doanh số của nhân viên","Giá trị hóa đơn"});
+    private final JComboBox<String> cmbCategory = new OChonTimKiem<>(new String[]{"Doanh thu","Số lượng khách hàng","Khách hàng","Dịch vụ","Phụ tùng","Phương tiện","Doanh số của nhân viên bán hàng","Giá trị hóa đơn"});
     private final JComboBox<String> cmbSubtype = new OChonTimKiem<>();
     private final JPanel pnlSubtype = cell("Loại phụ tùng",cmbSubtype);
     private final JLabel lblSubtype = (JLabel)pnlSubtype.getComponent(0);
@@ -28,17 +28,17 @@ public final class ManHinhThongKe extends JPanel {
     private final JComboBox<String> cmbPeriod = new OChonTimKiem<>(new String[]{"Theo tháng","Theo quý","Theo năm","Thời gian tùy chọn"});
     private final JComboBox<String> cmbMonth = new OChonTimKiem<>();
     private final JComboBox<String> cmbQuarter = new OChonTimKiem<>(new String[]{"Quý I","Quý II","Quý III","Quý IV"});
-    private final JSpinner spnYear = new JSpinner(new SpinnerNumberModel(LocalDate.now().getYear(),1900,9998,1));
+    private final JComboBox<Integer> cmbYear = new OChonTimKiem<>();
     private final OChonNgay pnlStart = new OChonNgay(LocalDate.now().withDayOfMonth(1).toString());
     private final OChonNgay pnlEnd = new OChonNgay(LocalDate.now().toString());
     private final JPanel pnlMonthCell, pnlQuarterCell, pnlYearCell, pnlCustom;
     private final JLabel[] lblMetricTitles = new JLabel[3];
     private final JLabel[] lblMetricValues = new JLabel[3];
     private final JLabel lblChartTitle = GiaoDien.label("",18,true,GiaoDien.NAV);
-    private final JLabel lblChartHint = GiaoDien.label("",12,false,GiaoDien.MUTED);
     private final JLabel lblSummary = GiaoDien.label("",12,false,GiaoDien.MUTED);
     private final Chart pnlChart = new Chart();
     private final DefaultTableModel detailModel = new DefaultTableModel(new Object[]{"STT", "Nội dung thống kê", "Số liệu"},0) {
+        private static final long serialVersionUID = 1L;
         @Override public boolean isCellEditable(int r,int c) { return false; }
     };
     private final JTable detailTable = new JTable(detailModel);
@@ -71,12 +71,19 @@ public final class ManHinhThongKe extends JPanel {
         cmbMonth.setSelectedIndex(LocalDate.now().getMonthValue()-1);
         cmbQuarter.setSelectedIndex((LocalDate.now().getMonthValue()-1)/3);
         cmbPeriod.setSelectedIndex(2);
-        spnYear.setEditor(new JSpinner.NumberEditor(spnYear,"#"));
-        spnYear.setPreferredSize(new Dimension(140,36));
-        spnYear.setFont(GiaoDien.font(13,false));
-        ((JSpinner.NumberEditor)spnYear.getEditor()).getTextField().setFont(GiaoDien.font(13,false));
+        
+        int currentYear = LocalDate.now().getYear();
+
+        for (int year = currentYear; year >= 2000; year--) {
+            cmbYear.addItem(year);
+        }
+
+        cmbYear.setSelectedItem(currentYear);
+        cmbYear.setPreferredSize(new Dimension(140, 36));
+        cmbYear.setFont(GiaoDien.font(13, false));
+
         JPanel pnlOptions = new JPanel(new FlowLayout(FlowLayout.LEFT,12,0)); pnlOptions.setOpaque(false);
-        pnlMonthCell=cell("Tháng",cmbMonth); pnlQuarterCell=cell("Quý",cmbQuarter); pnlYearCell=cell("Năm",spnYear);
+        pnlMonthCell=cell("Tháng",cmbMonth); pnlQuarterCell=cell("Quý",cmbQuarter); pnlYearCell=cell("Năm",cmbYear);
         pnlOptions.add(pnlMonthCell); pnlOptions.add(pnlQuarterCell); pnlOptions.add(pnlYearCell);
         pnlCustom=new JPanel(new GridLayout(1,2,12,0)); pnlCustom.setOpaque(false);
         pnlCustom.add(cell("Từ ngày",pnlStart)); pnlCustom.add(cell("Đến ngày",pnlEnd)); pnlOptions.add(pnlCustom);
@@ -96,8 +103,10 @@ public final class ManHinhThongKe extends JPanel {
         }
         pnlTop.add(pnlMetrics,BorderLayout.SOUTH); pnlBody.add(pnlTop,BorderLayout.NORTH);
         JPanel pnlChartCard=GiaoDien.card(new BorderLayout(0,14));
-        JPanel pnlChartHeading=new JPanel(new GridLayout(2,1,0,6)); pnlChartHeading.setOpaque(false);
-        pnlChartHeading.add(lblChartTitle); pnlChartHeading.add(lblChartHint); pnlChartCard.add(pnlChartHeading,BorderLayout.NORTH);
+        JPanel pnlChartHeading = new JPanel(new BorderLayout()); 
+        pnlChartHeading.setOpaque(false);
+        pnlChartHeading.add(lblChartTitle, BorderLayout.CENTER); 
+        pnlChartCard.add(pnlChartHeading,BorderLayout.NORTH);
         JPanel chartAndTable = new JPanel(new BorderLayout(0,12)); chartAndTable.setOpaque(false);
         chartAndTable.add(pnlChart,BorderLayout.CENTER);
         JPanel tableSection = new JPanel(new BorderLayout(0,6)); tableSection.setOpaque(false);
@@ -124,7 +133,7 @@ public final class ManHinhThongKe extends JPanel {
         cmbSubtype.addActionListener(e->load());
         chkTheoMa.addActionListener(e->load());
         cmbPeriod.addActionListener(e->{ updatePeriod(); load(); });
-        cmbMonth.addActionListener(e->load()); cmbQuarter.addActionListener(e->load()); spnYear.addChangeListener(e->load());
+        cmbMonth.addActionListener(e->load()); cmbQuarter.addActionListener(e->load()); cmbYear.addActionListener(e -> load());
         updatePeriod(); capNhatBoLoc(); load();
     }
 
@@ -137,7 +146,7 @@ public final class ManHinhThongKe extends JPanel {
         cmbSubtype.addItem("Tất cả");
         if(loai==4 || loai==5) {
             try { for(String ten:ThongKeDAO.danhSachLoc(loai==4)) cmbSubtype.addItem(ten); }
-            catch(Exception ex) { System.err.println("Không tải được danh mục: "+ex.getMessage()); }
+            catch(java.sql.SQLException ex) { System.err.println("Không tải được danh mục: "+ex.getMessage()); }
         }
         cmbSubtype.setSelectedItem("Tất cả");
         revalidate(); repaint();
@@ -158,15 +167,34 @@ public final class ManHinhThongKe extends JPanel {
 
     static LocalDate[] dateRange(int mode,int year,int month,int quarter,String from,String to) {
         LocalDate first,last;
-        if(mode==0) { YearMonth ym=YearMonth.of(year,month); first=ym.atDay(1); last=ym.atEndOfMonth(); }
-        else if(mode==1) {
-            if(quarter<1 || quarter>4) throw new IllegalArgumentException("Quý không hợp lệ.");
-            first=LocalDate.of(year,(quarter-1)*3+1,1); last=first.plusMonths(3).minusDays(1);
-        } else if(mode==2) { first=LocalDate.of(year,1,1); last=LocalDate.of(year,12,31); }
-        else if(mode==3) {
-            if(from.isBlank() || to.isBlank()) throw new IllegalArgumentException("Vui lòng chọn đầy đủ Từ ngày và Đến ngày.");
-            first=LocalDate.parse(from); last=LocalDate.parse(to);
-        } else throw new IllegalArgumentException("Khoảng thời gian không hợp lệ.");
+        switch (mode) {
+            case 0 -> {
+                YearMonth ym = YearMonth.of(year, month);
+                first = ym.atDay(1);
+                last = ym.atEndOfMonth();
+            }
+            case 1 -> {
+                if (quarter < 1 || quarter > 4) {
+                    throw new IllegalArgumentException("Quý không hợp lệ.");
+                }
+                first = LocalDate.of(year, (quarter - 1) * 3 + 1, 1);
+                last = first.plusMonths(3).minusDays(1);
+            }
+            case 2 -> {
+                first = LocalDate.of(year, 1, 1);
+                last = LocalDate.of(year, 12, 31);
+            }
+            case 3 -> {
+                if (from.isBlank() || to.isBlank()) {
+                    throw new IllegalArgumentException(
+                        "Vui lòng chọn đầy đủ Từ ngày và Đến ngày.");
+                }
+                first = LocalDate.parse(from);
+                last = LocalDate.parse(to);
+            }
+            default -> throw new IllegalArgumentException(
+                "Khoảng thời gian không hợp lệ.");
+        }
         if(first.isAfter(last)) throw new IllegalArgumentException("Từ ngày phải trước hoặc bằng Đến ngày.");
         if(last.getYear()>9998) throw new IllegalArgumentException("Năm phải nhỏ hơn 9999.");
         return new LocalDate[]{first,last};
@@ -179,16 +207,17 @@ public final class ManHinhThongKe extends JPanel {
         final String subFilter=(type==4 || type==5) && cmbSubtype.getSelectedItem()!=null ? cmbSubtype.getSelectedItem().toString() : "Tất cả";
         final LocalDate[] range;
         try {
-            spnYear.commitEdit();
-            range=dateRange(cmbPeriod.getSelectedIndex(),((Number)spnYear.getValue()).intValue(),cmbMonth.getSelectedIndex()+1,
-                    cmbQuarter.getSelectedIndex()+1,pnlStart.getDateText(),pnlEnd.getDateText());
+            range=dateRange(cmbPeriod.getSelectedIndex(),
+                    (Integer) cmbYear.getSelectedItem(),
+                    cmbMonth.getSelectedIndex()+1,
+                    cmbQuarter.getSelectedIndex()+1,
+                    pnlStart.getDateText(),pnlEnd.getDateText());
         } catch(Exception ex) {
             clear("Khoảng thời gian chưa hợp lệ.");
             JOptionPane.showMessageDialog(this,ex.getMessage(),"Kiểm tra thời gian",JOptionPane.WARNING_MESSAGE); return;
         }
         boolean daily=cmbPeriod.getSelectedIndex()==0 || (cmbPeriod.getSelectedIndex()==3 && ChronoUnit.DAYS.between(range[0],range[1])<=62);
         lblChartTitle.setText(type==0?"Xu hướng doanh thu":type==1?"Số lượng khách hàng":cmbCategory.getSelectedItem().toString());
-        lblChartHint.setText(type<=1?"Biểu đồ theo kỳ thống kê":"Xếp hạng theo số liệu thực tế • Tối đa 12 mục trên biểu đồ");
         lblMetricTitles[0].setText(switch(type) {case 0->"TỔNG DOANH THU";case 1->"KHÁCH HÀNG DUY NHẤT";case 2->"TỔNG KHÁCH THANH TOÁN";case 3->"LƯỢT DỊCH VỤ";case 4->"SỐ PHỤ TÙNG ĐÃ THAY";case 5->"SỐ XE SỬA CHỮA";case 6->"DOANH SỐ ĐÃ THU";default->"GIÁ TRỊ HÓA ĐƠN ĐÃ THU";});
         lblMetricTitles[1].setText("SỐ NHÓM CÓ PHÁT SINH");
         lblMetricTitles[2].setText("GIÁ TRỊ NHÓM CAO NHẤT");
@@ -210,7 +239,15 @@ public final class ManHinhThongKe extends JPanel {
                     detailModel.setRowCount(0);
                     for(int i=0;i<bang.dong().size();i++) {
                         Object[] raw=bang.dong().get(i), row=new Object[raw.length+1];row[0]=i+1;
-                        for(int j=0;j<raw.length;j++) row[j+1]=raw[j] instanceof BigDecimal ? NUMBER.format(raw[j]) : raw[j];
+                        for (int j = 0; j < raw.length; j++) {
+                            if (raw[j] instanceof BigDecimal number) {
+                                row[j + 1] = NUMBER.format(
+                                    number.setScale(0, java.math.RoundingMode.HALF_UP)
+                                );
+                            } else {
+                                row[j + 1] = raw[j];
+                            }
+                        }
                         detailModel.addRow(row);
                     }
                     detailTable.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
@@ -221,11 +258,34 @@ public final class ManHinhThongKe extends JPanel {
                     pnlChart.update(buckets,type<=1?type:2,daily);
                     lblSummary.setText(DATE.format(range[0])+" – "+DATE.format(range[1])
                             +(buckets.isEmpty()?"  •  Không có dữ liệu trong kỳ đã chọn.":type==1?"  •  Tổng kỳ không cộng trùng khách giữa các mốc.":""));
-                } catch(Exception ex) {
-                    Throwable cause=ex.getCause()==null?ex:ex.getCause();
+                
+                } catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                    clear("Quá trình tải thống kê bị gián đoạn.");
+
+                    JOptionPane.showMessageDialog(
+                        ManHinhThongKe.this,
+                        "Quá trình tải thống kê bị gián đoạn. Vui lòng thử lại.",
+                        "Lỗi thống kê",
+                        JOptionPane.ERROR_MESSAGE
+                    );
+
+                } catch (java.util.concurrent.ExecutionException ex) {
+                    Throwable cause = ex.getCause();
+                    String message = cause != null && cause.getMessage() != null
+                            ? cause.getMessage()
+                            : ex.getMessage();
+
                     clear("Không tải được số liệu. Bạn có thể bấm Xem thống kê để thử lại.");
-                    JOptionPane.showMessageDialog(ManHinhThongKe.this,cause.getMessage(),"Lỗi thống kê",JOptionPane.ERROR_MESSAGE);
+
+                    JOptionPane.showMessageDialog(
+                        ManHinhThongKe.this,
+                        message,
+                        "Lỗi thống kê",
+                        JOptionPane.ERROR_MESSAGE
+                    );
                 }
+
             }
         }.execute();
     }
@@ -241,7 +301,11 @@ public final class ManHinhThongKe extends JPanel {
         private ArrayList<Bucket> data=new ArrayList<>();
         private int type;
         private boolean daily;
-        Chart() { setBackground(Color.WHITE); setPreferredSize(new Dimension(800,410)); }
+        Chart() {
+            setBackground(Color.WHITE);
+            setPreferredSize(new Dimension(800, 410));
+            setToolTipText(" ");
+        }
         void update(List<Bucket> buckets,int category,boolean days) {
             data=new ArrayList<>(buckets); type=category; daily=days;
             setPreferredSize(new Dimension(800,category>=2?Math.max(380,Math.min(12,data.size())*36+40):410));
@@ -259,6 +323,113 @@ public final class ManHinhThongKe extends JPanel {
             if(type>=2) drawHorizontal(g); else drawTimeline(g);
             g.dispose();
         }
+        @Override
+		public String getToolTipText(MouseEvent e) {
+		    if (data == null || data.isEmpty()) {
+		        return null;
+		    }
+		
+		    int mouseX = e.getX();
+		    int mouseY = e.getY();
+		
+		    if (type >= 2) {
+		        int count = Math.min(12, data.size());
+		        int left = Math.min(300, getWidth() / 3);
+		        int right = getWidth() - 75;
+		        int slot = Math.max(30, (getHeight() - 24) / count);
+		
+		        double max = Math.max(1,
+		                data.stream()
+		                    .mapToDouble(Bucket::value)
+		                    .max().orElse(1));
+		
+		        for (int i = 0; i < count; i++) {
+		            Bucket item = data.get(i);
+		
+		            int y = 12 + i * slot;
+		            int barHeight = Math.min(24, slot - 9);
+		            int barWidth = (int) (
+		                    (right - left) * item.value() / max);
+		
+		            if (mouseX >= left
+		                    && mouseX <= left + Math.max(2, barWidth)
+		                    && mouseY >= y
+		                    && mouseY <= y + barHeight) {
+		
+		                return tooltip(item, false);
+		            }
+		        }
+		
+		    } else {
+		        int count = data.size();
+		
+		        int left = 82;
+		        int right = Math.max(left + 1, getWidth() - 30);
+		        int top = 32;
+		        int bottom = Math.max(top + 1, getHeight() - 62);
+		
+		        int width = right - left;
+		        int height = bottom - top;
+		
+		        double max = data.stream()
+		                .mapToDouble(Bucket::value)
+		                .max().orElse(1);
+		
+		        double axis = type == 1
+		                ? Math.max(4, Math.ceil(max / 4) * 4)
+		                : Math.max(1, max * 1.15);
+		
+		        double slot = width / (double) count;
+		
+		        for (int i = 0; i < count; i++) {
+		            int x = left + (int) ((i + 0.5) * slot);
+		            int y = bottom - (int) (
+		                    height * data.get(i).value() / axis);
+		
+		            boolean hovered;
+		
+		            if (type == 0) {
+		                hovered = Math.abs(mouseX - x) <= 9
+		                        && Math.abs(mouseY - y) <= 9;
+		            } else {
+		                int bar = Math.max(2,
+		                        Math.min(44, (int) (slot * 0.55)));
+		
+		                hovered = mouseX >= x - bar / 2
+		                        && mouseX <= x - bar / 2 + bar
+		                        && mouseY >= y
+		                        && mouseY <= bottom;
+		            }
+		
+		            if (hovered) {
+		                return tooltip(data.get(i), type == 0);
+		            }
+		        }
+		    }
+		
+		    return null;
+		}
+		
+		private String tooltip(Bucket item, boolean money) {
+		    String label = item.label();
+		    String value = NUMBER.format(item.value());
+		
+		    if (money) {
+		        value += " đ";
+		    }
+		
+		    return "<html>"
+		            + "<b>" + escapeHtml(label) + "</b>"
+		            + "<br>Giá trị: " + escapeHtml(value)
+		            + "</html>";
+		}
+		
+		private String escapeHtml(String text) {
+		    return text.replace("&", "&amp;")
+		            .replace("<", "&lt;")
+		            .replace(">", "&gt;")
+		            .replace("\"", "&quot;");
+		}
         private void drawHorizontal(Graphics2D g) {
             int count=Math.min(12,data.size()),left=Math.min(300,getWidth()/3),right=getWidth()-75;
             double max=Math.max(1,data.stream().mapToDouble(Bucket::value).max().orElse(1));
