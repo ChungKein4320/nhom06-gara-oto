@@ -39,7 +39,9 @@ public final class ThuongMaiDAO {
             QuyTrinhDAO.execute(conn,"UPDATE dbo.HoaDon SET trangThaiThanhToan=N'Đã thanh toán',maPhuongThuc=?,giamGia=? WHERE maHoaDon=?",method,discount,invoice);
             if(repair!=null) QuyTrinhDAO.execute(conn,"UPDATE dbo.PhieuSuaChua SET trangThai=N'Đã thanh toán' WHERE maPSC=?",row.get("maPSC"));
             // Một hóa đơn chỉ sinh một lịch sử điểm, kể cả người dùng bấm lại.
-            if(repair!=null && !QuyTrinhDAO.exists(conn,"SELECT 1 FROM dbo.LichSuTichDiem WITH (UPDLOCK,HOLDLOCK) WHERE maHoaDon=?",invoice)) {
+            if (repair != null && scannedCustomer != null && !QuyTrinhDAO.exists(
+                        conn,"SELECT 1 FROM dbo.LichSuTichDiem "
+                                + "WITH (UPDLOCK,HOLDLOCK) WHERE maHoaDon=?",invoice)) {
                 Timestamp earnedAt=QuyTrinhDAO.now(conn);
                 BigDecimal eligible=amount(row,"tienPhuTung").add(amount(row,"tienCong")).add(amount(row,"dichVuKhac")).add(amount(row,"thueVAT"));
                 int points=InvoiceMath.points(eligible);
