@@ -14,11 +14,26 @@ public class PhuongTien {
 
     public PhuongTien() { }
 
+    public PhuongTien(String vIN, String bienSo, String hangXe, String dongXe, String mauXe, Integer namSanXuat,
+			String soMay, BigDecimal soKm) {
+		super();
+		VIN = vIN;
+		this.bienSo = bienSo;
+		this.hangXe = hangXe;
+		this.dongXe = dongXe;
+		this.mauXe = mauXe;
+		this.namSanXuat = namSanXuat;
+		this.soMay = soMay;
+		this.soKm = soKm;
+	}
+
     public String getVIN() {
         return VIN;
     }
 
     public void setVIN(String value) {
+        if (value == null || !value.matches("[A-HJ-NPR-Z0-9]{17}"))
+            throw new IllegalArgumentException("VIN phải gồm 17 ký tự in hoa hoặc chữ số, không có I, O, Q");
         this.VIN = value;
     }
 
@@ -27,6 +42,8 @@ public class PhuongTien {
     }
 
     public void setBienSo(String value) {
+        if (value == null || !value.matches("[0-9]{2}[A-Z][0-9]{5}"))
+            throw new IllegalArgumentException("Biển số phải có dạng 30F25658");
         this.bienSo = value;
     }
 
@@ -35,7 +52,8 @@ public class PhuongTien {
     }
 
     public void setHangXe(String value) {
-        this.hangXe = value;
+        if (value == null || value.isBlank()) throw new IllegalArgumentException("Hãng xe không được rỗng");
+        this.hangXe = value.trim();
     }
 
     public String getDongXe() {
@@ -43,7 +61,8 @@ public class PhuongTien {
     }
 
     public void setDongXe(String value) {
-        this.dongXe = value;
+        if (value == null || value.isBlank()) throw new IllegalArgumentException("Dòng xe không được rỗng");
+        this.dongXe = value.trim();
     }
 
     public String getMauXe() {
@@ -51,7 +70,8 @@ public class PhuongTien {
     }
 
     public void setMauXe(String value) {
-        this.mauXe = value;
+        if (value == null || value.isBlank()) throw new IllegalArgumentException("Màu xe không được rỗng");
+        this.mauXe = value.trim();
     }
 
     public Integer getNamSanXuat() {
@@ -59,6 +79,8 @@ public class PhuongTien {
     }
 
     public void setNamSanXuat(Integer value) {
+        if (value == null || value > java.time.Year.now().getValue() || value < 1886)
+            throw new IllegalArgumentException("Năm sản xuất không hợp lệ");
         this.namSanXuat = value;
     }
 
@@ -67,7 +89,8 @@ public class PhuongTien {
     }
 
     public void setSoMay(String value) {
-        this.soMay = value;
+        if (value == null || value.isBlank()) throw new IllegalArgumentException("Số máy không được rỗng");
+        this.soMay = value.trim();
     }
 
     public BigDecimal getSoKm() {
@@ -76,6 +99,22 @@ public class PhuongTien {
 
     public void setSoKm(BigDecimal value) {
         this.soKm = value;
+    }
+
+    public void capNhatBienSo(String bienSoMoi) {
+        setBienSo(bienSoMoi);
+    }
+
+    @Override
+    public String toString() {
+        return "PhuongTien [VIN=" + VIN
+                + ", bienSo=" + bienSo
+                + ", hangXe=" + hangXe
+                + ", dongXe=" + dongXe
+                + ", mauXe=" + mauXe
+                + ", namSanXuat=" + namSanXuat
+                + ", soMay=" + soMay
+                + ", soKm=" + soKm + "]";
     }
 
 }

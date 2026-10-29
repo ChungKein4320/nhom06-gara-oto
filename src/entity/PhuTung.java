@@ -12,6 +12,15 @@ public class PhuTung {
     public PhuTung() {
     }
 
+    public PhuTung(String maPhuTung, String tenPhuTung, BigDecimal donGia, String loaiPhuTung, Integer thoiHanBaoHanh) {
+		super();
+		this.maPhuTung = maPhuTung;
+		this.tenPhuTung = tenPhuTung;
+		this.donGia = donGia;
+		this.loaiPhuTung = loaiPhuTung;
+		this.thoiHanBaoHanh = thoiHanBaoHanh;
+	}
+
     public String getMaPhuTung() {
         return maPhuTung;
     }
@@ -25,7 +34,11 @@ public class PhuTung {
     }
 
     public void setTenPhuTung(String value) {
-        this.tenPhuTung = value;
+        if (value == null || value.isBlank())
+            throw new IllegalArgumentException("Tên phụ tùng không được để trống");
+        if (value.trim().length() > 150)
+            throw new IllegalArgumentException("Tên phụ tùng không được quá 150 ký tự");
+        this.tenPhuTung = value.trim();
     }
 
     public BigDecimal getDonGia() {
@@ -33,6 +46,10 @@ public class PhuTung {
     }
 
     public void setDonGia(BigDecimal value) {
+        if (value == null || value.signum() < 0)
+            throw new IllegalArgumentException("Đơn giá phụ tùng phải là số không âm");
+        if (value.scale() > 2 || value.precision() - value.scale() > 16)
+        	throw new IllegalArgumentException("Đơn giá quá lớn, vui lòng nhập giá trị nhỏ hơn.");
         this.donGia = value;
     }
 
@@ -41,7 +58,33 @@ public class PhuTung {
     }
 
     public void setLoaiPhuTung(String value) {
-        this.loaiPhuTung = value;
+        if (value == null || value.isBlank())
+            throw new IllegalArgumentException("Loại phụ tùng không được để trống");
+        if (value.trim().length() > 100)
+            throw new IllegalArgumentException("Loại phụ tùng không được quá 100 ký tự");
+        this.loaiPhuTung = value.trim();
+    }
+
+    public Integer getThoiHanBaoHanh() {
+        return thoiHanBaoHanh;
+    }
+
+    public void setThoiHanBaoHanh(Integer value) {
+    	if (value != null && value < 0)
+            throw new IllegalArgumentException("Thời hạn bảo hành không được âm");
+        this.thoiHanBaoHanh = value;
+    }
+    public void capNhatGia(BigDecimal giaMoi) {
+        setDonGia(giaMoi);
+    }
+
+    @Override
+    public String toString() {
+        return "PhuTung [maPhuTung=" + maPhuTung
+                + ", tenPhuTung=" + tenPhuTung
+                + ", donGia=" + donGia
+                + ", loaiPhuTung=" + loaiPhuTung
+                + ", thoiHanBaoHanh=" + thoiHanBaoHanh + "]";
     }
 
     public Integer getThoiHanBaoHanh() {
