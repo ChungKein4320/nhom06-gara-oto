@@ -1,6 +1,4 @@
 ﻿
--- Tệp cài đặt tổng hợp: schema, dữ liệu mẫu và Migration_20261028_FixNghiepVu.sql đã gộp tại mục D.1.
--- Với database mới, chỉ cần chạy một lần duy nhất file GaraOto.sql này.
 USE [master];
 GO
 IF DB_ID(N'GaraOto') IS NOT NULL
@@ -18,16 +16,16 @@ SET QUOTED_IDENTIFIER ON;
 SET XACT_ABORT ON;
 GO
 
--- A. TẠO SCHEMA, RÀNG BUỘC VÀ SEQUENCE. Không có ON DELETE CASCADE.
+-- A. SCHEMA
 BEGIN TRY
     BEGIN TRANSACTION;
-CREATE SEQUENCE dbo.[Seq_NhanVien] AS int START WITH 6 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
+CREATE SEQUENCE dbo.[Seq_NhanVien] AS int START WITH 14 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
 CREATE SEQUENCE dbo.[Seq_KhachHang] AS int START WITH 61 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
 CREATE SEQUENCE dbo.[Seq_DichVu] AS int START WITH 21 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
 CREATE SEQUENCE dbo.[Seq_PhuTung] AS int START WITH 51 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
 CREATE SEQUENCE dbo.[Seq_NhaCungCap] AS int START WITH 13 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
 CREATE SEQUENCE dbo.[Seq_PhuongThucThanhToan] AS int START WITH 5 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
-CREATE SEQUENCE dbo.[Seq_TaiKhoan] AS int START WITH 6 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
+CREATE SEQUENCE dbo.[Seq_TaiKhoan] AS int START WITH 14 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
 CREATE SEQUENCE dbo.[Seq_TonKho] AS int START WITH 51 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
 CREATE SEQUENCE dbo.[Seq_MaGiamGia] AS int START WITH 37 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
 CREATE SEQUENCE dbo.[Seq_PhieuTiepNhan] AS int START WITH 101 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
@@ -80,7 +78,6 @@ CREATE TABLE dbo.[KhachHang] (
 CREATE TABLE dbo.[PhuongTien] (
     [VIN] varchar(17) NOT NULL,
     [bienSo] varchar(8) NOT NULL,
-    [maKhachHangChuHienTai] varchar(5) NULL,
     [hangXe] nvarchar(100) NOT NULL,
     [dongXe] nvarchar(100) NOT NULL,
     [mauXe] nvarchar(50) NOT NULL,
@@ -446,7 +443,6 @@ CREATE TABLE dbo.[LichSuTichDiem] (
 
 ALTER TABLE dbo.[TaiKhoan] WITH CHECK ADD CONSTRAINT [FK_TaiKhoan_NhanVien] FOREIGN KEY ([maNhanVien]) REFERENCES dbo.[NhanVien] ([maNhanVien]);
 ALTER TABLE dbo.[TonKho] WITH CHECK ADD CONSTRAINT [FK_TonKho_PhuTung] FOREIGN KEY ([maPhuTung]) REFERENCES dbo.[PhuTung] ([maPhuTung]);
-ALTER TABLE dbo.[PhuongTien] WITH CHECK ADD CONSTRAINT [FK_PhuongTien_ChuHienTai] FOREIGN KEY ([maKhachHangChuHienTai]) REFERENCES dbo.[KhachHang] ([maKhachHang]);
 ALTER TABLE dbo.[MaGiamGia] WITH CHECK ADD CONSTRAINT [FK_MaGiamGia_KhachHang] FOREIGN KEY ([maKhachHang]) REFERENCES dbo.[KhachHang] ([maKhachHang]);
 ALTER TABLE dbo.[PhieuTiepNhan] WITH CHECK ADD CONSTRAINT [FK_PhieuTiepNhan_KhachHang] FOREIGN KEY ([maKhachHang]) REFERENCES dbo.[KhachHang] ([maKhachHang]);
 ALTER TABLE dbo.[PhieuTiepNhan] WITH CHECK ADD CONSTRAINT [FK_PhieuTiepNhan_NhanVien] FOREIGN KEY ([maNhanVien]) REFERENCES dbo.[NhanVien] ([maNhanVien]);
@@ -490,7 +486,6 @@ ALTER TABLE dbo.[ChiTietHoaDon] WITH CHECK ADD CONSTRAINT [FK_ChiTietHoaDon_PhuT
 ALTER TABLE dbo.[LichSuTichDiem] WITH CHECK ADD CONSTRAINT [FK_LichSuTichDiem_KhachHang] FOREIGN KEY ([maKhachHang]) REFERENCES dbo.[KhachHang] ([maKhachHang]);
 ALTER TABLE dbo.[LichSuTichDiem] WITH CHECK ADD CONSTRAINT [FK_LichSuTichDiem_HoaDon] FOREIGN KEY ([maHoaDon]) REFERENCES dbo.[HoaDon] ([maHoaDon]);
 
--- Định danh dòng hóa đơn với các FK tùy chọn, ngăn trùng cùng nội dung một hóa đơn.
 CREATE UNIQUE INDEX UX_ChiTietHoaDon_DichVu ON dbo.ChiTietHoaDon(maHoaDon,maDichVu)
     WHERE maDichVu IS NOT NULL AND maPhuTung IS NULL;
 CREATE UNIQUE INDEX UX_ChiTietHoaDon_PhuTung ON dbo.ChiTietHoaDon(maHoaDon,maPhuTung)
@@ -513,8 +508,7 @@ BEGIN CATCH
 END CATCH;
 GO
 
--- B. RÀNG BUỘC LIÊN BẢNG (set-based, hỗ trợ INSERT/UPDATE nhiều dòng).
--- Không thêm trạng thái hay cơ chế kho/điểm mới ngoài hợp đồng của OOAD.
+-- B. RÀNG BUỘC LIÊN BẢNG
 CREATE TRIGGER dbo.TR_PhieuSuaChua_HoSo ON dbo.PhieuSuaChua AFTER INSERT, UPDATE AS
 BEGIN
     SET NOCOUNT ON;
@@ -602,7 +596,7 @@ BEGIN
 END;
 GO
 
--- C. VIEW TÍNH TOÁN ĐỌC, KHÔNG THAY ĐỔI NGHIỆP VỤ.
+-- C. VIEW
 CREATE VIEW dbo.vw_TongTienBaoGia AS
 SELECT b.maBaoGia,CONVERT(decimal(18,2),COALESCE(SUM(c.soLuongPhuTung*c.donGiaPhuTung+c.chiPhiNhanCong),0)) AS tongChiPhi
 FROM dbo.PhieuBaoGia b LEFT JOIN dbo.ChiTietPhieuBaoGia c ON c.maBaoGia=b.maBaoGia
@@ -632,7 +626,7 @@ DECLARE @NgayMau datetime2(0)=CONVERT(date,SYSDATETIME());
 BEGIN TRY
     BEGIN TRANSACTION;
 
--- NhanVien: 4 thành viên và 1 admin
+-- NhanVien
 INSERT INTO dbo.NhanVien
     (maNhanVien, hoTenNV, ngaySinh, soDienThoai, email,
      diaChi, vaiTro, gioiTinh, trangThai)
@@ -652,11 +646,19 @@ VALUES
     ('NV004', N'Châu Ngọc Khanh', '20051117', '0901000004',
      'khanh.123@garage.vn', N'Thành phố Thủ Đức, TP. Hồ Chí Minh',
      N'Nhân viên quản lý', 1, N'Đang làm'),
-     ('NV005', N'Admin', '20050505', '0909888777',
-     'admin.123@garage.vn', N'Quận 7, TP. Hồ Chí Minh',
-     N'Nhân viên quản lý', 1, N'Đang làm');
+      ('NV005', N'Admin', '20050505', '0909888777',
+      'admin.123@garage.vn', N'Quận 7, TP. Hồ Chí Minh',
+      N'Nhân viên quản lý', 1, N'Đang làm'),
+     ('NV006', N'Trần Minh Quân', '19990115', '0902000006', 'quan.tran@garage.vn', N'Quận 1, TP. Hồ Chí Minh', N'Nhân viên bán hàng', 1, N'Đang làm'),
+     ('NV007', N'Lê Ngọc Phương', '20010322', '0902000007', 'phuong.le@garage.vn', N'Quận 3, TP. Hồ Chí Minh', N'Nhân viên bán hàng', 0, N'Đang làm'),
+     ('NV008', N'Phạm Quốc Hưng', '19980711', '0902000008', 'hung.pham@garage.vn', N'Quận 5, TP. Hồ Chí Minh', N'Nhân viên bán hàng', 1, N'Đang làm'),
+     ('NV009', N'Nguyễn Thành Đạt', '19970218', '0902000009', 'dat.nguyen@garage.vn', N'Gò Vấp, TP. Hồ Chí Minh', N'Nhân viên kỹ thuật', 1, N'Đang làm'),
+     ('NV010', N'Võ Minh Tâm', '20000526', '0902000010', 'tam.vo@garage.vn', N'Bình Thạnh, TP. Hồ Chí Minh', N'Nhân viên kỹ thuật', 1, N'Đang làm'),
+     ('NV011', N'Đỗ Hoàng Long', '19991003', '0902000011', 'long.do@garage.vn', N'Tân Bình, TP. Hồ Chí Minh', N'Nhân viên kỹ thuật', 1, N'Đang làm'),
+     ('NV012', N'Bùi Thanh Phúc', '20010812', '0902000012', 'phuc.bui@garage.vn', N'Quận 10, TP. Hồ Chí Minh', N'Nhân viên kho', 1, N'Đang làm'),
+     ('NV013', N'Nguyễn Thị Thu Hà', '19981204', '0902000013', 'ha.nguyen@garage.vn', N'Thành phố Thủ Đức, TP. Hồ Chí Minh', N'Nhân viên kho', 0, N'Đang làm');
 
--- KhachHang: 60 bản ghi
+-- KhachHang
 INSERT INTO dbo.[KhachHang] ([maKhachHang], [hoTenKH], [soDienThoai], [gioiTinh], [email], [diaChi])
 VALUES
     (N'KH001', N'Nguyễn Văn An', N'0522000001', 1, N'an.nguyen@gmail.com', N'21 Lê Lợi, Quận 1, TP. Hồ Chí Minh'),
@@ -720,7 +722,7 @@ VALUES
     (N'KH059', N'Quàng Văn Hải', N'0922000059', 1, N'hai.quang@gmail.com', N'84 Nguyễn Tất Thành, Quận 4, TP. Hồ Chí Minh'),
     (N'KH060', N'Bào Thanh Trúc', N'0322000060', 0, N'truc.bao@gmail.com', NULL);
 
--- PhuongTien: 72 bản ghi
+-- PhuongTien
 INSERT INTO dbo.[PhuongTien] ([VIN], [bienSo], [hangXe], [dongXe], [mauXe], [namSanXuat], [soMay], [soKM])
 VALUES
     (N'MR0BT9F31JA310001', N'31B10001', N'Toyota', N'Vios', N'Đen', 2018, N'2NR-5100001', 0.00),
@@ -796,7 +798,7 @@ VALUES
     (N'WBA5R1101KA310071', N'61L10071', N'BMW', N'320i', N'Nâu', 2019, N'61000006', 123043.00),
     (N'RLLV1AFA1SA310072', N'62M10072', N'VinFast', N'VF8', N'Trắng', 2025, N'202571000006', 124776.00);
 
--- DichVu: 20 bản ghi
+-- DichVu
 INSERT INTO dbo.[DichVu] ([maDichVu], [tenDichVu], [moTa], [donGia], [trangThai])
 VALUES
     (N'DV001', N'Thay dầu động cơ', N'Dịch vụ thay dầu động cơ theo yêu cầu khách hàng.', 150000.00, N'Hoạt động'),
@@ -820,7 +822,7 @@ VALUES
     (N'DV019', N'Chăm sóc ngoại thất', N'Dịch vụ chăm sóc ngoại thất theo yêu cầu khách hàng.', 1200000.00, N'Ngừng hoạt động'),
     (N'DV020', N'Kiểm tra kỹ thuật chuyên sâu', N'Dịch vụ kiểm tra, quét lỗi và chẩn đoán kỹ thuật chuyên sâu.', 2500000.00, N'Ngừng hoạt động');
 
--- PhuTung: 51 bản ghi (PT000 là mã hệ thống, không có tồn kho)
+-- PhuTung
 INSERT INTO dbo.[PhuTung] ([maPhuTung], [tenPhuTung], [donGia], [loaiPhuTung], [thoiHanBaoHanh])
 VALUES
     (N'PT000', N'Không sử dụng phụ tùng', 0.00, N'Hệ thống', 0),
@@ -875,7 +877,7 @@ VALUES
     (N'PT049', N'Cụm thước lái trợ lực điện EPS', 14500000.00, N'Hệ thống lái', 120),
     (N'PT050', N'Bộ vi sai cầu sau', 18500000.00, N'Truyền động', 120);
 
--- NhaCungCap: 12 bản ghi
+-- NhaCungCap
 INSERT INTO dbo.[NhaCungCap] ([maNCC], [tenNCC], [soDienThoai], [email], [diaChi])
 VALUES
     (N'NCC001', N'Công ty Phụ tùng An Phát', N'0533000001', N'anphat.parts@gmail.com', N'120 Quốc lộ 1A, Bình Chánh, TP. Hồ Chí Minh'),
@@ -891,7 +893,7 @@ VALUES
     (N'NCC011', N'Công ty Bảo dưỡng Toàn Cầu', N'0533000011', N'toancau.service@gmail.com', N'14 Trần Phú, TP. Đà Lạt, Lâm Đồng'),
     (N'NCC012', N'Công ty Vật tư Phú Gia', N'0733000012', NULL, NULL);
 
--- PhuongThucThanhToan: 4 bản ghi
+-- PhuongThucThanhToan
 INSERT INTO dbo.[PhuongThucThanhToan] ([maPhuongThuc], [tenPhuongThuc])
 VALUES
     (N'TT001', N'Tiền mặt'),
@@ -899,7 +901,7 @@ VALUES
     (N'TT003', N'Chuyển khoản ngân hàng (Internet Banking)'),
     (N'TT004', N'Thẻ thanh toán POS (Visa/Mastercard/Napas)');
 
--- TaiKhoan: 4 thành viên và 1 admin
+-- TaiKhoan
 INSERT INTO dbo.TaiKhoan
     (maTaiKhoan, maNhanVien, tenDangNhap, matKhau, trangThai, ngayTao)
 VALUES
@@ -907,9 +909,17 @@ VALUES
     ('TK002', 'NV002', 'kien123',  'kien123',  N'Đang hoạt động', '20261012'),
     ('TK003', 'NV003', 'chau123',  'chau123',  N'Đang hoạt động', '20261012'),
     ('TK004', 'NV004', 'khanh123', 'khanh123', N'Đang hoạt động', '20261012'),
-    ('TK005', 'NV005', 'admin', 'admin', N'Đang hoạt động', '20261012');
+    ('TK005', 'NV005', 'admin', 'admin', N'Đang hoạt động', '20261012'),
+    ('TK006', 'NV006', 'quan123', 'quan123', N'Đang hoạt động', '20261012'),
+    ('TK007', 'NV007', 'phuong123', 'phuong123', N'Đang hoạt động', '20261012'),
+    ('TK008', 'NV008', 'hung123', 'hung123', N'Đang hoạt động', '20261012'),
+    ('TK009', 'NV009', 'dat123', 'dat123', N'Đang hoạt động', '20261012'),
+    ('TK010', 'NV010', 'tam123', 'tam123', N'Đang hoạt động', '20261012'),
+    ('TK011', 'NV011', 'long123', 'long123', N'Đang hoạt động', '20261012'),
+    ('TK012', 'NV012', 'phuc123', 'phuc123', N'Đang hoạt động', '20261012'),
+    ('TK013', 'NV013', 'ha123', 'ha123', N'Đang hoạt động', '20261012');
 
--- TonKho: 50 bản ghi
+-- TonKho
 INSERT INTO dbo.[TonKho] ([maTonKho], [maPhuTung], [soLuongHienTai], [soLuongToiThieu])
 VALUES
     (N'TKH001', N'PT001', 6, 6),
@@ -963,7 +973,11 @@ VALUES
     (N'TKH049', N'PT049', 4, 1),
     (N'TKH050', N'PT050', 3, 1);
 
--- MaGiamGia: 36 bản ghi
+UPDATE dbo.TonKho
+SET soLuongHienTai=soLuongHienTai+10
+WHERE soLuongHienTai>0;
+
+-- MaGiamGia
 INSERT INTO dbo.[MaGiamGia] ([maGiamGia], [maKhachHang], [mucGiam], [ngayTao], [ngayHetHan], [trangThai])
 VALUES
     (N'MGG001', N'KH041', 0.00, DATEADD(minute,0,DATEADD(day,-583,@NgayMau)), DATEADD(minute,1439,DATEADD(day,-223,@NgayMau)), N'Đã sử dụng'),
@@ -1003,7 +1017,7 @@ VALUES
     (N'MGG035', N'KH011', 20.00, DATEADD(minute,0,DATEADD(day,-400,@NgayMau)), DATEADD(minute,1439,DATEADD(day,-35,@NgayMau)), N'Hết hạn'),
     (N'MGG036', N'KH012', 30.00, DATEADD(minute,0,DATEADD(day,-400,@NgayMau)), DATEADD(minute,1439,DATEADD(day,-35,@NgayMau)), N'Hết hạn');
 
--- PhieuTiepNhan: 100 bản ghi
+-- PhieuTiepNhan
 INSERT INTO dbo.[PhieuTiepNhan] ([maPTN], [maKhachHang], [maNhanVien], [VIN], [ngayTiepNhan], [soODO])
 VALUES
     (N'PTN001', N'KH001', N'NV001', N'MR0BT9F31JA310001', DATEADD(minute,480,DATEADD(day,-2,@NgayMau)), N'000000'),
@@ -1107,7 +1121,7 @@ VALUES
     (N'PTN099', N'KH027', N'NV001', N'KMHCT41B4LA310027', DATEADD(minute,480,DATEADD(day,-657,@NgayMau)), N'045306'),
     (N'PTN100', N'KH028', N'NV001', N'KNDEP81A2NA310028', DATEADD(minute,480,DATEADD(day,-20,@NgayMau)), N'047024');
 
--- ChiTietPhieuTiepNhan: 200 bản ghi
+-- ChiTietPhieuTiepNhan
 INSERT INTO dbo.[ChiTietPhieuTiepNhan] ([maPTN], [maDichVu], [yeuCauDichVu])
 VALUES
     (N'PTN001', N'DV001', N'Khách yêu cầu thay dầu động cơ; kiểm tra và báo giá trước khi thực hiện.'),
@@ -1311,7 +1325,7 @@ VALUES
     (N'PTN100', N'DV015', N'Khách yêu cầu đại tu động cơ; kiểm tra và báo giá trước khi thực hiện.'),
     (N'PTN100', N'DV016', N'Khách yêu cầu sửa hộp số; kiểm tra và báo giá trước khi thực hiện.');
 
--- PhieuKiemTra: 90 bản ghi
+-- PhieuKiemTra
 INSERT INTO dbo.[PhieuKiemTra] ([maPKT], [maPTN], [maNhanVien], [maKhachHang], [VIN], [ngayKiemTra])
 VALUES
     (N'PKT001', N'PTN001', N'NV003', N'KH001', N'MR0BT9F31JA310001', DATEADD(minute,510,DATEADD(day,-2,@NgayMau))),
@@ -1405,7 +1419,7 @@ VALUES
     (N'PKT089', N'PTN089', N'NV003', N'KH017', N'JM3KF2W76JA310017', DATEADD(minute,510,DATEADD(day,-527,@NgayMau))),
     (N'PKT090', N'PTN090', N'NV003', N'KH018', N'MNCUMFF5XGA310018', DATEADD(minute,510,DATEADD(day,-540,@NgayMau)));
 
--- ChiTietPhieuKiemTra: 180 bản ghi
+-- ChiTietPhieuKiemTra
 INSERT INTO dbo.[ChiTietPhieuKiemTra] ([maPKT], [maDichVu], [hangMucKiemTra], [ketQuaChuanDoan], [ketQuaKiemTra])
 VALUES
     (N'PKT001', N'DV001', N'Thay dầu động cơ', N'Ghi nhận dấu hiệu hao mòn, cần xử lý theo hạng mục.', N'Không đạt'),
@@ -1589,7 +1603,7 @@ VALUES
     (N'PKT090', N'DV005', N'Thay lọc gió điều hòa', N'Chưa phát hiện bất thường ở bộ phận đã kiểm tra.', N'Đạt'),
     (N'PKT090', N'DV006', N'Vệ sinh điều hòa', N'Chẩn đoán sơ bộ đã ghi nhận; chờ hoàn tất phép kiểm tra.', NULL);
 
--- PhieuBaoGia: 80 bản ghi
+-- PhieuBaoGia
 INSERT INTO dbo.[PhieuBaoGia] ([maBaoGia], [maPKT], [maKhachHang], [maNhanVien], [VIN], [ngayLap], [ngayHetHan], [thoiGianXacNhan], [trangThai])
 SELECT v.[maBaoGia], v.[maPKT], kt.[maKhachHang], v.[maNhanVien], v.[VIN], v.[ngayLap], v.[ngayHetHan], v.[thoiGianXacNhan], v.[trangThai]
 FROM (VALUES
@@ -1676,7 +1690,7 @@ FROM (VALUES
 ) AS v([maBaoGia], [maPKT], [maNhanVien], [VIN], [ngayLap], [ngayHetHan], [thoiGianXacNhan], [trangThai])
 JOIN dbo.[PhieuKiemTra] kt ON kt.[maPKT]=v.[maPKT] AND kt.[VIN]=v.[VIN];
 
--- ChiTietPhieuBaoGia: 168 bản ghi
+-- ChiTietPhieuBaoGia
 INSERT INTO dbo.[ChiTietPhieuBaoGia] ([maBaoGia], [maDichVu], [maPhuTung], [soLuongPhuTung], [donGiaPhuTung], [chiPhiNhanCong], [trangThai])
 VALUES
     (N'PBG001', N'DV001', N'PT001', 2, 850000.00, 150000.00, N'Chờ sửa chữa'),
@@ -1848,7 +1862,7 @@ VALUES
     (N'PBG080', N'DV012', N'PT004', 3, 220000.00, 150000.00, N'Thiếu phụ tùng + Chờ xác nhận'),
     (N'PBG080', N'DV013', N'PT011', 1, 1250000.00, 800000.00, N'Thiếu phụ tùng + Chờ xác nhận');
 
--- PhieuSuaChua: 70 bản ghi
+-- PhieuSuaChua
 INSERT INTO dbo.[PhieuSuaChua] ([maPSC], [maBaoGia], [maKhachHang], [VIN], [maNhanVien], [ngayLap], [ngayHoanThanh], [trangThai])
 VALUES
     (N'PSC001', N'PBG001', N'KH001', N'MR0BT9F31JA310001', N'NV003', DATEADD(minute,570,DATEADD(day,-2,@NgayMau)), NULL, N'Chờ sửa chữa'),
@@ -1922,7 +1936,7 @@ VALUES
     (N'PSC069', N'PBG069', N'KH021', N'MNTCB4D27GA310069', N'NV003', DATEADD(minute,570,DATEADD(day,-267,@NgayMau)), NULL, N'Đã hủy'),
     (N'PSC070', N'PBG070', N'KH022', N'WDDWF4JBXGA310070', N'NV003', DATEADD(minute,570,DATEADD(day,-280,@NgayMau)), NULL, N'Đã hủy');
 
--- ChiTietPhieuSuaChua: 105 bản ghi ban đầu
+-- ChiTietPhieuSuaChua
 INSERT INTO dbo.[ChiTietPhieuSuaChua] ([maPSC], [maDichVu], [maPhuTung], [trangThaiHangMuc], [soLuongPhuTung], [ketQuaNghiemThu], [ngayBatDauBaoHanh], [thoiHanBaoHanh], [ngayHetHanBaoHanh])
 VALUES
     (N'PSC011', N'DV011', N'PT011', N'Thiếu phụ tùng', 3, N'Không đạt', NULL, 0, NULL),
@@ -2039,7 +2053,7 @@ FROM dbo.PhieuSuaChua p JOIN dbo.ChiTietPhieuBaoGia c ON c.maBaoGia=p.maBaoGia
 WHERE p.trangThai=N'Chờ sửa chữa'
   AND NOT EXISTS(SELECT 1 FROM dbo.ChiTietPhieuSuaChua d WHERE d.maPSC=p.maPSC);
 
--- PhieuNhapKho: 36 bản ghi
+-- PhieuNhapKho
 INSERT INTO dbo.[PhieuNhapKho] ([maPNK], [maNCC], [maNhanVien], [ngayNhap], [trangThai])
 VALUES
     (N'PNK001', N'NCC001', N'NV002', DATEADD(minute,600,DATEADD(day,-176,@NgayMau)), N'Chờ duyệt'),
@@ -2079,7 +2093,7 @@ VALUES
     (N'PNK035', N'NCC011', N'NV002', DATEADD(minute,600,DATEADD(day,-40,@NgayMau)), N'Đã duyệt'),
     (N'PNK036', N'NCC012', N'NV002', DATEADD(minute,600,DATEADD(day,-36,@NgayMau)), N'Không duyệt');
 
--- ChiTietPhieuNhapKho: 108 bản ghi
+-- ChiTietPhieuNhapKho
 INSERT INTO dbo.[ChiTietPhieuNhapKho] ([maPNK], [maPhuTung], [soLuongNhap], [donGiaNhap])
 VALUES
     (N'PNK001', N'PT003', 8, 684000.00),
@@ -2191,7 +2205,7 @@ VALUES
     (N'PNK036', N'PT029', 44, 1332000.00),
     (N'PNK036', N'PT030', 80, 1872000.00);
 
--- HoaDon dịch vụ: 30 bản ghi; thêm 12 hóa đơn bán hàng ở phần nâng cấp cuối file.
+-- HoaDon
 INSERT INTO dbo.[HoaDon] ([maHoaDon], [maGiamGia], [maKhachHang], [maNhanVien], [maPSC], [VIN], [ngayLap], [tienPhuTung], [tienCong], [dichVuKhac], [thueVAT], [giamGia], [trangThaiThanhToan], [maPhuongThuc])
 VALUES
     (N'HD001', N'MGG013', N'KH031', N'NV001', N'PSC031', N'MK2NC1W41MA310031', DATEADD(minute,735,DATEADD(day,-423,@NgayMau)), 1435000.00, 13500000.00, 0.00, 1194800.00, 0.00, N'Chờ thanh toán', N'TT002'),
@@ -2204,28 +2218,28 @@ VALUES
     (N'HD008', NULL, N'KH038', N'NV001', N'PSC038', N'MRHGM6625JA310038', DATEADD(minute,735,DATEADD(day,-514,@NgayMau)), 725000.00, 420000.00, 0.00, 91600.00, 0.00, N'Chờ thanh toán', N'TT001'),
     (N'HD009', NULL, N'KH039', N'NV001', N'PSC039', N'KMHCT41B9MA310039', DATEADD(minute,735,DATEADD(day,-527,@NgayMau)), 1350000.00, 770000.00, 100000.00, 177600.00, 0.00, N'Chờ thanh toán', N'TT002'),
     (N'HD010', NULL, N'KH040', N'NV001', N'PSC040', N'KNDEP81AXPA310040', DATEADD(minute,735,DATEADD(day,-540,@NgayMau)), 7260000.00, 850000.00, 0.00, 648800.00, 0.00, N'Chờ thanh toán', N'TT001'),
-    (N'HD011', N'MGG001', N'KH041', N'NV001', N'PSC041', N'JM3KF2W7XLA310041', DATEADD(minute,735,DATEADD(day,-553,@NgayMau)), 6350000.00, 380000.00, 0.00, 538400.00, 0.00, N'Đã thanh toán', N'TT002'),
-    (N'HD012', N'MGG002', N'KH042', N'NV001', N'PSC042', N'MNCUMFF58JA310042', DATEADD(minute,735,DATEADD(day,-566,@NgayMau)), 2720000.00, 430000.00, 100000.00, 260000.00, 21500.00, N'Đã thanh toán', N'TT001'),
+    (N'HD011', N'MGG001', N'KH041', N'NV007', N'PSC041', N'JM3KF2W7XLA310041', DATEADD(minute,735,DATEADD(day,-553,@NgayMau)), 6350000.00, 380000.00, 0.00, 538400.00, 0.00, N'Đã thanh toán', N'TT002'),
+    (N'HD012', N'MGG002', N'KH042', N'NV008', N'PSC042', N'MNCUMFF58JA310042', DATEADD(minute,735,DATEADD(day,-566,@NgayMau)), 2720000.00, 430000.00, 100000.00, 260000.00, 21500.00, N'Đã thanh toán', N'TT001'),
     (N'HD013', N'MGG003', N'KH043', N'NV001', N'PSC043', N'MK2NC1W46NA310043', DATEADD(minute,735,DATEADD(day,-579,@NgayMau)), 12100000.00, 430000.00, 0.00, 1002400.00, 43000.00, N'Đã thanh toán', N'TT002'),
     (N'HD014', N'MGG004', N'KH044', N'NV001', N'PSC044', N'MHYANC22XMA310044', DATEADD(minute,735,DATEADD(day,-592,@NgayMau)), 2250000.00, 630000.00, 0.00, 230400.00, 94500.00, N'Đã thanh toán', N'TT001'),
-    (N'HD015', N'MGG005', N'KH045', N'NV001', N'PSC045', N'MNTCB4D23KA310045', DATEADD(minute,735,DATEADD(day,-605,@NgayMau)), 1315000.00, 600000.00, 100000.00, 161200.00, 120000.00, N'Đã thanh toán', N'TT002'),
+    (N'HD015', N'MGG005', N'KH045', N'NV007', N'PSC045', N'MNTCB4D23KA310045', DATEADD(minute,735,DATEADD(day,-605,@NgayMau)), 1315000.00, 600000.00, 100000.00, 161200.00, 120000.00, N'Đã thanh toán', N'TT002'),
     (N'HD016', N'MGG006', N'KH046', N'NV001', N'PSC046', N'WDDWF4JB3JA310046', DATEADD(minute,735,DATEADD(day,-618,@NgayMau)), 1940000.00, 950000.00, 0.00, 231200.00, 285000.00, N'Đã thanh toán', N'TT001'),
     (N'HD017', N'MGG007', N'KH047', N'NV001', N'PSC047', N'WBA5R1109NA310047', DATEADD(minute,735,DATEADD(day,-631,@NgayMau)), 7250000.00, 2300000.00, 0.00, 764000.00, 0.00, N'Đã thanh toán', N'TT002'),
-    (N'HD018', N'MGG008', N'KH048', N'NV001', N'PSC048', N'RLLV1AFA5PA310048', DATEADD(minute,735,DATEADD(day,-644,@NgayMau)), 6400000.00, 13500000.00, 100000.00, 1600000.00, 675000.00, N'Đã thanh toán', N'TT001'),
-    (N'HD019', N'MGG009', N'KH001', N'NV001', N'PSC049', N'MR0BT9F3XNA310049', DATEADD(minute,735,DATEADD(day,-657,@NgayMau)), 5350000.00, 20500000.00, 0.00, 2068000.00, 2050000.00, N'Đã thanh toán', N'TT002'),
-    (N'HD020', N'MGG010', N'KH002', N'NV001', N'PSC050', N'MRHGM6624KA310050', DATEADD(minute,735,DATEADD(day,-20,@NgayMau)), 14900000.00, 8500000.00, 0.00, 1872000.00, 1275000.00, N'Đã thanh toán', N'TT001'),
+    (N'HD018', N'MGG008', N'KH048', N'NV007', N'PSC048', N'RLLV1AFA5PA310048', DATEADD(minute,735,DATEADD(day,-644,@NgayMau)), 6400000.00, 13500000.00, 100000.00, 1600000.00, 675000.00, N'Đã thanh toán', N'TT001'),
+    (N'HD019', N'MGG009', N'KH001', N'NV008', N'PSC049', N'MR0BT9F3XNA310049', DATEADD(minute,735,DATEADD(day,-657,@NgayMau)), 5350000.00, 20500000.00, 0.00, 2068000.00, 2050000.00, N'Đã thanh toán', N'TT002'),
+    (N'HD020', N'MGG010', N'KH002', N'NV008', N'PSC050', N'MRHGM6624KA310050', DATEADD(minute,735,DATEADD(day,-20,@NgayMau)), 14900000.00, 8500000.00, 0.00, 1872000.00, 1275000.00, N'Đã thanh toán', N'TT001'),
     (N'HD021', N'MGG011', N'KH003', N'NV001', N'PSC051', N'KMHCT41B8NA310051', DATEADD(minute,735,DATEADD(day,-33,@NgayMau)), 0.00, 50000.00, 0.00, 4000.00, 10000.00, N'Đã thanh toán', N'TT002'),
     (N'HD022', N'MGG012', N'KH004', N'NV001', N'PSC052', N'KNDEP81A3LA310052', DATEADD(minute,735,DATEADD(day,-46,@NgayMau)), 0.00, 0.00, 0.00, 0.00, 0.00, N'Đã thanh toán', N'TT001'),
     (N'HD023', NULL, N'KH005', N'NV001', N'PSC053', N'JM3KF2W74MA310053', DATEADD(minute,735,DATEADD(day,-59,@NgayMau)), 36440000.00, 350000.00, 0.00, 2943200.00, 0.00, N'Đã thanh toán', N'TT002'),
-    (N'HD024', NULL, N'KH006', N'NV001', N'PSC054', N'MNCUMFF52KA310054', DATEADD(minute,735,DATEADD(day,-72,@NgayMau)), 6775000.00, 550000.00, 100000.00, 594000.00, 0.00, N'Đã thanh toán', N'TT001'),
+    (N'HD024', NULL, N'KH006', N'NV007', N'PSC054', N'MNCUMFF52KA310054', DATEADD(minute,735,DATEADD(day,-72,@NgayMau)), 6775000.00, 550000.00, 100000.00, 594000.00, 0.00, N'Đã thanh toán', N'TT001'),
     (N'HD025', NULL, N'KH007', N'NV001', N'PSC055', N'MK2NC1W49PA310055', DATEADD(minute,735,DATEADD(day,-85,@NgayMau)), 17300000.00, 420000.00, 0.00, 1417600.00, 0.00, N'Đã thanh toán', N'TT002'),
-    (N'HD026', NULL, N'KH008', N'NV001', N'PSC056', N'MHYANC224NA310056', DATEADD(minute,735,DATEADD(day,-98,@NgayMau)), 6650000.00, 770000.00, 0.00, 593600.00, 0.00, N'Đã thanh toán', N'TT001'),
-    (N'HD027', NULL, N'KH009', N'NV001', N'PSC057', N'MNTCB4D28LA310057', DATEADD(minute,735,DATEADD(day,-111,@NgayMau)), 23500000.00, 850000.00, 100000.00, 1956000.00, 0.00, N'Đã thanh toán', N'TT002'),
-    (N'HD028', NULL, N'KH010', N'NV001', N'PSC058', N'WDDWF4JB0FA310058', DATEADD(minute,735,DATEADD(day,-124,@NgayMau)), 3950000.00, 380000.00, 0.00, 346400.00, 0.00, N'Đã thanh toán', N'TT001'),
-    (N'HD029', NULL, N'KH011', N'NV001', N'PSC059', N'WBA5R1101PA310059', DATEADD(minute,735,DATEADD(day,-137,@NgayMau)), 120950000.00, 430000.00, 0.00, 9710400.00, 0.00, N'Đã thanh toán', N'TT002'),
-    (N'HD030', NULL, N'KH012', N'NV001', N'PSC060', N'RLLV1AFA2RA310060', DATEADD(minute,735,DATEADD(day,-150,@NgayMau)), 38700000.00, 430000.00, 100000.00, 3138400.00, 0.00, N'Đã thanh toán', N'TT001');
+    (N'HD026', NULL, N'KH008', N'NV007', N'PSC056', N'MHYANC224NA310056', DATEADD(minute,735,DATEADD(day,-98,@NgayMau)), 6650000.00, 770000.00, 0.00, 593600.00, 0.00, N'Đã thanh toán', N'TT001'),
+    (N'HD027', NULL, N'KH009', N'NV008', N'PSC057', N'MNTCB4D28LA310057', DATEADD(minute,735,DATEADD(day,-111,@NgayMau)), 23500000.00, 850000.00, 100000.00, 1956000.00, 0.00, N'Đã thanh toán', N'TT002'),
+    (N'HD028', NULL, N'KH010', N'NV008', N'PSC058', N'WDDWF4JB0FA310058', DATEADD(minute,735,DATEADD(day,-124,@NgayMau)), 3950000.00, 380000.00, 0.00, 346400.00, 0.00, N'Đã thanh toán', N'TT001'),
+    (N'HD029', NULL, N'KH011', N'NV006', N'PSC059', N'WBA5R1101PA310059', DATEADD(minute,735,DATEADD(day,-137,@NgayMau)), 120950000.00, 430000.00, 0.00, 9710400.00, 0.00, N'Đã thanh toán', N'TT002'),
+    (N'HD030', NULL, N'KH012', N'NV007', N'PSC060', N'RLLV1AFA2RA310060', DATEADD(minute,735,DATEADD(day,-150,@NgayMau)), 38700000.00, 430000.00, 100000.00, 3138400.00, 0.00, N'Đã thanh toán', N'TT001');
 
--- ChiTietHoaDon: 120 bản ghi
+-- ChiTietHoaDon
 INSERT INTO dbo.[ChiTietHoaDon] ([maHoaDon], [maDichVu], [maPhuTung], [soLuong], [donGia])
 VALUES
     (N'HD001', N'DV014', NULL, 1, 1500000.00),
@@ -2349,7 +2363,7 @@ VALUES
     (N'HD030', N'DV010', NULL, 1, 180000.00),
     (N'HD030', N'DV010', N'PT029', 2, 1850000.00);
 
--- LichBaoHanh: 20 bản ghi
+-- LichBaoHanh
 INSERT INTO dbo.[LichBaoHanh] ([maLBH], [maPSC], [maNhanVien], [maKhachHang], [VIN], [ngayXuLy], [ketQuaXuLy], [ghiChu])
 VALUES
     (N'LBH001', N'PSC041', N'NV003', N'KH041', N'JM3KF2W7XLA310041', DATEADD(minute,600,DATEADD(day,-551,@NgayMau)), N'Đã điều chỉnh và chạy thử đạt yêu cầu.', NULL),
@@ -2373,7 +2387,6 @@ VALUES
     (N'LBH019', N'PSC059', N'NV003', N'KH011', N'WBA5R1101PA310059', DATEADD(minute,600,DATEADD(day,-135,@NgayMau)), N'Đã hướng dẫn khách sử dụng và theo dõi thêm.', NULL),
     (N'LBH020', N'PSC060', N'NV003', N'KH012', N'RLLV1AFA2RA310060', DATEADD(minute,600,DATEADD(day,-148,@NgayMau)), N'Kiểm tra lại, hệ thống hoạt động ổn định.', N'Khách đã nhận thông tin kết quả xử lý.');
 
--- Gắn dữ liệu bảo hành mẫu vào một hạng mục cụ thể còn hạn trên cùng phiếu.
 ;WITH HangMucHopLe AS (
     SELECT l.maLBH,c.maDichVu,c.maPhuTung,
            ROW_NUMBER() OVER(PARTITION BY l.maLBH ORDER BY c.maDichVu,c.maPhuTung) AS rn
@@ -2384,7 +2397,7 @@ VALUES
 UPDATE l SET maDichVu=h.maDichVu,maPhuTung=h.maPhuTung
 FROM dbo.LichBaoHanh l JOIN HangMucHopLe h ON h.maLBH=l.maLBH AND h.rn=1;
 
--- LichNhacBaoDuong: 40 bản ghi
+-- LichNhacBaoDuong
 INSERT INTO dbo.[LichNhacBaoDuong] ([maLichNhac], [maKhachHang], [maPSC], [VIN], [ngayNhac], [noiDung], [trangThai])
 VALUES
     (N'LNBD001', N'KH041', N'PSC041', N'JM3KF2W7XLA310041', DATEADD(minute,540,DATEADD(day,-548,@NgayMau)), N'Nhắc bảo dưỡng lần 1: kiểm tra dầu, phanh, lốp và các hạng mục đã sửa.', N'Không liên hệ được'),
@@ -2428,7 +2441,7 @@ VALUES
     (N'LNBD039', N'KH012', N'PSC060', N'RLLV1AFA2RA310060', DATEADD(minute,540,DATEADD(day,-145,@NgayMau)), N'Nhắc bảo dưỡng lần 1: kiểm tra dầu, phanh, lốp và các hạng mục đã sửa.', N'Khách chưa có nhu cầu'),
     (N'LNBD040', N'KH012', N'PSC060', N'RLLV1AFA2RA310060', DATEADD(minute,540,DATEADD(day,70,@NgayMau)), N'Nhắc bảo dưỡng lần 2: kiểm tra dầu, phanh, lốp và các hạng mục đã sửa.', N'Chưa gửi');
 
--- LichSuTichDiem: 20 bản ghi
+-- LichSuTichDiem
 INSERT INTO dbo.[LichSuTichDiem] ([maLichSuTD], [maKhachHang], [maHoaDon], [ngayTichDiem], [soDiem], [lyDo])
 VALUES
     (N'LS001', N'KH041', N'HD011', DATEADD(minute,735,DATEADD(day,-553,@NgayMau)), 72, N'Tích điểm từ hóa đơn HD011; giá trị mẫu trước giảm, làm tròn xuống. Đây là quy ước dữ liệu mẫu.'),
@@ -2458,10 +2471,27 @@ FROM dbo.LichSuTichDiem historyRow
 CROSS APPLY(SELECT MIN(ngayTichDiem) AS firstEarn FROM dbo.LichSuTichDiem WHERE maKhachHang=historyRow.maKhachHang) cycleStart
 WHERE historyRow.ngayHetHan IS NULL;
 
--- Khởi tạo chủ xe hiện tại từ lần tiếp nhận mới nhất có dữ liệu khách hàng.
-UPDATE v SET maKhachHangChuHienTai=r.maKhachHang
-FROM dbo.PhuongTien v
-CROSS APPLY (SELECT TOP (1) p.maKhachHang FROM dbo.PhieuTiepNhan p WHERE p.VIN=v.VIN ORDER BY p.ngayTiepNhan DESC,p.maPTN DESC) r;
+UPDATE q
+SET maNhanVien=CASE (CONVERT(int,RIGHT(q.maBaoGia,3))-1)%4
+    WHEN 1 THEN 'NV009' WHEN 2 THEN 'NV010' WHEN 3 THEN 'NV011' ELSE 'NV003' END
+FROM dbo.PhieuBaoGia q;
+UPDATE k
+SET maNhanVien=CASE (CONVERT(int,RIGHT(q.maBaoGia,3))-1)%4
+    WHEN 1 THEN 'NV009' WHEN 2 THEN 'NV010' WHEN 3 THEN 'NV011' ELSE 'NV003' END
+FROM dbo.PhieuKiemTra k
+JOIN dbo.PhieuBaoGia q ON q.maPKT=k.maPKT;
+UPDATE p
+SET maNhanVien=q.maNhanVien
+FROM dbo.PhieuSuaChua p
+JOIN dbo.PhieuBaoGia q ON q.maBaoGia=p.maBaoGia;
+UPDATE l
+SET maNhanVien=p.maNhanVien
+FROM dbo.LichBaoHanh l
+JOIN dbo.PhieuSuaChua p ON p.maPSC=l.maPSC;
+
+UPDATE dbo.PhieuNhapKho
+SET maNhanVien=CASE WHEN CONVERT(int,RIGHT(maPNK,3))%2=1 THEN 'NV012' ELSE 'NV013' END
+WHERE maPNK BETWEEN 'PNK013' AND 'PNK036';
 
     COMMIT TRANSACTION;
     PRINT N'Đã nạp đầy đủ dữ liệu mẫu cho 25 bảng.';
@@ -2472,13 +2502,7 @@ BEGIN CATCH
 END CATCH;
 GO
 
--- D.1. MIGRATION NGHIỆP VỤ ĐÃ ĐƯỢC GỘP TỪ Migration_20261028_FixNghiepVu.sql
--- Chạy sau khi schema và dữ liệu mẫu nền đã được tạo; chỉ cần chạy file GaraOto.sql một lần.
-/*
-    Migration bổ sung nghiệp vụ đã đối chiếu theo N06_2 QAs.
-    Chỉ chạy trên bản sao/DB đã sao lưu sau khi kiểm tra đúng database.
-    Script không xóa dữ liệu nghiệp vụ; các cột lịch sử cũ được backfill có điều kiện.
-*/
+-- D.1. MIGRATION NGHIỆP VỤ
 IF DB_ID(N'GaraOto') IS NULL
 BEGIN
     THROW 51200, N'Không tìm thấy database GaraOto trên instance hiện tại.', 1;
@@ -2501,8 +2525,6 @@ BEGIN TRY
     BEGIN TRANSACTION;
 
 
-    IF COL_LENGTH(N'dbo.PhuongTien',N'maKhachHangChuHienTai') IS NULL
-        ALTER TABLE dbo.PhuongTien ADD maKhachHangChuHienTai varchar(5) NULL;
     IF COL_LENGTH(N'dbo.MaGiamGia',N'mocDiem') IS NULL ALTER TABLE dbo.MaGiamGia ADD mocDiem int NULL;
     IF COL_LENGTH(N'dbo.MaGiamGia',N'ngayBatDauChuKy') IS NULL ALTER TABLE dbo.MaGiamGia ADD ngayBatDauChuKy datetime2(0) NULL;
     IF COL_LENGTH(N'dbo.ChiTietPhieuSuaChua',N'soLuongCapPhat') IS NULL ALTER TABLE dbo.ChiTietPhieuSuaChua ADD soLuongCapPhat int NOT NULL CONSTRAINT DF_Mig_ChiTietPSC_CapPhat DEFAULT(0) WITH VALUES;
@@ -2518,8 +2540,6 @@ BEGIN TRY
     IF COL_LENGTH(N'dbo.LichBaoHanh',N'maPhuTung') IS NULL ALTER TABLE dbo.LichBaoHanh ADD maPhuTung varchar(5) NULL;
     IF COL_LENGTH(N'dbo.LichSuTichDiem',N'ngayHetHan') IS NULL ALTER TABLE dbo.LichSuTichDiem ADD ngayHetHan datetime2(0) NULL;
 
-    IF NOT EXISTS(SELECT 1 FROM sys.foreign_keys WHERE name=N'FK_PhuongTien_ChuHienTai')
-        ALTER TABLE dbo.PhuongTien WITH CHECK ADD CONSTRAINT FK_PhuongTien_ChuHienTai FOREIGN KEY(maKhachHangChuHienTai) REFERENCES dbo.KhachHang(maKhachHang);
     IF NOT EXISTS(SELECT 1 FROM sys.foreign_keys WHERE name=N'FK_PhieuSuaChua_NguoiDuyetHuy')
         ALTER TABLE dbo.PhieuSuaChua WITH CHECK ADD CONSTRAINT FK_PhieuSuaChua_NguoiDuyetHuy FOREIGN KEY(maNguoiDuyetHuy) REFERENCES dbo.NhanVien(maNhanVien);
     IF NOT EXISTS(SELECT 1 FROM sys.foreign_keys WHERE name=N'FK_ChiTietPSC_NhanVienCapPhat')
@@ -2548,9 +2568,6 @@ BEGIN TRY
     FROM dbo.LichSuTichDiem historyRow
     CROSS APPLY(SELECT MIN(ngayTichDiem) AS firstEarn FROM dbo.LichSuTichDiem WHERE maKhachHang=historyRow.maKhachHang) cycleStart
     WHERE historyRow.ngayHetHan IS NULL;
-    UPDATE v SET maKhachHangChuHienTai=r.maKhachHang
-    FROM dbo.PhuongTien v CROSS APPLY(SELECT TOP(1) p.maKhachHang FROM dbo.PhieuTiepNhan p WHERE p.VIN=v.VIN ORDER BY p.ngayTiepNhan DESC,p.maPTN DESC) r
-    WHERE v.maKhachHangChuHienTai IS NULL;
     IF NOT EXISTS(SELECT 1 FROM sys.indexes WHERE object_id=OBJECT_ID(N'dbo.MaGiamGia') AND name=N'UX_MaGiamGia_CoDiem')
         CREATE UNIQUE INDEX UX_MaGiamGia_CoDiem ON dbo.MaGiamGia(maKhachHang,ngayBatDauChuKy,mocDiem) WHERE mocDiem IS NOT NULL AND ngayBatDauChuKy IS NOT NULL;
     EXEC(N'CREATE OR ALTER VIEW dbo.vw_KhachHangDiemTichLuy AS
@@ -2567,8 +2584,7 @@ BEGIN CATCH
 END CATCH;
 GO
 
--- E. KIỂM TRA SỐ LƯỢNG VÀ ĐỘ BAO PHỦ.
--- Tất cả các FK/CHECK đều được bật và trusted; không dùng NOCHECK để nạp mẫu.
+-- E. KIỂM TRA DỮ LIỆU
 DBCC CHECKCONSTRAINTS WITH ALL_CONSTRAINTS;
 GO
 SELECT N'NhanVien' AS TenBang, COUNT_BIG(*) AS SoBanGhi FROM dbo.NhanVien
@@ -2630,7 +2646,6 @@ SELECT N'LichNhacBaoDuong.trangThai' AS Truong, [trangThai] AS GiaTri,COUNT_BIG(
 SELECT N'PhuTung.thoiHanBaoHanh' AS Truong, CONVERT(nvarchar(10), [thoiHanBaoHanh]) AS GiaTri, COUNT_BIG(*) AS SoBanGhi FROM dbo.[PhuTung] GROUP BY [thoiHanBaoHanh];
 GO
 
--- Biên/NULL/mối liên hệ: kết quả phải có đủ các tình huống mẫu.
 SELECT N'Khách không có lịch sử tiếp nhận' AS TruongHop,COUNT(*) AS SoLuong FROM dbo.KhachHang k
 WHERE NOT EXISTS(SELECT 1 FROM dbo.PhieuTiepNhan p WHERE p.maKhachHang=k.maKhachHang)
 UNION ALL SELECT N'VIN có nhiều lần tiếp nhận',COUNT(*) FROM
@@ -2659,7 +2674,6 @@ UNION ALL SELECT N'Lịch nhắc quá hạn',COUNT(*) FROM dbo.LichNhacBaoDuong 
 UNION ALL SELECT N'Lịch nhắc tương lai',COUNT(*) FROM dbo.LichNhacBaoDuong WHERE ngayNhac>SYSDATETIME();
 GO
 
--- Đối soát tiền phụ tùng/công trên dữ liệu mẫu: phải trả 0 dòng.
 SELECT h.maHoaDon,h.tienPhuTung,h.tienCong,c.tienPhuTungChiTiet,c.tienCongChiTiet
 FROM dbo.HoaDon h CROSS APPLY
  (SELECT SUM(CASE WHEN maPhuTung IS NOT NULL THEN soLuong*donGia ELSE 0 END) AS tienPhuTungChiTiet,
@@ -2669,8 +2683,6 @@ WHERE h.tienPhuTung<>COALESCE(c.tienPhuTungChiTiet,0) OR h.tienCong<>COALESCE(c.
 GO
 
 -- F. HAI LOẠI HÓA ĐƠN VÀ MẪU BÁN HÀNG
--- Nâng cấp tại chỗ, không xóa database và không thay đổi hóa đơn cũ.
--- Chạy trên database đã chọn trong SSMS; sao lưu trước khi nâng cấp.
 SET XACT_ABORT ON;
 SET ANSI_NULLS ON;
 SET QUOTED_IDENTIFIER ON;
@@ -2697,7 +2709,6 @@ BEGIN TRY
         ALTER TABLE dbo.HoaDon WITH CHECK ADD CONSTRAINT CK_HoaDon_HaiLoai CHECK (
            (maPSC IS NOT NULL AND VIN IS NOT NULL) OR
            (maPSC IS NULL AND VIN IS NULL AND tienCong=0 AND dichVuKhac=0 AND COALESCE(giamGia,0)=0 AND maGiamGia IS NULL));
-    -- FK ghép với maPSC không kiểm tra khách hàng khi maPSC=NULL.
     IF NOT EXISTS(SELECT 1 FROM sys.foreign_keys WHERE parent_object_id=OBJECT_ID(N'dbo.HoaDon') AND referenced_object_id=OBJECT_ID(N'dbo.KhachHang'))
         ALTER TABLE dbo.HoaDon WITH CHECK ADD CONSTRAINT FK_HoaDon_KhachHang_HaiLoai FOREIGN KEY(maKhachHang) REFERENCES dbo.KhachHang(maKhachHang);
     EXEC(N'CREATE OR ALTER TRIGGER dbo.TR_HoaDon_HaiLoai ON dbo.HoaDon AFTER INSERT,UPDATE AS
@@ -2733,8 +2744,6 @@ BEGIN CATCH
 END CATCH;
 GO
 
--- 12 hóa đơn bán hàng HD031..HD042, 24 chi tiết. Không tạo xe/PSC giả.
--- Giữ giá bán tại thời điểm hóa đơn; cập nhật tồn chỉ cho 4 hóa đơn đã thanh toán mới.
 SET XACT_ABORT ON;
 SET ANSI_NULLS ON;
 SET QUOTED_IDENTIFIER ON;
@@ -2747,14 +2756,14 @@ GO
 BEGIN TRY
     BEGIN TRANSACTION;
     DECLARE @NgayHoaDonMau datetime2(0)=CONVERT(date,SYSDATETIME());
-    DECLARE @Mau TABLE(maHoaDon varchar(5) PRIMARY KEY,maKhachHang varchar(5),ngayLui int,trangThai nvarchar(50),maPhuongThuc varchar(5));
+    DECLARE @Mau TABLE(maHoaDon varchar(5) PRIMARY KEY,maKhachHang varchar(5),maNhanVien varchar(5),ngayLui int,trangThai nvarchar(50),maPhuongThuc varchar(5));
     INSERT @Mau VALUES
-      ('HD031','KH001',12,N'Đã thanh toán','TT001'),('HD032','KH002',11,N'Đã thanh toán','TT002'),
-      ('HD033','KH003',10,N'Đã thanh toán','TT001'),('HD034','KH004',9,N'Đã thanh toán','TT002'),
-      ('HD035','KH005',8,N'Chờ thanh toán','TT001'),('HD036','KH001',7,N'Chờ thanh toán','TT002'),
-      ('HD037','KH002',6,N'Chờ thanh toán','TT001'),('HD038','KH003',5,N'Chờ thanh toán','TT002'),
-      ('HD039','KH004',4,N'Chưa thanh toán','TT001'),('HD040','KH005',3,N'Chưa thanh toán','TT002'),
-      ('HD041','KH001',2,N'Chưa thanh toán','TT001'),('HD042','KH002',1,N'Chưa thanh toán','TT002');
+      ('HD031','KH001','NV006',12,N'Đã thanh toán','TT001'),('HD032','KH002','NV008',11,N'Đã thanh toán','TT002'),
+      ('HD033','KH003','NV008',10,N'Đã thanh toán','TT001'),('HD034','KH004','NV008',9,N'Đã thanh toán','TT002'),
+      ('HD035','KH005','NV007',8,N'Chờ thanh toán','TT001'),('HD036','KH001','NV008',7,N'Chờ thanh toán','TT002'),
+      ('HD037','KH002','NV006',6,N'Chờ thanh toán','TT001'),('HD038','KH003','NV007',5,N'Chờ thanh toán','TT002'),
+      ('HD039','KH004','NV008',4,N'Chưa thanh toán','TT001'),('HD040','KH005','NV006',3,N'Chưa thanh toán','TT002'),
+      ('HD041','KH001','NV007',2,N'Chưa thanh toán','TT001'),('HD042','KH002','NV008',1,N'Chưa thanh toán','TT002');
     DECLARE @Dong TABLE(maHoaDon varchar(5),maPhuTung varchar(6),soLuong int,donGia decimal(18,2),PRIMARY KEY(maHoaDon,maPhuTung));
     INSERT @Dong VALUES
       ('HD031','PT001',1,850000),('HD031','PT002',1,180000),
@@ -2769,9 +2778,8 @@ BEGIN TRY
       ('HD040','PT002',2,180000),('HD040','PT003',1,950000),
       ('HD041','PT003',2,950000),('HD041','PT004',1,220000),
       ('HD042','PT001',1,850000),('HD042','PT002',2,180000);
-    -- Không chiếm mã của hóa đơn người dùng đã lập. Có thể chạy lại đúng bộ seed này.
     IF EXISTS(SELECT 1 FROM @Mau m JOIN dbo.HoaDon h WITH(UPDLOCK,HOLDLOCK) ON h.maHoaDon=m.maHoaDon
-       WHERE h.maPSC IS NOT NULL OR h.VIN IS NOT NULL OR h.maKhachHang<>m.maKhachHang OR h.maNhanVien<>'NV001'
+       WHERE h.maPSC IS NOT NULL OR h.VIN IS NOT NULL OR h.maKhachHang<>m.maKhachHang OR h.maNhanVien<>m.maNhanVien
        OR h.tienCong<>0 OR h.dichVuKhac<>0 OR h.maGiamGia IS NOT NULL OR COALESCE(h.giamGia,0)<>0
        OR h.tienPhuTung<>(SELECT SUM(d.soLuong*d.donGia) FROM @Dong d WHERE d.maHoaDon=m.maHoaDon)
        OR h.thueVAT<>ROUND(h.tienPhuTung*0.08,2)
@@ -2781,7 +2789,7 @@ BEGIN TRY
     DECLARE @Moi TABLE(maHoaDon varchar(5) PRIMARY KEY);
     INSERT dbo.HoaDon(maHoaDon,maGiamGia,maKhachHang,maNhanVien,maPSC,VIN,ngayLap,tienPhuTung,tienCong,dichVuKhac,thueVAT,giamGia,trangThaiThanhToan,maPhuongThuc)
     OUTPUT inserted.maHoaDon INTO @Moi
-    SELECT m.maHoaDon,NULL,m.maKhachHang,'NV001',NULL,NULL,DATEADD(hour,10,DATEADD(day,-m.ngayLui,@NgayHoaDonMau)),
+     SELECT m.maHoaDon,NULL,m.maKhachHang,m.maNhanVien,NULL,NULL,DATEADD(hour,10,DATEADD(day,-m.ngayLui,@NgayHoaDonMau)),
        t.tien,0,0,ROUND(t.tien*0.08,2),0,m.trangThai,m.maPhuongThuc
     FROM @Mau m CROSS APPLY(SELECT SUM(d.soLuong*d.donGia) tien FROM @Dong d WHERE d.maHoaDon=m.maHoaDon)t
     WHERE NOT EXISTS(SELECT 1 FROM dbo.HoaDon h WITH(UPDLOCK,HOLDLOCK) WHERE h.maHoaDon=m.maHoaDon);
