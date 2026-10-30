@@ -35,7 +35,17 @@ public final class LuaChonBieuMau {
         if (options == null) return null;
         JComboBox<String> cmbCombo = new OChonTimKiem<>(options.clone());
         cmbCombo.setFont(GiaoDien.font(12, false));
-        cmbCombo.setEditable(true);
+        
+        boolean chiDuocChon = java.util.Set.of(
+            "NhanVien.vaiTro",
+            "NhanVien.trangThai",
+            "TaiKhoan.trangThai",
+            "DichVu.trangThai",
+            "MaGiamGia.trangThai"
+        ).contains(table + "." + field);
+
+        cmbCombo.setEditable(!chiDuocChon);
+
         if (existing) selectExisting(cmbCombo, current);
         // Thanh toán phải được xác nhận qua nghiệp vụ riêng, không đổi ở biểu mẫu.
         if (("HoaDon".equals(table) && "trangThaiThanhToan".equals(field))

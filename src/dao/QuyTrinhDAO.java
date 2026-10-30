@@ -102,7 +102,17 @@ public final class QuyTrinhDAO {
             if(table.equals("PhieuNhapKho")) require("Chờ duyệt".equals(row.get("trangThai")),"Phiếu nhập mới phải chờ duyệt.");
             if(table.equals("PhieuSuaChua")) require("Chờ sửa chữa".equals(row.get("trangThai")) && row.get("ngayHoanThanh")==null,"Phiếu sửa mới phải chờ sửa chữa.");
         }
-        if(row.get("maNhanVien")!=null) require(exists(conn,"SELECT 1 FROM dbo.NhanVien WHERE maNhanVien=? AND trangThai=N'Đang làm'",row.get("maNhanVien")),"Nhân viên không còn đang làm.");
+        
+        if (!table.equals("NhanVien") && row.get("maNhanVien") != null) {
+            require(
+                exists(conn,
+                    "SELECT 1 FROM dbo.NhanVien "
+                    + "WHERE maNhanVien=? AND trangThai=N'Đang làm'",
+                    row.get("maNhanVien")),
+                "Nhân viên không còn đang làm."
+            );
+        }
+
         switch(table) {
             case "PhieuKiemTra" -> {
                 Map<String,Object> receipt=lock(conn,"PhieuTiepNhan",row.get("maPTN"));
