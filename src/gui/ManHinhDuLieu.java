@@ -11,6 +11,7 @@ import java.util.List;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableRowSorter;
 
 /** Danh sách và biểu mẫu sử dụng dữ liệu SQL Server thực tế. */
 public final class ManHinhDuLieu extends JPanel {
@@ -132,7 +133,7 @@ public final class ManHinhDuLieu extends JPanel {
                         : tableName.equals("KhachHang")
                                 ? new String[]{
                                     "maKhachHang", "hoTenKH", "soDienThoai",
-                                    "gioiTinh", "email", "diaChi", "tongDiemTichLuy"
+                                    "bienSoXe", "gioiTinh", "email", "diaChi", "tongDiemTichLuy"
                                 }
                                 : fields;
 
@@ -219,7 +220,35 @@ public final class ManHinhDuLieu extends JPanel {
 
         tblTable = GiaoDien.table(model);
         tblTable.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
-        tblTable.setAutoCreateRowSorter(true);
+        if (tableName.equals("HoaDon")) {
+            int totalColumn = Arrays.asList(displayFields).indexOf("tongThanhToan");
+            TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(model) {
+                @Override
+                public void toggleSortOrder(int column) {
+                    if (column != totalColumn) {
+                        super.toggleSortOrder(column);
+                        return;
+                    }
+
+                    List<? extends SortKey> keys = getSortKeys();
+                    boolean currentlyAscending = !keys.isEmpty()
+                            && keys.get(0).getColumn() == column
+                            && keys.get(0).getSortOrder() == SortOrder.ASCENDING;
+                    setSortKeys(List.of(new SortKey(column,
+                            currentlyAscending ? SortOrder.DESCENDING : SortOrder.ASCENDING)));
+                }
+            };
+            sorter.setComparator(totalColumn, (left, right) -> {
+                java.math.BigDecimal first = left == null
+                        ? java.math.BigDecimal.ZERO : (java.math.BigDecimal) left;
+                java.math.BigDecimal second = right == null
+                        ? java.math.BigDecimal.ZERO : (java.math.BigDecimal) right;
+                return first.compareTo(second);
+            });
+            tblTable.setRowSorter(sorter);
+        } else {
+            tblTable.setAutoCreateRowSorter(true);
+        }
 
         statusFilters = new BoLocTrangThai(tblTable);
         statusFilters.onChange(() -> {
@@ -292,7 +321,7 @@ public final class ManHinhDuLieu extends JPanel {
 
         ThaoTacNghiepVu.install(
                 pnlButtons, tableName, page,
-                this::currentRecord, this::load, this,
+                this::currentRecord, this::load, pnlButtons,
                 role, employeeId, tblTable
         );
 
@@ -354,17 +383,19 @@ public final class ManHinhDuLieu extends JPanel {
                     btnEdit.setEnabled(false);
                 } else {
                     int row = tblTable.convertRowIndexToModel(selected);
-                    if (tableName.equals("YeuCauNhapKho")) {
-                        int statusCol = Arrays.asList(displayFields).indexOf("trangThai");
-                        boolean isPending = statusCol >= 0 && "Chờ duyệt".equals(String.valueOf(model.getValueAt(row, statusCol)));
-                        btnEdit.setEnabled(isPending && !isManagerReview && (role == VaiTro.KHO || role == VaiTro.ADMIN));
-                    } else if (tableName.equals("PhieuNhapKho")) {
-                        int statusCol = Arrays.asList(displayFields).indexOf("trangThai");
-                        String st = statusCol >= 0 ? String.valueOf(model.getValueAt(row, statusCol)) : "";
-                        boolean isPending = "Chờ xác nhận nhập kho".equals(st);
-                        btnEdit.setEnabled(isPending && (role == VaiTro.KHO || role == VaiTro.ADMIN));
-                    } else {
-                        btnEdit.setEnabled(canEdit);
+                    switch (tableName) {
+                        case "YeuCauNhapKho" -> {
+                            int statusCol = Arrays.asList(displayFields).indexOf("trangThai");
+                            boolean isPending = statusCol >= 0 && "Chờ duyệt".equals(String.valueOf(model.getValueAt(row, statusCol)));
+                            btnEdit.setEnabled(isPending && !isManagerReview && (role == VaiTro.KHO || role == VaiTro.ADMIN));
+                        }
+                        case "PhieuNhapKho" -> {
+                            int statusCol = Arrays.asList(displayFields).indexOf("trangThai");
+                            String st = statusCol >= 0 ? String.valueOf(model.getValueAt(row, statusCol)) : "";
+                            boolean isPending = "Chờ xác nhận nhập kho".equals(st);
+                            btnEdit.setEnabled(isPending && (role == VaiTro.KHO || role == VaiTro.ADMIN));
+                        }
+                        default -> btnEdit.setEnabled(canEdit);
                     }
                 }
             }
@@ -700,7 +731,7 @@ public final class ManHinhDuLieu extends JPanel {
                     repair, service, part, Integer.parseInt(quantity.trim()), employee
             );
             load();
-        } catch (Exception ex) {
+        } catch (SQLException | NumberFormatException ex) {
             JOptionPane.showMessageDialog(this, ex.getMessage(), "Không thể ghi nhận trả kho", JOptionPane.ERROR_MESSAGE);
         }
     }
@@ -760,8 +791,10 @@ public final class ManHinhDuLieu extends JPanel {
         if (!existing && tableName.equals("PhieuNhapKho")) {
             JOptionPane.showMessageDialog(
                     this,
-                    "Phiếu nhập kho phải được lập từ Yêu cầu nhập kho đã duyệt.\n"
-                    + "Vui lòng chọn menu 'Phiếu yêu cầu nhập kho', chọn yêu cầu có trạng thái 'Đã duyệt' và nhấn 'Lập phiếu nhập kho'.",
+                    """
+                    Phiếu nhập kho phải được lập từ Yêu cầu nhập kho đã duyệt.
+                    Vui lòng chọn menu 'Phiếu yêu cầu nhập kho', chọn yêu cầu có trạng thái 'Đã duyệt' và nhấn 'Lập phiếu nhập kho'.
+                    """.strip(),
                     "Quy trình nhập kho",
                     JOptionPane.INFORMATION_MESSAGE
             );
@@ -1009,7 +1042,7 @@ public final class ManHinhDuLieu extends JPanel {
 
                 winDialog.dispose();
                 load();
-            } catch (Exception ex) {
+            } catch (SQLException ex) {
                 String field =
                         KiemTraBieuMau.errorField(ex, tableName);
                 String message = ex.getMessage();
@@ -1029,15 +1062,14 @@ public final class ManHinhDuLieu extends JPanel {
                                 + "\nKhông lấy được mã mới: "
                                 + refreshError.getMessage();
                     }
-                } else if (ex instanceof SQLException sql
-                        && field != null) {
+                } else if (field != null) {
                     String label = NhanCot.forField(field);
 
-                    if (sql.getErrorCode() == 2601
-                            || sql.getErrorCode() == 2627) {
+                    if (ex.getErrorCode() == 2601
+                            || ex.getErrorCode() == 2627) {
                         message = label
                                 + " đã tồn tại. Vui lòng nhập giá trị khác.";
-                    } else if (sql.getErrorCode() == 547
+                    } else if (ex.getErrorCode() == 547
                             && message != null
                             && message.contains("FK_")) {
                         message = label
@@ -1242,9 +1274,6 @@ public final class ManHinhDuLieu extends JPanel {
         return column >= 0 ? statusFilters.getFilter(column) : null;
     }
 
-    public BoLocTrangThai getStatusFilters() {
-        return statusFilters;
-    }
 
     public JTable getTable() {
         return tblTable;

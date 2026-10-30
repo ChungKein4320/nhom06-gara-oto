@@ -16,9 +16,14 @@ public class KhachHangDAO extends CoSoDAO {
 
     @Override
     public List<LinkedHashMap<String, Object>> getAll() throws SQLException {
-        String sql = "SELECT k.*, COALESCE(d.tongDiemTichLuy, CONVERT(bigint,0)) AS tongDiemTichLuy "
+        String sql = "SELECT k.*, COALESCE(d.tongDiemTichLuy, CONVERT(bigint,0)) AS tongDiemTichLuy, "
+                + "COALESCE(vehicles.bienSoXe, N'Chưa có xe đăng ký') AS bienSoXe "
                 + "FROM dbo.KhachHang k LEFT JOIN dbo.vw_KhachHangDiemTichLuy d "
-                + "ON d.maKhachHang=k.maKhachHang ORDER BY k.maKhachHang";
+                + "ON d.maKhachHang=k.maKhachHang "
+                + "OUTER APPLY (SELECT STUFF((SELECT N', ' + p.bienSo FROM dbo.PhuongTien p "
+                + "WHERE p.maKhachHang=k.maKhachHang ORDER BY p.bienSo FOR XML PATH(''), TYPE)"
+                + ".value('.', 'nvarchar(max)'),1,2,N'') AS bienSoXe) vehicles "
+                + "ORDER BY k.maKhachHang";
         List<LinkedHashMap<String, Object>> rows = new ArrayList<>();
         try (Connection connection = KetNoiCSDL.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql);
@@ -28,6 +33,7 @@ public class KhachHangDAO extends CoSoDAO {
                 for (String field : Schema.COLUMNS.get("KhachHang")) {
                     row.put(field, result.getObject(field));
                 }
+                row.put("bienSoXe", result.getString("bienSoXe"));
                 row.put("tongDiemTichLuy", result.getLong("tongDiemTichLuy"));
                 String customerId = String.valueOf(row.get("maKhachHang"));
                 if (!HiddenRecords.isHidden("KhachHang", customerId)) rows.add(row);

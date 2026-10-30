@@ -33,9 +33,14 @@ final class BieuMauBanGhi extends JPanel {
             JComboBox<String> cmbOptions=LuaChonBieuMau.create(table,field,value,existing);
             if(readOnly) {
                 JTextField txtDisplay=GiaoDien.field("");
-                if(old instanceof Boolean flag) value=flag ? "Nam" : "Nữ";
-                else if(old instanceof java.sql.Timestamp date) value=date.toLocalDateTime().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
-                else if(old instanceof java.sql.Date date) value=date.toLocalDate().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+                if(old != null) {
+                    switch (old) {
+                        case Boolean flag -> value = flag ? "Nam" : "Nữ";
+                        case java.sql.Timestamp date -> value = date.toLocalDateTime().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
+                        case java.sql.Date date -> value = date.toLocalDate().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+                        default -> { }
+                    }
+                }
                 txtDisplay.setText(value); txtDisplay.setToolTipText(value); DinhDangKeThua.lock(txtDisplay); input=txtDisplay;
             }
             else if(cmbReference!=null) { cmbReference.selectId(value); input=cmbReference; }
@@ -64,7 +69,9 @@ final class BieuMauBanGhi extends JPanel {
             inputs.put(field,input);
             GridBagConstraints c=new GridBagConstraints(); c.gridx=index%2; c.gridy=index/2; c.fill=GridBagConstraints.HORIZONTAL; c.weightx=1; c.insets=new Insets(6,8,6,8);
             JPanel pnlCell=new JPanel(new BorderLayout(0,5)); pnlCell.setOpaque(false);
-            String label=NhanCot.forField(field)+(Schema.REQUIRED.get(table).contains(field) ? " *" : "");
+            String fieldLabel = table.equals("PhuongTien") && field.equals("maKhachHang")
+                    ? "Chủ sở hữu (khách hàng)" : NhanCot.forField(field);
+            String label=fieldLabel+(Schema.REQUIRED.get(table).contains(field) ? " *" : "");
             if(field.equals("thoiHanBaoHanh")) label+=" (tháng)";
             pnlCell.add(GiaoDien.label(label,12,true,GiaoDien.TEXT),BorderLayout.NORTH); input.setPreferredSize(new Dimension(260,38)); pnlCell.add(input,BorderLayout.CENTER); add(pnlCell,c); index++;
         }

@@ -25,8 +25,8 @@ public final class Schema {
                 "hoTenKH=nvarchar:100", "soDienThoai=varchar:10", "gioiTinh=bit:", "email=varchar:254",
                 "diaChi=nvarchar:255");
         define("PhuongTien", new String[] { "VIN" },
-                new String[] { "VIN", "bienSo", "hangXe", "dongXe", "mauXe", "namSanXuat", "soMay", "soKM" },
-                "VIN=varchar:17", "bienSo=varchar:8", "hangXe=nvarchar:100", "dongXe=nvarchar:100", "mauXe=nvarchar:50",
+                new String[] { "VIN", "maKhachHang", "bienSo", "hangXe", "dongXe", "mauXe", "namSanXuat", "soMay", "soKM" },
+                "VIN=varchar:17", "maKhachHang=varchar:5", "bienSo=varchar:8", "hangXe=nvarchar:100", "dongXe=nvarchar:100", "mauXe=nvarchar:50",
                 "namSanXuat=int:", "soMay=varchar:100", "soKM=decimal:12,2");
         define("DichVu", new String[] { "maDichVu" }, new String[] { "maDichVu", "tenDichVu", "donGia", "trangThai" },
                 "maDichVu=varchar:5", "tenDichVu=nvarchar:150", "moTa=nvarchar:500", "donGia=decimal:18,2",
@@ -111,9 +111,8 @@ public final class Schema {
                 "maPSC=varchar:6", "VIN=varchar:17", "ngayLap=datetime2:0", "tienPhuTung=decimal:18,2",
                 "tienCong=decimal:18,2", "dichVuKhac=decimal:18,2", "thueVAT=decimal:18,2", "giamGia=decimal:18,2",
                 "trangThaiThanhToan=nvarchar:50", "maPhuongThuc=varchar:5");
-        IDENTITY.add("ChiTietHoaDon");
-        define("ChiTietHoaDon", new String[] { "maChiTietHoaDon" },
-                new String[] { "maChiTietHoaDon", "maHoaDon", "soLuong", "donGia" }, "maChiTietHoaDon=int:",
+        define("ChiTietHoaDon", new String[] { "maHoaDon", "maDichVu", "maPhuTung" },
+                new String[] { "maHoaDon", "soLuong", "donGia" },
                 "maHoaDon=varchar:5", "maDichVu=varchar:5", "maPhuTung=varchar:5", "soLuong=int:",
                 "donGia=decimal:18,2");
         define("LichBaoHanh", new String[] { "maLBH" },
