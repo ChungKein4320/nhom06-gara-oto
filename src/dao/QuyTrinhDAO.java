@@ -3,7 +3,6 @@ package dao;
 import connectDB.KetNoiCSDL;
 import java.math.BigDecimal;
 import java.sql.*;
-import java.time.LocalDate;
 import java.util.*;
 
 /** Mọi thay đổi trạng thái nghiệp vụ bắt buộc đi qua lớp này và nằm trong transaction. */
@@ -379,9 +378,7 @@ public final class QuyTrinhDAO {
             return new IntakeResult(receiptId,resolvedCustomer,resolvedVin);
         });
     }
-    private static void idHolderInsert(Connection conn,CoSoDAO dao,Map<String,Object> header,List<Map<String,Object>> details,String child,String fk) throws SQLException {
-        insertDetails(conn,child,fk,dao.insert(conn,header),details);
-    }
+  
     private static void insertDetails(Connection conn,String child,String fk,String id,List<Map<String,Object>> details) throws SQLException {
         CoSoDAO dao=new CoSoDAO(child);
         for(Map<String,Object> detail:details) { Map<String,Object> row=new LinkedHashMap<>(detail); row.put(fk,id); dao.insert(conn,row); }

@@ -127,7 +127,7 @@ public final class ManHinhChinh extends JFrame {
         }
         return switch (s) {
             case "Phiếu tiếp nhận", "Phiếu kiểm tra", "Phiếu báo giá", "Phiếu sửa chữa", "Bảo hành", "Lịch nhắc bảo dưỡng" -> "NHÂN VIÊN KỸ THUẬT";
-            case "Tồn kho", "Phiếu cấp phát phụ tùng", "Cấp phát phụ tùng", "Lịch sử sửa chữa" -> "NHÂN VIÊN KHO";
+            case "Tồn kho", "Phiếu cấp phát phụ tùng", "Cấp phát phụ tùng" -> "NHÂN VIÊN KHO";
             case "Hóa đơn", "Lịch sử tích điểm", "Khuyến mãi/Tích điểm", "Bán phụ tùng", "Phụ tùng" -> "NHÂN VIÊN BÁN HÀNG";
             case "Nhà cung cấp", "Nhân viên", "Khách hàng", "Phương tiện", "Danh mục dịch vụ", "Danh mục phụ tùng", "Tài khoản", "Khuyến mãi", "Thống kê" -> "NHÂN VIÊN QUẢN LÝ";
             default -> null;
@@ -206,7 +206,7 @@ public final class ManHinhChinh extends JFrame {
                 }
                 if(!expandedSections.contains(groupName)) continue;
             }
-            boolean search=s.equals("Tìm kiếm");
+            boolean search=s.equals("Công cụ tìm kiếm");
             boolean active=s.equals(page) || (search && page.startsWith(SEARCH_PREFIX));
             JButton btnB=new JButton(s);
             if(search) {
