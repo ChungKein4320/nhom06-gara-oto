@@ -131,6 +131,9 @@ public final class DataRules {
                 if(rec.intValue() > req.intValue()) fail("soLuongThucNhan","Số lượng thực nhận (" + rec.intValue() + ") không được vượt quá số lượng yêu cầu (" + req.intValue() + ").");
             }
         }
+        if (table.equals("PhuongTien") && (row.get("maKhachHang") == null
+                || row.get("maKhachHang").toString().isBlank()))
+            fail("maKhachHang", "Vui lòng chọn khách hàng là chủ sở hữu phương tiện.");
         if("PT000".equals(String.valueOf(row.get("maPhuTung")))) {
             if(table.equals("PhuTung") && !creating) fail("maPhuTung","PT000 là mã hệ thống, không được sửa.");
             if(table.equals("TonKho") || table.equals("ChiTietPhieuNhapKho") || table.equals("ChiTietYeuCauNhapKho") || table.equals("ChiTietHoaDon"))

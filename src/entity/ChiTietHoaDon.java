@@ -3,7 +3,6 @@ package entity;
 import java.math.BigDecimal;
 
 public class ChiTietHoaDon {
-    private Integer maChiTietHoaDon;
     private String maHoaDon;
     private String maDichVu;
     private String maPhuTung;
@@ -12,8 +11,6 @@ public class ChiTietHoaDon {
 
     public ChiTietHoaDon() { }
 
-    public Integer getMaChiTietHoaDon() { return maChiTietHoaDon; }
-    public void setMaChiTietHoaDon(Integer value) { maChiTietHoaDon=value; }
 
     public String getMaHoaDon() {
         return maHoaDon;

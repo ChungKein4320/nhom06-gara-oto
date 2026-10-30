@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 
 public class PhuongTien {
     private String VIN;
+    private String maKhachHang;
     private String bienSo;
     private String hangXe;
     private String dongXe;
@@ -14,10 +15,11 @@ public class PhuongTien {
 
     public PhuongTien() { }
 
-    public PhuongTien(String vIN, String bienSo, String hangXe, String dongXe, String mauXe, Integer namSanXuat,
+    public PhuongTien(String vIN,String maKhachHang, String bienSo, String hangXe, String dongXe, String mauXe, Integer namSanXuat,
 			String soMay, BigDecimal soKm) {
 		super();
 		VIN = vIN;
+        this.maKhachHang = maKhachHang;
 		this.bienSo = bienSo;
 		this.hangXe = hangXe;
 		this.dongXe = dongXe;
@@ -27,6 +29,7 @@ public class PhuongTien {
 		this.soKm = soKm;
 	}
 
+
     public String getVIN() {
         return VIN;
     }
@@ -35,6 +38,16 @@ public class PhuongTien {
         if (value == null || !value.matches("[A-HJ-NPR-Z0-9]{17}"))
             throw new IllegalArgumentException("VIN phải gồm 17 ký tự in hoa hoặc chữ số, không có I, O, Q");
         this.VIN = value;
+    }
+
+    public String getMaKhachHang() {
+        return maKhachHang;
+    }
+
+    public void setMaKhachHang(String value) {
+        if (value == null || !value.matches("KH[0-9]{3}"))
+            throw new IllegalArgumentException("Mã khách hàng chủ sở hữu phải có dạng KH001.");
+        this.maKhachHang = value;
     }
 
     public String getBienSo() {
@@ -108,6 +121,7 @@ public class PhuongTien {
     @Override
     public String toString() {
         return "PhuongTien [VIN=" + VIN
+                + ", maKhachHang=" + maKhachHang
                 + ", bienSo=" + bienSo
                 + ", hangXe=" + hangXe
                 + ", dongXe=" + dongXe

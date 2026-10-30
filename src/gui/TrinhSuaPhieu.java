@@ -12,12 +12,6 @@ import javax.swing.table.*;
 /** Nhập đầu phiếu và nhiều hạng mục, chỉ ghi khi nhấn Lưu toàn bộ phiếu. */
 final class TrinhSuaPhieu {
     private TrinhSuaPhieu() {}
-    static void show(Component parent,String table,Map<String,Object> header) {
-        show(parent,table,header,List.of(),null,null);
-    }
-    static void show(Component parent,String table,Map<String,Object> header,List<Map<String,Object>> initialDetails) {
-        open(parent,table,header,initialDetails,false,null,null);
-    }
     static void show(Component parent,String table,Map<String,Object> header,VaiTro role,String employeeId) {
         show(parent,table,header,List.of(),role,employeeId);
     }
@@ -32,7 +26,7 @@ final class TrinhSuaPhieu {
     }
     private static Window getWindowOwner(Component parent) {
         if (parent == null) return null;
-        if (parent instanceof Window) return (Window) parent;
+        if (parent instanceof Window window) return window;
         return SwingUtilities.getWindowAncestor(parent);
     }
 
@@ -63,7 +57,7 @@ final class TrinhSuaPhieu {
         BieuMauBanGhi pnlHeader = new BieuMauBanGhi(table, freshHeader, Set.of(), true, true);
 
         String[] columns = Arrays.stream(Schema.COLUMNS.get(child))
-                .filter(f -> !f.equals(pk) && !f.equals("maChiTietHoaDon"))
+                .filter(f -> !f.equals(pk))
                 .toArray(String[]::new);
         DefaultTableModel model = new DefaultTableModel(NhanCot.forFields(columns), 0) {
             @java.io.Serial private static final long serialVersionUID = 1L;
@@ -194,7 +188,7 @@ final class TrinhSuaPhieu {
             pnlHeader.lockField("maNhanVienDuyet");
             pnlHeader.lockField("ngayDuyet");
         }
-        String[] columns = Arrays.stream(Schema.COLUMNS.get(child)).filter(f -> !f.equals(pk) && !f.equals("maChiTietHoaDon")).toArray(String[]::new);
+        String[] columns = Arrays.stream(Schema.COLUMNS.get(child)).filter(f -> !f.equals(pk)).toArray(String[]::new);
         boolean isPnk = table.equals("PhieuNhapKho");
 
         DefaultTableModel model = new DefaultTableModel(NhanCot.forFields(columns), 0) {
@@ -447,7 +441,7 @@ final class TrinhSuaPhieu {
                     JOptionPane.showMessageDialog(winDialog, "Đã lưu " + docName + " thành công.", "Thành công", JOptionPane.INFORMATION_MESSAGE);
                 }
                 winDialog.dispose();
-            } catch (Exception ex) {
+            } catch (HeadlessException | IllegalArgumentException | SQLException ex) {
                 if (!java.awt.GraphicsEnvironment.isHeadless() && !Boolean.getBoolean("test.suppressDialogs")) {
                     JOptionPane.showMessageDialog(winDialog, ex.getMessage(), "Không thể lưu phiếu", JOptionPane.ERROR_MESSAGE);
                 } else {
@@ -557,94 +551,86 @@ final class TrinhSuaPhieu {
 
             validating = true;
             try {
-                if ("soLuongThucNhan".equals(colName)) {
-                    if (text.isEmpty()) {
-                        showError("Dòng " + (modelRow + 1) + " (" + part + "): Vui lòng nhập số lượng thực nhận.");
-                        return false;
-                    }
-                    int actual;
-                    try {
-                        actual = Integer.parseInt(text.replace(" ", ""));
-                    } catch (NumberFormatException e) {
-                        showError("Dòng " + (modelRow + 1) + " (" + part + "): Số lượng thực nhận phải là số nguyên.");
-                        return false;
-                    }
-                    if (actual < 0) {
-                        showError("Dòng " + (modelRow + 1) + " (" + part + "): Số lượng thực nhận không được âm (" + actual + ").");
-                        return false;
-                    }
-                    if (actual > req) {
-                        showError("Dòng " + (modelRow + 1) + " (" + part + "): Số lượng thực nhận (" + actual + ") không được vượt quá số lượng yêu cầu (" + req + ").");
-                        return false;
-                    }
-                    int colAcceptedIdx = Arrays.asList(columns).indexOf("soLuongNhap");
-                    Object curAcceptedObj = colAcceptedIdx >= 0 ? model.getValueAt(modelRow, colAcceptedIdx) : null;
-                    if (curAcceptedObj != null) {
+                if (null != colName) switch (colName) {
+                    case "soLuongThucNhan" -> {
+                        if (text.isEmpty()) {
+                            showError("Dòng " + (modelRow + 1) + " (" + part + "): Vui lòng nhập số lượng thực nhận.");
+                            return false;
+                        }       int actual;
                         try {
-                            int curAccepted = Integer.parseInt(curAcceptedObj.toString().trim().replace(" ", ""));
-                            if (actual < curAccepted) {
-                                showError("Dòng " + (modelRow + 1) + " (" + part + "): Số lượng thực nhận (" + actual + ") không được nhỏ hơn số lượng nhập chấp nhận (" + curAccepted + "). Vui lòng điều chỉnh số lượng nhập trước.");
-                                return false;
-                            }
-                        } catch (Exception ignored) {}
-                    }
-                    parsedValue = actual;
-                } else if ("soLuongNhap".equals(colName)) {
-                    if (text.isEmpty()) {
-                        showError("Dòng " + (modelRow + 1) + " (" + part + "): Vui lòng nhập số lượng nhập chấp nhận.");
-                        return false;
-                    }
-                    int accepted;
-                    try {
-                        accepted = Integer.parseInt(text.replace(" ", ""));
-                    } catch (NumberFormatException e) {
-                        showError("Dòng " + (modelRow + 1) + " (" + part + "): Số lượng nhập chấp nhận phải là số nguyên.");
-                        return false;
-                    }
-                    if (accepted < 0) {
-                        showError("Dòng " + (modelRow + 1) + " (" + part + "): Số lượng nhập không được âm (" + accepted + ").");
-                        return false;
-                    }
-                    int colActualIdx = Arrays.asList(columns).indexOf("soLuongThucNhan");
-                    Object curActualObj = colActualIdx >= 0 ? model.getValueAt(modelRow, colActualIdx) : null;
-                    int actual = req;
-                    if (curActualObj != null) {
-                        try {
-                            actual = Integer.parseInt(curActualObj.toString().trim().replace(" ", ""));
-                        } catch (Exception ignored) {}
-                    }
-                    if (accepted > actual) {
-                        showError("Dòng " + (modelRow + 1) + " (" + part + "): Số lượng nhập chấp nhận (" + accepted + ") không được vượt quá số lượng thực nhận (" + actual + ").");
-                        return false;
-                    }
-                    parsedValue = accepted;
-                } else if ("donGiaNhap".equals(colName)) {
-                    if (text.isEmpty()) {
-                        showError("Dòng " + (modelRow + 1) + " (" + part + "): Vui lòng nhập đơn giá nhập.");
-                        return false;
-                    }
-                    String clean = text.replace(" ", "");
-                    if (clean.contains(",") && clean.contains(".")) {
-                        if (clean.lastIndexOf(',') > clean.lastIndexOf('.')) {
-                            clean = clean.replace(".", "").replace(",", ".");
-                        } else {
-                            clean = clean.replace(",", "");
+                            actual = Integer.parseInt(text.replace(" ", ""));
+                        } catch (NumberFormatException e) {
+                            showError("Dòng " + (modelRow + 1) + " (" + part + "): Số lượng thực nhận phải là số nguyên.");
+                            return false;
+                        }       if (actual < 0) {
+                            showError("Dòng " + (modelRow + 1) + " (" + part + "): Số lượng thực nhận không được âm (" + actual + ").");
+                            return false;
+                        }       if (actual > req) {
+                            showError("Dòng " + (modelRow + 1) + " (" + part + "): Số lượng thực nhận (" + actual + ") không được vượt quá số lượng yêu cầu (" + req + ").");
+                            return false;
+                        }       int colAcceptedIdx = Arrays.asList(columns).indexOf("soLuongNhap");
+                        Object curAcceptedObj = colAcceptedIdx >= 0 ? model.getValueAt(modelRow, colAcceptedIdx) : null;
+                        if (curAcceptedObj != null) {
+                            try {
+                                int curAccepted = Integer.parseInt(curAcceptedObj.toString().trim().replace(" ", ""));
+                                if (actual < curAccepted) {
+                                    showError("Dòng " + (modelRow + 1) + " (" + part + "): Số lượng thực nhận (" + actual + ") không được nhỏ hơn số lượng nhập chấp nhận (" + curAccepted + "). Vui lòng điều chỉnh số lượng nhập trước.");
+                                    return false;
+                                }
+                            } catch (NumberFormatException ignored) {}
+                        }       parsedValue = actual;
                         }
-                    } else if (clean.contains(",")) {
-                        clean = clean.replace(",", ".");
+                    case "soLuongNhap" -> {
+                        if (text.isEmpty()) {
+                            showError("Dòng " + (modelRow + 1) + " (" + part + "): Vui lòng nhập số lượng nhập chấp nhận.");
+                            return false;
+                        }       int accepted;
+                        try {
+                            accepted = Integer.parseInt(text.replace(" ", ""));
+                        } catch (NumberFormatException e) {
+                            showError("Dòng " + (modelRow + 1) + " (" + part + "): Số lượng nhập chấp nhận phải là số nguyên.");
+                            return false;
+                        }       if (accepted < 0) {
+                            showError("Dòng " + (modelRow + 1) + " (" + part + "): Số lượng nhập không được âm (" + accepted + ").");
+                            return false;
+                        }       int colActualIdx = Arrays.asList(columns).indexOf("soLuongThucNhan");
+                        Object curActualObj = colActualIdx >= 0 ? model.getValueAt(modelRow, colActualIdx) : null;
+                        int actual = req;
+                        if (curActualObj != null) {
+                            try {
+                                actual = Integer.parseInt(curActualObj.toString().trim().replace(" ", ""));
+                            } catch (NumberFormatException ignored) {}
+                        }       if (accepted > actual) {
+                            showError("Dòng " + (modelRow + 1) + " (" + part + "): Số lượng nhập chấp nhận (" + accepted + ") không được vượt quá số lượng thực nhận (" + actual + ").");
+                            return false;
+                        }       parsedValue = accepted;
+                        }
+                    case "donGiaNhap" -> {
+                        if (text.isEmpty()) {
+                            showError("Dòng " + (modelRow + 1) + " (" + part + "): Vui lòng nhập đơn giá nhập.");
+                            return false;
+                        }   String clean = text.replace(" ", "");
+                        if (clean.contains(",") && clean.contains(".")) {
+                            if (clean.lastIndexOf(',') > clean.lastIndexOf('.')) {
+                                clean = clean.replace(".", "").replace(",", ".");
+                            } else {
+                                clean = clean.replace(",", "");
+                            }
+                        } else if (clean.contains(",")) {
+                            clean = clean.replace(",", ".");
+                        }   java.math.BigDecimal price;
+                        try {
+                            price = new java.math.BigDecimal(clean);
+                        } catch (Exception e) {
+                            showError("Dòng " + (modelRow + 1) + " (" + part + "): Đơn giá nhập không hợp lệ.");
+                            return false;
+                        }   if (price.compareTo(java.math.BigDecimal.ZERO) < 0) {
+                            showError("Dòng " + (modelRow + 1) + " (" + part + "): Đơn giá nhập không được âm.");
+                            return false;
+                        }   parsedValue = price;
                     }
-                    java.math.BigDecimal price;
-                    try {
-                        price = new java.math.BigDecimal(clean);
-                    } catch (Exception e) {
-                        showError("Dòng " + (modelRow + 1) + " (" + part + "): Đơn giá nhập không hợp lệ.");
-                        return false;
+                    default -> {
                     }
-                    if (price.compareTo(java.math.BigDecimal.ZERO) < 0) {
-                        showError("Dòng " + (modelRow + 1) + " (" + part + "): Đơn giá nhập không được âm.");
-                        return false;
-                    }
-                    parsedValue = price;
                 }
             } finally {
                 validating = false;
@@ -667,7 +653,7 @@ final class TrinhSuaPhieu {
     }
     private static Map<String,Object> editLine(Component parent,String child,Map<String,Object> row,String foreignKey) {
         // Khóa hạng mục được nhập lại trong bản nháp; đầu phiếu sẽ gắn khi lưu.
-        BieuMauBanGhi pnlForm=new BieuMauBanGhi(child,row,Set.of(foreignKey,"maChiTietHoaDon"));
+        BieuMauBanGhi pnlForm=new BieuMauBanGhi(child,row,Set.of(foreignKey));
         if(child.equals("ChiTietPhieuNhapKho") && row!=null && row.get("soLuongYeuCau")!=null) {
             pnlForm.lockField("maPhuTung");
             pnlForm.lockField("soLuongYeuCau");

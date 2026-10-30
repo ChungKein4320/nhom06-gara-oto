@@ -9,6 +9,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.CancellationException;
+import java.util.concurrent.ExecutionException;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
@@ -91,8 +92,11 @@ public final class ManHinhTimKiem extends JPanel {
         table=selected.equals("Dịch vụ") ? "DichVu" : ManHinhDuLieu.tableFor(selected);
         fields=Arrays.stream(Schema.COLUMNS.get(table)).filter(field -> !field.equals("matKhau")).toArray(String[]::new);
         displayFields=table.equals("KhachHang")
-                ? Arrays.copyOf(fields,fields.length+1) : fields.clone();
-        if(table.equals("KhachHang")) displayFields[displayFields.length-1]="tongDiemTichLuy";
+                ? Arrays.copyOf(fields,fields.length+2) : fields.clone();
+        if(table.equals("KhachHang")) {
+            displayFields[displayFields.length-2]="bienSoXe";
+            displayFields[displayFields.length-1]="tongDiemTichLuy";
+        }
         inputs.clear(); pnlBieuMau.removeAll();
         for(int i=0;i<fields.length;i++) {
             String field=fields[i],type=Schema.TYPES.get(table).get(field).split(":",2)[0];
@@ -164,9 +168,11 @@ public final class ManHinhTimKiem extends JPanel {
                     }
                     lblKetQua.setText(rows.isEmpty() ? "Không tìm thấy dữ liệu phù hợp." : "Tìm thấy: "+rows.size()+" bản ghi");
                 } catch(CancellationException ignored) { }
-                catch(Exception ex) {
-                    lblKetQua.setText("Không tải được kết quả."); Throwable cause=ex.getCause()==null ? ex : ex.getCause();
-                    JOptionPane.showMessageDialog(ManHinhTimKiem.this,cause.getMessage(),"Lỗi tìm kiếm",JOptionPane.ERROR_MESSAGE);
+                catch(InterruptedException | ExecutionException ex) {
+                    lblKetQua.setText("Không tải được kết quả.");
+                    Throwable cause = ex.getCause();
+                    if (cause == null) cause = ex;
+                    JOptionPane.showMessageDialog(ManHinhTimKiem.this, cause.getMessage(), "Lỗi tìm kiếm", JOptionPane.ERROR_MESSAGE);
                 } finally { if(request==generation) btnTimKiem.setEnabled(true); }
             }
         }; worker.execute();
