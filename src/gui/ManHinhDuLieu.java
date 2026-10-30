@@ -739,7 +739,7 @@ public final class ManHinhDuLieu extends JPanel {
             JComponent input;
 
             OChonThamChieu cmbReference =
-                    OChonThamChieu.create(tableName, field);
+                    OChonThamChieu.create(tableName, field, value);
             JComboBox<String> cmbOptions =
                     LuaChonBieuMau.create(
                             tableName, field, value, existing
