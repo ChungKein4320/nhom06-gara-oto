@@ -3,9 +3,9 @@ package entity;
 import java.math.BigDecimal;
 
 public class ChiTietPhieuBaoGia {
-    private String maBaoGia;
-    private String maDichVu;
-    private String maPhuTung;
+    private PhieuBaoGia maBaoGia;
+    private DichVu maDichVu;
+    private PhuTung maPhuTung;
     private Integer soLuongPhuTung;
     private BigDecimal donGiaPhuTung;
     private BigDecimal chiPhiNhanCong;
@@ -13,27 +13,27 @@ public class ChiTietPhieuBaoGia {
 
     public ChiTietPhieuBaoGia() { }
 
-    public String getMaBaoGia() {
+    public PhieuBaoGia getMaBaoGia() {
         return maBaoGia;
     }
 
-    public void setMaBaoGia(String value) {
+    public void setMaBaoGia(PhieuBaoGia value) {
         this.maBaoGia = value;
     }
 
-    public String getMaDichVu() {
+    public DichVu getMaDichVu() {
         return maDichVu;
     }
 
-    public void setMaDichVu(String value) {
+    public void setMaDichVu(DichVu value) {
         this.maDichVu = value;
     }
 
-    public String getMaPhuTung() {
+    public PhuTung getMaPhuTung() {
         return maPhuTung;
     }
 
-    public void setMaPhuTung(String value) {
+    public void setMaPhuTung(PhuTung value) {
         this.maPhuTung = value;
     }
 
@@ -67,6 +67,36 @@ public class ChiTietPhieuBaoGia {
 
     public void setTrangThai(String value) {
         this.trangThai = value;
+    }
+
+    public ChiTietPhieuBaoGia(PhieuBaoGia maBaoGia,
+                              DichVu maDichVu,
+                              PhuTung maPhuTung,
+                              Integer soLuongPhuTung,
+                              BigDecimal donGiaPhuTung,
+                              BigDecimal chiPhiNhanCong) {
+
+        setMaBaoGia(maBaoGia);
+        setMaDichVu(maDichVu);
+        setMaPhuTung(maPhuTung);
+        setSoLuongPhuTung(soLuongPhuTung);
+        setDonGiaPhuTung(donGiaPhuTung);
+        setChiPhiNhanCong(chiPhiNhanCong);
+
+        this.trangThai = "Chờ xác nhận";
+    }
+
+    @Override
+    public String toString() {
+        return "ChiTietPhieuBaoGia{" +
+                "maBaoGia=" + maBaoGia +
+                ", maDichVu=" + maDichVu +
+                ", maPhuTung=" + maPhuTung +
+                ", soLuongPhuTung=" + soLuongPhuTung +
+                ", donGiaPhuTung=" + donGiaPhuTung +
+                ", chiPhiNhanCong=" + chiPhiNhanCong +
+                ", trangThai='" + trangThai + '\'' +
+                '}';
     }
 
 }

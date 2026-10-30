@@ -5,7 +5,7 @@ import java.sql.Timestamp;
 
 public class MaGiamGia {
     private String maGiamGia;
-    private String maKhachHang;
+    private KhachHang maKhachHang;
     private BigDecimal mucGiam;
     private Timestamp ngayTao;
     private Timestamp ngayHetHan;
@@ -15,7 +15,7 @@ public class MaGiamGia {
 
     public MaGiamGia() { }
 
-    public MaGiamGia(String maGiamGia, String maKhachHang, BigDecimal mucGiam, Timestamp ngayTao, Timestamp ngayHetHan,
+    public MaGiamGia(String maGiamGia, KhachHang maKhachHang, BigDecimal mucGiam, Timestamp ngayTao, Timestamp ngayHetHan,
 			String trangThai, Integer mocDiem, Timestamp ngayBatDauChuKy) {
 		super();
 		this.maGiamGia = maGiamGia;
@@ -37,11 +37,11 @@ public class MaGiamGia {
         this.maGiamGia = value;
     }
 
-    public String getMaKhachHang() {
+    public KhachHang getMaKhachHang() {
         return maKhachHang;
     }
 
-    public void setMaKhachHang(String value) {
+    public void setMaKhachHang(KhachHang value) {
         this.maKhachHang = value;
     }
 

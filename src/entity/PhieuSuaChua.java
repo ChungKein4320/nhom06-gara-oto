@@ -4,15 +4,15 @@ import java.sql.Timestamp;
 
 public class PhieuSuaChua {
     private String maPSC;
-    private String maBaoGia;
-    private String maKhachHang;
-    private String VIN;
-    private String maNhanVien;
+    private PhieuBaoGia maBaoGia;
+    private KhachHang maKhachHang;
+    private PhuongTien VIN;
+    private NhanVien maNhanVien;
     private Timestamp ngayLap;
     private Timestamp ngayHoanThanh;
     private String trangThai;
     private String lyDoHuy;
-    private String maNguoiDuyetHuy;
+    private NhanVien maNguoiDuyetHuy;
 
     public PhieuSuaChua() { }
 
@@ -24,35 +24,35 @@ public class PhieuSuaChua {
         this.maPSC = value;
     }
 
-    public String getMaBaoGia() {
+    public PhieuBaoGia getMaBaoGia() {
         return maBaoGia;
     }
 
-    public void setMaBaoGia(String value) {
+    public void setMaBaoGia(PhieuBaoGia value) {
         this.maBaoGia = value;
     }
 
-    public String getMaKhachHang() {
+    public KhachHang getMaKhachHang() {
         return maKhachHang;
     }
 
-    public void setMaKhachHang(String value) {
+    public void setMaKhachHang(KhachHang value) {
         this.maKhachHang = value;
     }
 
-    public String getVIN() {
+    public PhuongTien getVIN() {
         return VIN;
     }
 
-    public void setVIN(String value) {
+    public void setVIN(PhuongTien value) {
         this.VIN = value;
     }
 
-    public String getMaNhanVien() {
+    public NhanVien getMaNhanVien() {
         return maNhanVien;
     }
 
-    public void setMaNhanVien(String value) {
+    public void setMaNhanVien(NhanVien value) {
         this.maNhanVien = value;
     }
 
@@ -82,7 +82,37 @@ public class PhieuSuaChua {
 
     public String getLyDoHuy() { return lyDoHuy; }
     public void setLyDoHuy(String value) { this.lyDoHuy = value; }
-    public String getMaNguoiDuyetHuy() { return maNguoiDuyetHuy; }
-    public void setMaNguoiDuyetHuy(String value) { this.maNguoiDuyetHuy = value; }
+    public NhanVien getMaNguoiDuyetHuy() { return maNguoiDuyetHuy; }
+    public void setMaNguoiDuyetHuy(NhanVien value) { this.maNguoiDuyetHuy = value; }
 
+    PhieuSuaChua(String maPSC, PhieuBaoGia maBaoGia,
+            KhachHang maKhachHang, PhuongTien VIN,
+            NhanVien maNhanVien, Timestamp ngayLap,
+            Timestamp ngayHoanThanh, String trangThai) {
+
+        this();
+        setMaBaoGia(maBaoGia);
+        setMaKhachHang(maKhachHang);
+        setVIN(VIN);
+        setMaNhanVien(maNhanVien);
+        setNgayLap(ngayLap);
+        setNgayHoanThanh(ngayHoanThanh);
+        setTrangThai(trangThai);
+    }
+
+    @Override
+    public String toString() {
+        return "PhieuSuaChua{"
+                + "maPSC='" + maPSC + '\''
+                + ", maBaoGia=" + maBaoGia
+                + ", maKhachHang=" + maKhachHang
+                + ", VIN=" + VIN
+                + ", maNhanVien=" + maNhanVien
+                + ", maNguoiDuyetHuy='" + maNguoiDuyetHuy + '\''
+                + ", ngayLap=" + ngayLap
+                + ", ngayHoanThanh=" + ngayHoanThanh
+                + ", trangThai='" + trangThai + '\''
+                + ", lyDoHuy='" + lyDoHuy + '\''
+                + '}';
+    }
 }

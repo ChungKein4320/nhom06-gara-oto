@@ -3,18 +3,18 @@ package entity;
 import java.sql.Timestamp;
 
 public class ChiTietPhieuSuaChua {
-    private String maPSC;
-    private String maDichVu;
-    private String maPhuTung;
+    private PhieuSuaChua maPSC;
+    private DichVu maDichVu;
+    private PhuTung maPhuTung;
     private String trangThaiHangMuc;
     private Integer soLuongPhuTung;
     private Integer soLuongCapPhat;
     private Integer soLuongSuDung;
     private Integer soLuongHoanTra;
     private Timestamp ngayCapPhat;
-    private String maNhanVienCapPhat;
+    private NhanVien maNhanVienCapPhat;
     private Timestamp ngayHoanTra;
-    private String maNhanVienXacNhanHoanTra;
+    private NhanVien maNhanVienXacNhanHoanTra;
     private String ketQuaNghiemThu;
     private Timestamp ngayBatDauBaoHanh;
     private Integer thoiHanBaoHanh;
@@ -22,27 +22,27 @@ public class ChiTietPhieuSuaChua {
 
     public ChiTietPhieuSuaChua() { }
 
-    public String getMaPSC() {
+    public PhieuSuaChua getMaPSC() {
         return maPSC;
     }
 
-    public void setMaPSC(String value) {
+    public void setMaPSC(PhieuSuaChua value) {
         this.maPSC = value;
     }
 
-    public String getMaDichVu() {
+    public DichVu getMaDichVu() {
         return maDichVu;
     }
 
-    public void setMaDichVu(String value) {
+    public void setMaDichVu(DichVu  value) {
         this.maDichVu = value;
     }
 
-    public String getMaPhuTung() {
+    public PhuTung getMaPhuTung() {
         return maPhuTung;
     }
 
-    public void setMaPhuTung(String value) {
+    public void setMaPhuTung(PhuTung value) {
         this.maPhuTung = value;
     }
 
@@ -70,12 +70,12 @@ public class ChiTietPhieuSuaChua {
     public void setSoLuongHoanTra(Integer value) { this.soLuongHoanTra = value; }
     public Timestamp getNgayCapPhat() { return ngayCapPhat; }
     public void setNgayCapPhat(Timestamp value) { this.ngayCapPhat = value; }
-    public String getMaNhanVienCapPhat() { return maNhanVienCapPhat; }
-    public void setMaNhanVienCapPhat(String value) { this.maNhanVienCapPhat = value; }
+    public NhanVien getMaNhanVienCapPhat() { return maNhanVienCapPhat; }
+    public void setMaNhanVienCapPhat(NhanVien value) { this.maNhanVienCapPhat = value; }
     public Timestamp getNgayHoanTra() { return ngayHoanTra; }
     public void setNgayHoanTra(Timestamp value) { this.ngayHoanTra = value; }
-    public String getMaNhanVienXacNhanHoanTra() { return maNhanVienXacNhanHoanTra; }
-    public void setMaNhanVienXacNhanHoanTra(String value) { this.maNhanVienXacNhanHoanTra = value; }
+    public NhanVien getMaNhanVienXacNhanHoanTra() { return maNhanVienXacNhanHoanTra; }
+    public void setMaNhanVienXacNhanHoanTra(NhanVien value) { this.maNhanVienXacNhanHoanTra = value; }
 
     public String getKetQuaNghiemThu() {
         return ketQuaNghiemThu;
@@ -109,4 +109,44 @@ public class ChiTietPhieuSuaChua {
         this.ngayHetHanBaoHanh = value;
     }
 
+     public ChiTietPhieuSuaChua(PhieuSuaChua maPSC,
+            DichVu maDichVu, PhuTung maPhuTung,
+            String trangThaiHangMuc, int soLuongPhuTung,
+            String ketQuaNghiemThu, Timestamp ngayBatDauBaoHanh,
+            int thoiHanBaoHanh, Timestamp ngayHetHanBaoHanh) {
+
+        this();
+        setMaPSC(maPSC);
+        setMaDichVu(maDichVu);
+        setMaPhuTung(maPhuTung);
+        setTrangThaiHangMuc(trangThaiHangMuc);
+        setSoLuongPhuTung(soLuongPhuTung);
+        setKetQuaNghiemThu(ketQuaNghiemThu);
+        setThoiHanBaoHanh(thoiHanBaoHanh);
+        setNgayBatDauBaoHanh(ngayBatDauBaoHanh);
+        setNgayHetHanBaoHanh(ngayHetHanBaoHanh);
+    }
+
+    @Override
+    public String toString() {
+        return "ChiTietPhieuSuaChua{"
+                + "maPSC=" + maPSC
+                + ", maDichVu=" + maDichVu
+                + ", maPhuTung=" + maPhuTung
+                + ", trangThaiHangMuc='" + trangThaiHangMuc + '\''
+                + ", soLuongPhuTung=" + soLuongPhuTung
+                + ", soLuongCapPhat=" + soLuongCapPhat
+                + ", soLuongSuDung=" + soLuongSuDung
+                + ", soLuongHoanTra=" + soLuongHoanTra
+                + ", ngayCapPhat=" + ngayCapPhat
+                + ", maNhanVienCapPhat='" + maNhanVienCapPhat + '\''
+                + ", ngayHoanTra=" + ngayHoanTra
+                + ", maNhanVienXacNhanHoanTra='"
+                + maNhanVienXacNhanHoanTra + '\''
+                + ", ketQuaNghiemThu='" + ketQuaNghiemThu + '\''
+                + ", ngayBatDauBaoHanh=" + ngayBatDauBaoHanh
+                + ", thoiHanBaoHanh=" + thoiHanBaoHanh
+                + ", ngayHetHanBaoHanh=" + ngayHetHanBaoHanh
+                + '}';
+    }
 }

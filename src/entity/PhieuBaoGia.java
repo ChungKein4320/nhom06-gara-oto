@@ -4,10 +4,10 @@ import java.sql.Timestamp;
 
 public class PhieuBaoGia {
     private String maBaoGia;
-    private String maPKT;
-    private String maKhachHang;
-    private String maNhanVien;
-    private String VIN;
+    private PhieuKiemTra maPKT;
+    private KhachHang maKhachHang;
+    private NhanVien maNhanVien;
+    private PhuongTien VIN;
     private Timestamp ngayLap;
     private Timestamp ngayHetHan;
     private Timestamp thoiGianXacNhan;
@@ -23,35 +23,35 @@ public class PhieuBaoGia {
         this.maBaoGia = value;
     }
 
-    public String getMaPKT() {
+    public PhieuKiemTra getMaPKT() {
         return maPKT;
     }
 
-    public void setMaPKT(String value) {
+    public void setMaPKT(PhieuKiemTra value) {
         this.maPKT = value;
     }
 
-    public String getMaKhachHang() {
+    public KhachHang getMaKhachHang() {
         return maKhachHang;
     }
 
-    public void setMaKhachHang(String value) {
+    public void setMaKhachHang(KhachHang value) {
         this.maKhachHang = value;
     }
 
-    public String getMaNhanVien() {
+    public NhanVien getMaNhanVien() {
         return maNhanVien;
     }
 
-    public void setMaNhanVien(String value) {
+    public void setMaNhanVien(NhanVien value) {
         this.maNhanVien = value;
     }
 
-    public String getVIN() {
+    public PhuongTien getVIN() {
         return VIN;
     }
 
-    public void setVIN(String value) {
+    public void setVIN(PhuongTien value) {
         this.VIN = value;
     }
 
@@ -87,4 +87,40 @@ public class PhieuBaoGia {
         this.trangThai = value;
     }
 
+    public PhieuBaoGia(String maBaoGia,
+                       PhieuKiemTra maPKT,
+                       NhanVien maNhanVien,
+                       KhachHang maKhachHang,
+                       PhuongTien VIN,
+                       Timestamp ngayLap,
+                       Timestamp ngayHetHan,
+                       Timestamp thoiGianXacNhan) {
+
+        this.maBaoGia = getMaBaoGia();
+
+        setMaPKT(maPKT);
+        setMaNhanVien(maNhanVien);
+        setMaKhachHang(maKhachHang);
+        setVIN(VIN);
+        setNgayLap(ngayLap);
+        setNgayHetHan(ngayHetHan);
+        setThoiGianXacNhan(thoiGianXacNhan);
+
+        this.trangThai = "Còn hiệu lực";
+    }
+
+    @Override
+    public String toString() {
+        return "PhieuBaoGia{" +
+                "maBaoGia='" + maBaoGia + '\'' +
+                ", maPKT=" + maPKT +
+                ", maNhanVien=" + maNhanVien +
+                ", maKhachHang=" + maKhachHang +
+                ", VIN=" + VIN +
+                ", ngayLap=" + ngayLap +
+                ", ngayHetHan=" + ngayHetHan +
+                ", thoiGianXacNhan=" + thoiGianXacNhan +
+                ", trangThai='" + trangThai + '\'' +
+                '}';
+    }
 }
