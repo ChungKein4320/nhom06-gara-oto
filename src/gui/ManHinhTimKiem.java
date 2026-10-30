@@ -20,9 +20,9 @@ public final class ManHinhTimKiem extends JPanel {
     static List<String> nhomTheoVaiTro(VaiTro role) {
         Objects.requireNonNull(role,"Phải xác định vai trò tìm kiếm.");
         List<String> kyThuat=List.of("Phiếu tiếp nhận","Phiếu kiểm tra","Phiếu báo giá","Phiếu sửa chữa","Bảo hành","Lịch nhắc bảo dưỡng");
-        List<String> kho=List.of("Tồn kho","Nhập kho phụ tùng");
+        List<String> kho=List.of("Tồn kho","Phiếu yêu cầu nhập kho","Phiếu nhập kho phụ tùng");
         List<String> banHang=List.of("Hóa đơn");
-        List<String> quanLy=List.of("Nhà cung cấp","Nhân viên","Khách hàng","Phương tiện","Dịch vụ","Phụ tùng","Tài khoản","Khuyến mãi");
+        List<String> quanLy=List.of("Nhà cung cấp","Nhân viên","Khách hàng","Phương tiện","Dịch vụ","Phụ tùng","Tài khoản","Khuyến mãi","Danh sách yêu cầu nhập");
         return switch(role) {
             case KY_THUAT -> kyThuat;
             case KHO -> kho;
@@ -113,8 +113,10 @@ public final class ManHinhTimKiem extends JPanel {
                 input=txtGiaTri;
             }
             JPanel pnlCell=new JPanel(new BorderLayout(0,5)); pnlCell.setOpaque(false);
-            pnlCell.add(GiaoDien.label(NhanCot.forField(field),12,true,GiaoDien.TEXT),BorderLayout.NORTH); pnlCell.add(input,BorderLayout.CENTER);
-            GridBagConstraints c=new GridBagConstraints(); c.gridx=i%2; c.gridy=i/2; c.weightx=1; c.fill=GridBagConstraints.HORIZONTAL; c.insets=new Insets(6,8,6,8);
+            pnlCell.add(GiaoDien.label(NhanCot.forField(field),12,true,GiaoDien.TEXT),BorderLayout.NORTH);
+            pnlCell.add(input,BorderLayout.CENTER);
+            GridBagConstraints c=new GridBagConstraints();
+            c.gridx=i%2; c.gridy=i/2; c.fill=GridBagConstraints.HORIZONTAL; c.weightx=1; c.insets=new Insets(5,7,5,7);
             pnlBieuMau.add(pnlCell,c);
         }
         scrBieuMau.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);

@@ -237,7 +237,8 @@ class OChonTimKiem<T> extends JComboBox<T> {
 
     @Override public Object getSelectedItem() {
         Object selected=super.getSelectedItem();
-        if(!changing && txtEditor!=null && isEnabled() && isEditable() && (selected==null || !txtEditor.getText().equals(selected.toString()))) return null;
+        String t = txtEditor != null ? txtEditor.getText() : null;
+        if(!changing && txtEditor!=null && isEnabled() && isEditable() && (selected==null || t==null || !t.equals(selected.toString()))) return null;
         return selected;
     }
 

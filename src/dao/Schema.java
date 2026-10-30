@@ -89,12 +89,21 @@ public final class Schema {
                 "ngayCapPhat=datetime2:0", "maNhanVienCapPhat=varchar:5", "ngayHoanTra=datetime2:0",
                 "maNhanVienXacNhanHoanTra=varchar:5", "ketQuaNghiemThu=nvarchar:20", "ngayBatDauBaoHanh=datetime2:0",
                 "thoiHanBaoHanh=int:", "ngayHetHanBaoHanh=datetime2:0");
+        define("YeuCauNhapKho", new String[] { "maYCNK" },
+                new String[] { "maYCNK", "maNCC", "maNhanVien", "ngayTao", "trangThai" }, "maYCNK=varchar:6",
+                "maNCC=varchar:6", "maNhanVien=varchar:5", "ngayTao=datetime2:0", "trangThai=nvarchar:30",
+                "maNhanVienDuyet=varchar:5", "ngayDuyet=datetime2:0", "ghiChu=nvarchar:255");
+        define("ChiTietYeuCauNhapKho", new String[] { "maYCNK", "maPhuTung" },
+                new String[] { "maYCNK", "maPhuTung", "soLuongYeuCau", "donGiaDuKien" }, "maYCNK=varchar:6",
+                "maPhuTung=varchar:5", "soLuongYeuCau=int:", "donGiaDuKien=decimal:18,2");
         define("PhieuNhapKho", new String[] { "maPNK" },
                 new String[] { "maPNK", "maNCC", "maNhanVien", "ngayNhap", "trangThai" }, "maPNK=varchar:6",
-                "maNCC=varchar:6", "maNhanVien=varchar:5", "ngayNhap=datetime2:0", "trangThai=nvarchar:30");
+                "maNCC=varchar:6", "maNhanVien=varchar:5", "ngayNhap=datetime2:0", "trangThai=nvarchar:30",
+                "maYCNK=varchar:6");
         define("ChiTietPhieuNhapKho", new String[] { "maPNK", "maPhuTung" },
-                new String[] { "maPNK", "maPhuTung", "soLuongNhap", "donGiaNhap" }, "maPNK=varchar:6",
-                "maPhuTung=varchar:5", "soLuongNhap=int:", "donGiaNhap=decimal:18,2");
+                new String[] { "maPNK", "maPhuTung", "soLuongThucNhan", "soLuongNhap", "donGiaNhap" },
+                "maPNK=varchar:6", "maPhuTung=varchar:5", "soLuongYeuCau=int:", "soLuongThucNhan=int:",
+                "soLuongNhap=int:", "donGiaNhap=decimal:18,2");
         define("HoaDon", new String[] { "maHoaDon" },
                 new String[] { "maHoaDon", "maKhachHang", "maNhanVien", "ngayLap", "tienPhuTung", "tienCong",
                         "dichVuKhac", "thueVAT", "giamGia", "trangThaiThanhToan", "maPhuongThuc" },

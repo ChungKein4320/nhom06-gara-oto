@@ -15,7 +15,8 @@ public final class LuaChonBieuMau {
         put("ChiTietPhieuBaoGia", "trangThai", "Chờ xác nhận", "Chờ sửa chữa", "Thiếu phụ tùng + Chờ xác nhận");
         put("PhieuSuaChua", "trangThai", "Chờ sửa chữa");
         put("ChiTietPhieuSuaChua", "trangThaiHangMuc", "Đang sửa chữa", "Thiếu phụ tùng", "Hoàn thành");
-        put("PhieuNhapKho", "trangThai", "Chờ duyệt");
+        put("YeuCauNhapKho", "trangThai", "Chờ duyệt");
+        put("PhieuNhapKho", "trangThai", "Chờ xác nhận nhập kho", "Đã nhập kho", "Đã hủy");
         put("DichVu", "trangThai", "Hoạt động", "Ngừng hoạt động");
         put("MaGiamGia", "trangThai", "Đang hiệu lực", "Hết hạn", "Đã sử dụng");
         put("LichNhacBaoDuong", "trangThai", "Chưa gửi", "Đã gửi");
@@ -30,12 +31,17 @@ public final class LuaChonBieuMau {
         OPTIONS.put(table + "." + field, values);
     }
 
+    public static String[] getOptions(String table, String field) {
+        String[] opts = OPTIONS.get(table + "." + field);
+        return opts != null ? opts.clone() : new String[0];
+    }
+
     public static JComboBox<String> create(String table, String field, String current, boolean existing) {
         String[] options = OPTIONS.get(table + "." + field);
         if (options == null) return null;
         JComboBox<String> cmbCombo = new OChonTimKiem<>(options.clone());
         cmbCombo.setFont(GiaoDien.font(12, false));
-        
+
         boolean chiDuocChon = java.util.Set.of(
             "NhanVien.vaiTro",
             "NhanVien.trangThai",
@@ -49,7 +55,7 @@ public final class LuaChonBieuMau {
         if (existing) selectExisting(cmbCombo, current);
         // Thanh toán phải được xác nhận qua nghiệp vụ riêng, không đổi ở biểu mẫu.
         if (("HoaDon".equals(table) && "trangThaiThanhToan".equals(field))
-                || (field.equals("trangThai") && java.util.Set.of("PhieuBaoGia", "PhieuSuaChua", "PhieuNhapKho").contains(table))) {
+                || (field.equals("trangThai") && java.util.Set.of("PhieuBaoGia", "PhieuSuaChua", "PhieuNhapKho", "YeuCauNhapKho").contains(table))) {
             DinhDangKeThua.lock(cmbCombo);
         }
         return cmbCombo;

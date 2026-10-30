@@ -117,10 +117,17 @@ public final class ManHinhChinh extends JFrame {
         pnlNav.add(lblL);
         addNavStrut(6);
     }
-    private static String sectionForItem(String s) {
+    private String sectionForItem(String s) {
+        if (s.equals("Phiếu yêu cầu nhập kho") || s.equals("Yêu cầu nhập kho")
+                || s.equals("Phiếu nhập kho phụ tùng") || s.equals("Nhập kho phụ tùng")) {
+            return role == VaiTro.QUAN_LY ? "NHÂN VIÊN QUẢN LÝ" : "NHÂN VIÊN KHO";
+        }
+        if (s.equals("Danh sách yêu cầu nhập")) {
+            return "NHÂN VIÊN QUẢN LÝ";
+        }
         return switch (s) {
             case "Phiếu tiếp nhận", "Phiếu kiểm tra", "Phiếu báo giá", "Phiếu sửa chữa", "Bảo hành", "Lịch nhắc bảo dưỡng" -> "NHÂN VIÊN KỸ THUẬT";
-            case "Tồn kho", "Cấp phát phụ tùng", "Nhập kho phụ tùng", "Lịch sử sửa chữa" -> "NHÂN VIÊN KHO";
+            case "Tồn kho", "Phiếu cấp phát phụ tùng", "Cấp phát phụ tùng", "Lịch sử sửa chữa" -> "NHÂN VIÊN KHO";
             case "Hóa đơn", "Lịch sử tích điểm", "Khuyến mãi/Tích điểm", "Bán phụ tùng", "Phụ tùng" -> "NHÂN VIÊN BÁN HÀNG";
             case "Nhà cung cấp", "Nhân viên", "Khách hàng", "Phương tiện", "Danh mục dịch vụ", "Danh mục phụ tùng", "Tài khoản", "Khuyến mãi", "Thống kê" -> "NHÂN VIÊN QUẢN LÝ";
             default -> null;
@@ -291,7 +298,7 @@ public final class ManHinhChinh extends JFrame {
                 : searchGroup!=null ? new ManHinhTimKiem(role,searchGroup)
                 : page.equals("Thống kê") ? new ManHinhThongKe()
                 : (page.equals("Bán phụ tùng") || page.equals("Phụ tùng")) ? new ManHinhBanPhuTung(employeeId)
-                : new ManHinhDuLieu(page,employeeId);
+                : new ManHinhDuLieu(page, role, employeeId);
         if (view instanceof ManHinhBanPhuTung || view instanceof ManHinhDuLieu || view instanceof ManHinhTimKiem) {
             pnlBody.add(view,BorderLayout.CENTER);
         } else {

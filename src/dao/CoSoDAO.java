@@ -50,7 +50,7 @@ public class CoSoDAO {
             case "PhuTung" -> "PT"; case "NhaCungCap" -> "NCC"; case "PhuongThucThanhToan" -> "TT";
             case "TaiKhoan" -> "TK"; case "TonKho" -> "TKH"; case "MaGiamGia" -> "MGG";
             case "PhieuTiepNhan" -> "PTN"; case "PhieuKiemTra" -> "PKT"; case "PhieuBaoGia" -> "PBG";
-            case "PhieuSuaChua" -> "PSC"; case "PhieuNhapKho" -> "PNK"; case "HoaDon" -> "HD";
+            case "PhieuSuaChua" -> "PSC"; case "YeuCauNhapKho" -> "YCN"; case "PhieuNhapKho" -> "PNK"; case "HoaDon" -> "HD";
             case "LichBaoHanh" -> "LBH"; case "LichNhacBaoDuong" -> "LNBD"; case "LichSuTichDiem" -> "LS";
             default -> throw new IllegalArgumentException("Không có sequence cho " + table);
         };

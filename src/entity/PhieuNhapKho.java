@@ -4,6 +4,7 @@ import java.sql.Timestamp;
 
 public class PhieuNhapKho {
     private String maPNK;
+    private String maYCNK;
     private String maNCC;
     private String maNhanVien;
     private Timestamp ngayNhap;
@@ -17,6 +18,14 @@ public class PhieuNhapKho {
 
     public void setMaPNK(String value) {
         this.maPNK = value;
+    }
+
+    public String getMaYCNK() {
+        return maYCNK;
+    }
+
+    public void setMaYCNK(String value) {
+        this.maYCNK = value;
     }
 
     public String getMaNCC() {

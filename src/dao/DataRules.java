@@ -5,18 +5,19 @@ import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.*;
 
-/** Kiểm tra dùng chung cho biểu mẫu và DAO trước khi ghi SQL. */
+/** Các quy tắc nghiệp vụ tầng ứng dụng và kiểm tra giá trị trước khi ghi SQL Server. */
 public final class DataRules {
     private DataRules() {}
-    public static void validate(String table, Map<String,Object> row, boolean creating) throws SQLException {
-        for (String field : row.keySet()) if (!Schema.TYPES.get(table).containsKey(field)) fail(field,"Trường không hợp lệ: " + field);
-        for (String field : Schema.REQUIRED.get(table)) {
-            if (Schema.IDENTITY.contains(table) && field.equals(Schema.PRIMARY.get(table))) continue;
-            if (!creating && !row.containsKey(field)) continue;
-            if (row.get(field)==null || row.get(field).toString().isBlank()) fail(field,"Không được bỏ trống: " + field);
+    public static void validate(String table,Map<String,Object> row,boolean creating) throws SQLException {
+        if(creating) {
+            Set<String> required=Schema.REQUIRED.get(table);
+            if(required!=null) for(String field:required) {
+                Object val=row.get(field);
+                if(val==null || (val instanceof String s && s.trim().isEmpty())) fail(field,"Bắt buộc nhập: " + field);
+            }
         }
-        for (var entry : row.entrySet()) {
-            String field=entry.getKey(); Object value=entry.getValue();
+        for(Map.Entry<String,Object> e:row.entrySet()) {
+            String field=e.getKey(); Object value=e.getValue();
             if(value==null) continue;
             String raw=value.toString().trim(); String[] spec=Schema.TYPES.get(table).get(field).split(":",2);
             if ((spec[0].equals("varchar") || spec[0].equals("nvarchar")) && raw.length()>Integer.parseInt(spec[1])) fail(field,"Vượt quá độ dài cho phép: " + field);
@@ -24,7 +25,7 @@ public final class DataRules {
             if(value instanceof Number number) {
                 BigDecimal n=new BigDecimal(number.toString());
                 if(n.signum()<0) fail(field,"Giá trị không được âm: " + field);
-                if(field.equals("soLuongNhap") && n.signum()==0) fail(field,"Số lượng phải lớn hơn 0.");
+                if(field.equals("soLuongYeuCau") && n.signum()==0) fail(field,"Số lượng yêu cầu phải lớn hơn 0.");
                 if(field.equals("soLuongPhuTung")) {
                     boolean noPart="PT000".equals(String.valueOf(row.get("maPhuTung")));
                     if((noPart && n.signum()!=0) || (!noPart && n.signum()==0))
@@ -118,9 +119,21 @@ public final class DataRules {
         dates(row,"ngayLap","ngayHoanThanh",false); dates(row,"ngayLap","thoiGianXacNhan",false);
         dates(row,"ngayBatDauBaoHanh","ngayHetHanBaoHanh",false);
         if(table.equals("ChiTietHoaDon") && row.get("maDichVu")==null && row.get("maPhuTung")==null && creating) fail("maDichVu","Chọn ít nhất dịch vụ hoặc phụ tùng.");
+        if(table.equals("ChiTietPhieuNhapKho")) {
+            Object reqObj = row.get("soLuongYeuCau");
+            Object recObj = row.get("soLuongThucNhan");
+            Object accObj = row.get("soLuongNhap");
+
+            if(recObj instanceof Number rec && accObj instanceof Number acc) {
+                if(acc.intValue() > rec.intValue()) fail("soLuongNhap","Số lượng chấp nhận (" + acc.intValue() + ") không được vượt quá số lượng thực nhận (" + rec.intValue() + ").");
+            }
+            if(reqObj instanceof Number req && recObj instanceof Number rec) {
+                if(rec.intValue() > req.intValue()) fail("soLuongThucNhan","Số lượng thực nhận (" + rec.intValue() + ") không được vượt quá số lượng yêu cầu (" + req.intValue() + ").");
+            }
+        }
         if("PT000".equals(String.valueOf(row.get("maPhuTung")))) {
             if(table.equals("PhuTung") && !creating) fail("maPhuTung","PT000 là mã hệ thống, không được sửa.");
-            if(table.equals("TonKho") || table.equals("ChiTietPhieuNhapKho") || table.equals("ChiTietHoaDon"))
+            if(table.equals("TonKho") || table.equals("ChiTietPhieuNhapKho") || table.equals("ChiTietYeuCauNhapKho") || table.equals("ChiTietHoaDon"))
                 fail("maPhuTung","PT000 chỉ dùng để biểu thị hạng mục không sử dụng phụ tùng; không được nhập kho hoặc bán như phụ tùng.");
             if(table.equals("ChiTietPhieuBaoGia") && row.get("donGiaPhuTung") instanceof Number price && new BigDecimal(price.toString()).signum()!=0)
                 fail("donGiaPhuTung","Đơn giá phụ tùng của PT000 phải bằng 0.");
@@ -132,7 +145,9 @@ public final class DataRules {
     public static final class Invalid extends SQLException {
         private static final long serialVersionUID = 1L;
         public final String field;
-        Invalid(String field,String message) { super(message); this.field=field; }
+        public Invalid(String field,String reason) { super(reason); this.field=field; }
     }
-    private static void fail(String field,String message) throws SQLException { throw new Invalid(field,message); }
+    private static void fail(String field,String reason) throws SQLException {
+        throw new Invalid(field,reason);
+    }
 }

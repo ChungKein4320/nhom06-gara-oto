@@ -10,8 +10,8 @@ public final class DuLieuTrinhDon {
         "Phiếu báo giá", "Phiếu sửa chữa", "Bảo hành", "Lịch nhắc bảo dưỡng"
     };
     public static final String[] WARE = {
-        "Tổng quan", "Tìm kiếm", "Tồn kho", "Cấp phát phụ tùng",
-        "Nhập kho phụ tùng", "Lịch sử sửa chữa"
+        "Tổng quan", "Tìm kiếm", "Tồn kho", "Phiếu cấp phát phụ tùng",
+        "Phiếu yêu cầu nhập kho", "Phiếu nhập kho phụ tùng", "Lịch sử sửa chữa"
     };
     public static final String[] CASH = {
         "Tổng quan", "Tìm kiếm", "Hóa đơn", "Lịch sử tích điểm", "Phụ tùng"
@@ -19,7 +19,7 @@ public final class DuLieuTrinhDon {
     public static final String[] MANAGER = {
         "Tổng quan", "Tìm kiếm", "Nhà cung cấp", "Nhân viên",
         "Khách hàng", "Phương tiện", "Danh mục dịch vụ", "Danh mục phụ tùng",
-        "Tài khoản", "Khuyến mãi", "Thống kê"
+        "Tài khoản", "Khuyến mãi", "Danh sách yêu cầu nhập", "Thống kê"
     };
 
     public static String[] forRole(VaiTro role) {
