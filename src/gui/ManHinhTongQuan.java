@@ -30,7 +30,8 @@ public final class ManHinhTongQuan extends JPanel {
                 : new String[] {"Khách hàng", "Phương tiện", "Nhân viên", "Doanh thu"};
         for (String key : keys) {
             JPanel pnlCard = GiaoDien.card(new BorderLayout(0, 13));
-            pnlCard.add(GiaoDien.label(key.toUpperCase(), 11, true, GiaoDien.MUTED), BorderLayout.NORTH);
+            String displayTitle = key.equals("Yêu cầu cấp") ? "Hạng mục thiếu phụ tùng" : key;
+            pnlCard.add(GiaoDien.label(displayTitle.toUpperCase(), 11, true, GiaoDien.MUTED), BorderLayout.NORTH);
             int valSize = (key.equals("Doanh thu") || key.toLowerCase().contains("doanh")) ? 23 : 28;
             JLabel lblValue = GiaoDien.label("—", valSize, true, GiaoDien.TEAL);
             pnlCard.add(lblValue, BorderLayout.CENTER);
