@@ -1,14 +1,25 @@
-﻿-- Tệp cài đặt tổng hợp: schema, dữ liệu mẫu và Migration_20261028_FixNghiepVu.sql đã gộp tại mục D.1.
--- Với database mới, chỉ cần chạy một lần duy nhất file GaraOto.sql này.
+﻿-- ============================================================================
+-- SCRIPT CÀI ĐẶT VÀ NÂNG CẤP CHÍNH THỨC CƠ SỞ DỮ LIỆU [GaraOto]
+-- Hỗ trợ 2 chế độ hoàn toàn tự động và an toàn (Idempotent):
+--   1. Fresh Install: Tạo mới database GaraOto, toàn bộ 23 bảng, ràng buộc, views,
+--      triggers và dữ liệu mẫu chuẩn (bao gồm 36 phiếu nhập lịch sử và 5 kịch bản UC009).
+--   2. Legacy Upgrade: Tự động phát hiện database GaraOto đã tồn tại, bổ sung các bảng
+--      còn thiếu (YeuCauNhapKho, ChiTietYeuCauNhapKho), thêm cột mới (maYCNK, soLuongYeuCau,
+--      soLuongThucNhan), backfill an toàn 36 phiếu nhập cũ, cập nhật triggers/views và
+--      bổ sung dữ liệu kịch bản UC009 mà không làm mất hoặc thay đổi dữ liệu hiện có.
+-- ============================================================================
 USE [master];
 GO
-IF DB_ID(N'GaraOto') IS NOT NULL
+IF DB_ID(N'GaraOto') IS NULL
 BEGIN
-    PRINT N'Database GaraOto đã tồn tại. Không thay đổi dữ liệu; hãy dùng database mới để tạo lại schema.';
-    SET NOEXEC ON;
+    PRINT N'[SETUP] Database [GaraOto] chưa tồn tại. Đang khởi tạo database mới...';
+    CREATE DATABASE [GaraOto];
+    PRINT N'[SETUP] Đã tạo database [GaraOto] thành công.';
 END
 ELSE
-    CREATE DATABASE [GaraOto];
+BEGIN
+    PRINT N'[SETUP] Database [GaraOto] đã tồn tại. Tiến hành kiểm tra, đồng bộ và nâng cấp schema...';
+END
 GO
 USE [GaraOto];
 GO
@@ -17,30 +28,53 @@ SET QUOTED_IDENTIFIER ON;
 SET XACT_ABORT ON;
 GO
 
--- A. TẠO SCHEMA, RÀNG BUỘC VÀ SEQUENCE. Không có ON DELETE CASCADE.
+-- ============================================================================
+-- 1. TẠO SEQUENCE VÀ CÁC BẢNG (IDEMPOTENT)
+-- ============================================================================
 BEGIN TRY
     BEGIN TRANSACTION;
-CREATE SEQUENCE dbo.[Seq_NhanVien] AS int START WITH 6 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
-CREATE SEQUENCE dbo.[Seq_KhachHang] AS int START WITH 61 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
-CREATE SEQUENCE dbo.[Seq_DichVu] AS int START WITH 21 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
-CREATE SEQUENCE dbo.[Seq_PhuTung] AS int START WITH 51 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
-CREATE SEQUENCE dbo.[Seq_NhaCungCap] AS int START WITH 13 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
-CREATE SEQUENCE dbo.[Seq_PhuongThucThanhToan] AS int START WITH 5 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
-CREATE SEQUENCE dbo.[Seq_TaiKhoan] AS int START WITH 6 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
-CREATE SEQUENCE dbo.[Seq_TonKho] AS int START WITH 51 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
-CREATE SEQUENCE dbo.[Seq_MaGiamGia] AS int START WITH 37 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
-CREATE SEQUENCE dbo.[Seq_PhieuTiepNhan] AS int START WITH 101 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
-CREATE SEQUENCE dbo.[Seq_PhieuKiemTra] AS int START WITH 91 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
-CREATE SEQUENCE dbo.[Seq_PhieuBaoGia] AS int START WITH 81 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
-CREATE SEQUENCE dbo.[Seq_PhieuSuaChua] AS int START WITH 71 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
-CREATE SEQUENCE dbo.[Seq_YeuCauNhapKho] AS int START WITH 6 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
-CREATE SEQUENCE dbo.[Seq_PhieuNhapKho] AS int START WITH 3 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
-CREATE SEQUENCE dbo.[Seq_HoaDon] AS int START WITH 31 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
-CREATE SEQUENCE dbo.[Seq_LichBaoHanh] AS int START WITH 21 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
-CREATE SEQUENCE dbo.[Seq_LichNhacBaoDuong] AS int START WITH 41 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
-CREATE SEQUENCE dbo.[Seq_LichSuTichDiem] AS int START WITH 21 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
+IF NOT EXISTS (SELECT 1 FROM sys.sequences WHERE name = N'Seq_NhanVien' AND schema_id = SCHEMA_ID(N'dbo'))
+    CREATE SEQUENCE dbo.[Seq_NhanVien] AS int START WITH 6 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
+IF NOT EXISTS (SELECT 1 FROM sys.sequences WHERE name = N'Seq_KhachHang' AND schema_id = SCHEMA_ID(N'dbo'))
+    CREATE SEQUENCE dbo.[Seq_KhachHang] AS int START WITH 61 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
+IF NOT EXISTS (SELECT 1 FROM sys.sequences WHERE name = N'Seq_DichVu' AND schema_id = SCHEMA_ID(N'dbo'))
+    CREATE SEQUENCE dbo.[Seq_DichVu] AS int START WITH 21 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
+IF NOT EXISTS (SELECT 1 FROM sys.sequences WHERE name = N'Seq_PhuTung' AND schema_id = SCHEMA_ID(N'dbo'))
+    CREATE SEQUENCE dbo.[Seq_PhuTung] AS int START WITH 51 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
+IF NOT EXISTS (SELECT 1 FROM sys.sequences WHERE name = N'Seq_NhaCungCap' AND schema_id = SCHEMA_ID(N'dbo'))
+    CREATE SEQUENCE dbo.[Seq_NhaCungCap] AS int START WITH 13 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
+IF NOT EXISTS (SELECT 1 FROM sys.sequences WHERE name = N'Seq_PhuongThucThanhToan' AND schema_id = SCHEMA_ID(N'dbo'))
+    CREATE SEQUENCE dbo.[Seq_PhuongThucThanhToan] AS int START WITH 5 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
+IF NOT EXISTS (SELECT 1 FROM sys.sequences WHERE name = N'Seq_TaiKhoan' AND schema_id = SCHEMA_ID(N'dbo'))
+    CREATE SEQUENCE dbo.[Seq_TaiKhoan] AS int START WITH 6 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
+IF NOT EXISTS (SELECT 1 FROM sys.sequences WHERE name = N'Seq_TonKho' AND schema_id = SCHEMA_ID(N'dbo'))
+    CREATE SEQUENCE dbo.[Seq_TonKho] AS int START WITH 51 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
+IF NOT EXISTS (SELECT 1 FROM sys.sequences WHERE name = N'Seq_MaGiamGia' AND schema_id = SCHEMA_ID(N'dbo'))
+    CREATE SEQUENCE dbo.[Seq_MaGiamGia] AS int START WITH 37 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
+IF NOT EXISTS (SELECT 1 FROM sys.sequences WHERE name = N'Seq_PhieuTiepNhan' AND schema_id = SCHEMA_ID(N'dbo'))
+    CREATE SEQUENCE dbo.[Seq_PhieuTiepNhan] AS int START WITH 101 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
+IF NOT EXISTS (SELECT 1 FROM sys.sequences WHERE name = N'Seq_PhieuKiemTra' AND schema_id = SCHEMA_ID(N'dbo'))
+    CREATE SEQUENCE dbo.[Seq_PhieuKiemTra] AS int START WITH 91 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
+IF NOT EXISTS (SELECT 1 FROM sys.sequences WHERE name = N'Seq_PhieuBaoGia' AND schema_id = SCHEMA_ID(N'dbo'))
+    CREATE SEQUENCE dbo.[Seq_PhieuBaoGia] AS int START WITH 81 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
+IF NOT EXISTS (SELECT 1 FROM sys.sequences WHERE name = N'Seq_PhieuSuaChua' AND schema_id = SCHEMA_ID(N'dbo'))
+    CREATE SEQUENCE dbo.[Seq_PhieuSuaChua] AS int START WITH 71 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
+IF NOT EXISTS (SELECT 1 FROM sys.sequences WHERE name = N'Seq_YeuCauNhapKho' AND schema_id = SCHEMA_ID(N'dbo'))
+    CREATE SEQUENCE dbo.[Seq_YeuCauNhapKho] AS int START WITH 6 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
+IF NOT EXISTS (SELECT 1 FROM sys.sequences WHERE name = N'Seq_PhieuNhapKho' AND schema_id = SCHEMA_ID(N'dbo'))
+    CREATE SEQUENCE dbo.[Seq_PhieuNhapKho] AS int START WITH 3 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
+IF NOT EXISTS (SELECT 1 FROM sys.sequences WHERE name = N'Seq_HoaDon' AND schema_id = SCHEMA_ID(N'dbo'))
+    CREATE SEQUENCE dbo.[Seq_HoaDon] AS int START WITH 31 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
+IF NOT EXISTS (SELECT 1 FROM sys.sequences WHERE name = N'Seq_LichBaoHanh' AND schema_id = SCHEMA_ID(N'dbo'))
+    CREATE SEQUENCE dbo.[Seq_LichBaoHanh] AS int START WITH 21 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
+IF NOT EXISTS (SELECT 1 FROM sys.sequences WHERE name = N'Seq_LichNhacBaoDuong' AND schema_id = SCHEMA_ID(N'dbo'))
+    CREATE SEQUENCE dbo.[Seq_LichNhacBaoDuong] AS int START WITH 41 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
+IF NOT EXISTS (SELECT 1 FROM sys.sequences WHERE name = N'Seq_LichSuTichDiem' AND schema_id = SCHEMA_ID(N'dbo'))
+    CREATE SEQUENCE dbo.[Seq_LichSuTichDiem] AS int START WITH 21 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
 
 -- 01. NhanVien
+IF OBJECT_ID(N'dbo.[NhanVien]', N'U') IS NULL
+BEGIN
 CREATE TABLE dbo.[NhanVien] (
     [maNhanVien] varchar(5) NOT NULL CONSTRAINT [DF_NhanVien_Ma] DEFAULT ('NV' + RIGHT('000' + CONVERT(varchar(3), NEXT VALUE FOR dbo.[Seq_NhanVien]),3)),
     [hoTenNV] nvarchar(100) NOT NULL,
@@ -60,8 +94,11 @@ CREATE TABLE dbo.[NhanVien] (
     CONSTRAINT [CK_NhanVien_VaiTro] CHECK ([vaiTro] IN (N'Nhân viên kỹ thuật', N'Nhân viên kho', N'Nhân viên bán hàng', N'Nhân viên quản lý')),
     CONSTRAINT [CK_NhanVien_TrangThai] CHECK ([trangThai] IN (N'Đang làm', N'Đã nghỉ'))
 );
+END;
 
 -- 02. KhachHang
+IF OBJECT_ID(N'dbo.[KhachHang]', N'U') IS NULL
+BEGIN
 CREATE TABLE dbo.[KhachHang] (
     [maKhachHang] varchar(5) NOT NULL CONSTRAINT [DF_KhachHang_Ma] DEFAULT ('KH' + RIGHT('000' + CONVERT(varchar(3), NEXT VALUE FOR dbo.[Seq_KhachHang]),3)),
     [hoTenKH] nvarchar(100) NOT NULL,
@@ -75,8 +112,11 @@ CREATE TABLE dbo.[KhachHang] (
     CONSTRAINT [CK_KhachHang_SDT] CHECK (DATALENGTH([soDienThoai]) = 10 AND [soDienThoai] COLLATE Latin1_General_100_BIN2 NOT LIKE '%[^0-9]%' AND LEFT([soDienThoai],2) IN ('03','05','07','08','09')),
     CONSTRAINT [CK_KhachHang_Email] CHECK ([email] LIKE '%_@_%._%' AND [email] NOT LIKE '% %' AND LEN([email])-LEN(REPLACE([email], '@', ''))=1)
 );
+END;
 
 -- 03. PhuongTien
+IF OBJECT_ID(N'dbo.[PhuongTien]', N'U') IS NULL
+BEGIN
 CREATE TABLE dbo.[PhuongTien] (
     [VIN] varchar(17) NOT NULL,
     [bienSo] varchar(8) NOT NULL,
@@ -99,8 +139,11 @@ CREATE TABLE dbo.[PhuongTien] (
     CONSTRAINT [CK_PhuongTien_SoMay] CHECK (LEN(LTRIM(RTRIM([soMay]))) > 0),
     CONSTRAINT [CK_PhuongTien_SoKM] CHECK (soKM>=0)
 );
+END;
 
 -- 04. DichVu
+IF OBJECT_ID(N'dbo.[DichVu]', N'U') IS NULL
+BEGIN
 CREATE TABLE dbo.[DichVu] (
     [maDichVu] varchar(5) NOT NULL CONSTRAINT [DF_DichVu_Ma] DEFAULT ('DV' + RIGHT('000' + CONVERT(varchar(3), NEXT VALUE FOR dbo.[Seq_DichVu]),3)),
     [tenDichVu] nvarchar(150) NOT NULL,
@@ -113,8 +156,11 @@ CREATE TABLE dbo.[DichVu] (
     CONSTRAINT [CK_DichVu_Gia] CHECK (donGia>=0),
     CONSTRAINT [CK_DichVu_TrangThai] CHECK (LEN(LTRIM(RTRIM([trangThai]))) > 0)
 );
+END;
 
 -- 05. PhuTung
+IF OBJECT_ID(N'dbo.[PhuTung]', N'U') IS NULL
+BEGIN
 CREATE TABLE dbo.[PhuTung] (
     [maPhuTung] varchar(5) NOT NULL CONSTRAINT [DF_PhuTung_Ma] DEFAULT ('PT' + RIGHT('000' + CONVERT(varchar(3), NEXT VALUE FOR dbo.[Seq_PhuTung]),3)),
     [tenPhuTung] nvarchar(150) NOT NULL,
@@ -127,8 +173,11 @@ CREATE TABLE dbo.[PhuTung] (
     CONSTRAINT [CK_PhuTung_Gia] CHECK (donGia>=0),
     CONSTRAINT [CK_PhuTung_Loai] CHECK (LEN(LTRIM(RTRIM([loaiPhuTung]))) > 0)
 );
+END;
 
 -- 06. NhaCungCap
+IF OBJECT_ID(N'dbo.[NhaCungCap]', N'U') IS NULL
+BEGIN
 CREATE TABLE dbo.[NhaCungCap] (
     [maNCC] varchar(6) NOT NULL CONSTRAINT [DF_NhaCungCap_Ma] DEFAULT ('NCC' + RIGHT('000' + CONVERT(varchar(3), NEXT VALUE FOR dbo.[Seq_NhaCungCap]),3)),
     [tenNCC] nvarchar(150) NOT NULL,
@@ -141,8 +190,11 @@ CREATE TABLE dbo.[NhaCungCap] (
     CONSTRAINT [CK_NhaCungCap_SDT] CHECK (DATALENGTH([soDienThoai]) = 10 AND [soDienThoai] COLLATE Latin1_General_100_BIN2 NOT LIKE '%[^0-9]%' AND LEFT([soDienThoai],2) IN ('03','05','07','08','09')),
     CONSTRAINT [CK_NhaCungCap_Email] CHECK ([email] IS NULL OR ([email] LIKE '%_@_%._%' AND [email] NOT LIKE '% %' AND LEN([email])-LEN(REPLACE([email], '@', ''))=1))
 );
+END;
 
 -- 07. PhuongThucThanhToan
+IF OBJECT_ID(N'dbo.[PhuongThucThanhToan]', N'U') IS NULL
+BEGIN
 CREATE TABLE dbo.[PhuongThucThanhToan] (
     [maPhuongThuc] varchar(5) NOT NULL CONSTRAINT [DF_PhuongThucThanhToan_Ma] DEFAULT ('TT' + RIGHT('000' + CONVERT(varchar(3), NEXT VALUE FOR dbo.[Seq_PhuongThucThanhToan]),3)),
     [tenPhuongThuc] nvarchar(100) NOT NULL,
@@ -150,8 +202,11 @@ CREATE TABLE dbo.[PhuongThucThanhToan] (
     CONSTRAINT [CK_PhuongThucThanhToan_Ma] CHECK (DATALENGTH([maPhuongThuc]) = 5 AND [maPhuongThuc] COLLATE Latin1_General_100_BIN2 LIKE 'TT[0-9][0-9][0-9]'),
     CONSTRAINT [CK_PhuongThucThanhToan_Ten] CHECK (LEN(LTRIM(RTRIM([tenPhuongThuc]))) > 0)
 );
+END;
 
 -- 08. TaiKhoan
+IF OBJECT_ID(N'dbo.[TaiKhoan]', N'U') IS NULL
+BEGIN
 CREATE TABLE dbo.[TaiKhoan] (
     [maTaiKhoan] varchar(5) NOT NULL CONSTRAINT [DF_TaiKhoan_Ma] DEFAULT ('TK' + RIGHT('000' + CONVERT(varchar(3), NEXT VALUE FOR dbo.[Seq_TaiKhoan]),3)),
     [maNhanVien] varchar(5) NOT NULL,
@@ -166,8 +221,11 @@ CREATE TABLE dbo.[TaiKhoan] (
     CONSTRAINT [CK_TaiKhoan_TenDangNhap] CHECK (LEN(LTRIM(RTRIM([tenDangNhap]))) > 0),
     CONSTRAINT [CK_TaiKhoan_TrangThai] CHECK ([trangThai] IN (N'Đang hoạt động', N'Ngừng hoạt động'))
 );
+END;
 
 -- 09. TonKho
+IF OBJECT_ID(N'dbo.[TonKho]', N'U') IS NULL
+BEGIN
 CREATE TABLE dbo.[TonKho] (
     [maTonKho] varchar(6) NOT NULL CONSTRAINT [DF_TonKho_Ma] DEFAULT ('TKH' + RIGHT('000' + CONVERT(varchar(3), NEXT VALUE FOR dbo.[Seq_TonKho]),3)),
     [maPhuTung] varchar(5) NOT NULL,
@@ -180,8 +238,11 @@ CREATE TABLE dbo.[TonKho] (
     CONSTRAINT [CK_TonKho_ToiThieu] CHECK (soLuongToiThieu>=0),
     CONSTRAINT [CK_TonKho_KhongPT000] CHECK ([maPhuTung]<>'PT000')
 );
+END;
 
 -- 10. MaGiamGia
+IF OBJECT_ID(N'dbo.[MaGiamGia]', N'U') IS NULL
+BEGIN
 CREATE TABLE dbo.[MaGiamGia] (
     [maGiamGia] varchar(6) NOT NULL CONSTRAINT [DF_MaGiamGia_Ma] DEFAULT ('MGG' + RIGHT('000' + CONVERT(varchar(3), NEXT VALUE FOR dbo.[Seq_MaGiamGia]),3)),
     [maKhachHang] varchar(5) NOT NULL,
@@ -198,8 +259,11 @@ CREATE TABLE dbo.[MaGiamGia] (
     CONSTRAINT [CK_MaGiamGia_Ngay] CHECK (ngayTao<=SYSDATETIME() AND ngayHetHan>ngayTao),
     CONSTRAINT [CK_MaGiamGia_TrangThai] CHECK (LEN(LTRIM(RTRIM([trangThai]))) > 0)
 );
+END;
 
 -- 11. PhieuTiepNhan
+IF OBJECT_ID(N'dbo.[PhieuTiepNhan]', N'U') IS NULL
+BEGIN
 CREATE TABLE dbo.[PhieuTiepNhan] (
     [maPTN] varchar(6) NOT NULL CONSTRAINT [DF_PhieuTiepNhan_Ma] DEFAULT ('PTN' + RIGHT('000' + CONVERT(varchar(3), NEXT VALUE FOR dbo.[Seq_PhieuTiepNhan]),3)),
     [maKhachHang] varchar(5) NOT NULL,
@@ -213,8 +277,11 @@ CREATE TABLE dbo.[PhieuTiepNhan] (
     CONSTRAINT [CK_PhieuTiepNhan_ODO] CHECK (DATALENGTH(soODO)=6 AND soODO COLLATE Latin1_General_100_BIN2 NOT LIKE '%[^0-9]%'),
     CONSTRAINT [CK_PhieuTiepNhan_Ngay] CHECK (ngayTiepNhan<=SYSDATETIME())
 );
+END;
 
 -- 12. ChiTietPhieuTiepNhan
+IF OBJECT_ID(N'dbo.[ChiTietPhieuTiepNhan]', N'U') IS NULL
+BEGIN
 CREATE TABLE dbo.[ChiTietPhieuTiepNhan] (
     [maPTN] varchar(6) NOT NULL,
     [maDichVu] varchar(5) NOT NULL,
@@ -222,8 +289,11 @@ CREATE TABLE dbo.[ChiTietPhieuTiepNhan] (
     CONSTRAINT [PK_ChiTietPhieuTiepNhan] PRIMARY KEY ([maPTN], [maDichVu]),
     CONSTRAINT [CK_ChiTietPhieuTiepNhan_YeuCau] CHECK (LEN(LTRIM(RTRIM([yeuCauDichVu]))) > 0)
 );
+END;
 
 -- 13. PhieuKiemTra
+IF OBJECT_ID(N'dbo.[PhieuKiemTra]', N'U') IS NULL
+BEGIN
 CREATE TABLE dbo.[PhieuKiemTra] (
     [maPKT] varchar(6) NOT NULL CONSTRAINT [DF_PhieuKiemTra_Ma] DEFAULT ('PKT' + RIGHT('000' + CONVERT(varchar(3), NEXT VALUE FOR dbo.[Seq_PhieuKiemTra]),3)),
     [maPTN] varchar(6) NOT NULL,
@@ -236,8 +306,11 @@ CREATE TABLE dbo.[PhieuKiemTra] (
     CONSTRAINT [CK_PhieuKiemTra_Ma] CHECK (DATALENGTH([maPKT]) = 6 AND [maPKT] COLLATE Latin1_General_100_BIN2 LIKE 'PKT[0-9][0-9][0-9]'),
     CONSTRAINT [CK_PhieuKiemTra_Ngay] CHECK (ngayKiemTra<=SYSDATETIME())
 );
+END;
 
 -- 14. ChiTietPhieuKiemTra
+IF OBJECT_ID(N'dbo.[ChiTietPhieuKiemTra]', N'U') IS NULL
+BEGIN
 CREATE TABLE dbo.[ChiTietPhieuKiemTra] (
     [maPKT] varchar(6) NOT NULL,
     [maDichVu] varchar(5) NOT NULL,
@@ -249,8 +322,11 @@ CREATE TABLE dbo.[ChiTietPhieuKiemTra] (
     CONSTRAINT [CK_ChiTietPhieuKiemTra_ChanDoan] CHECK (LEN(LTRIM(RTRIM([ketQuaChuanDoan]))) > 0),
     CONSTRAINT [CK_ChiTietPhieuKiemTra_KetQua] CHECK (ketQuaKiemTra IS NULL OR ketQuaKiemTra IN (N'Đạt',N'Không đạt'))
 );
+END;
 
 -- 15. PhieuBaoGia
+IF OBJECT_ID(N'dbo.[PhieuBaoGia]', N'U') IS NULL
+BEGIN
 CREATE TABLE dbo.[PhieuBaoGia] (
     [maBaoGia] varchar(6) NOT NULL CONSTRAINT [DF_PhieuBaoGia_Ma] DEFAULT ('PBG' + RIGHT('000' + CONVERT(varchar(3), NEXT VALUE FOR dbo.[Seq_PhieuBaoGia]),3)),
     [maPKT] varchar(6) NOT NULL,
@@ -267,8 +343,11 @@ CREATE TABLE dbo.[PhieuBaoGia] (
     CONSTRAINT [CK_PhieuBaoGia_Ngay] CHECK (ngayLap<=SYSDATETIME() AND ngayHetHan>=ngayLap AND (thoiGianXacNhan IS NULL OR thoiGianXacNhan>=ngayLap)),
     CONSTRAINT [CK_PhieuBaoGia_TrangThai] CHECK ([trangThai] IN (N'Còn hiệu lực', N'Hết hiệu lực', N'Đã xác nhận'))
 );
+END;
 
 -- 16. ChiTietPhieuBaoGia
+IF OBJECT_ID(N'dbo.[ChiTietPhieuBaoGia]', N'U') IS NULL
+BEGIN
 CREATE TABLE dbo.[ChiTietPhieuBaoGia] (
     [maBaoGia] varchar(6) NOT NULL,
     [maDichVu] varchar(5) NOT NULL,
@@ -283,8 +362,11 @@ CREATE TABLE dbo.[ChiTietPhieuBaoGia] (
     CONSTRAINT [CK_ChiTietPhieuBaoGia_NhanCong] CHECK (chiPhiNhanCong>=0),
     CONSTRAINT [CK_ChiTietPhieuBaoGia_TrangThai] CHECK ([trangThai] IN (N'Chờ xác nhận', N'Chờ sửa chữa', N'Thiếu phụ tùng', N'Thiếu phụ tùng + Chờ xác nhận'))
 );
+END;
 
 -- 17. PhieuSuaChua
+IF OBJECT_ID(N'dbo.[PhieuSuaChua]', N'U') IS NULL
+BEGIN
 CREATE TABLE dbo.[PhieuSuaChua] (
     [maPSC] varchar(6) NOT NULL CONSTRAINT [DF_PhieuSuaChua_Ma] DEFAULT ('PSC' + RIGHT('000' + CONVERT(varchar(3), NEXT VALUE FOR dbo.[Seq_PhieuSuaChua]),3)),
     [maBaoGia] varchar(6) NOT NULL,
@@ -302,8 +384,11 @@ CREATE TABLE dbo.[PhieuSuaChua] (
     CONSTRAINT [CK_PhieuSuaChua_Ngay] CHECK (ngayLap<=SYSDATETIME() AND (ngayHoanThanh IS NULL OR ngayHoanThanh>=ngayLap)),
     CONSTRAINT [CK_PhieuSuaChua_TrangThai] CHECK ([trangThai] IN (N'Chờ sửa chữa', N'Đang sửa chữa', N'Đã sửa xong', N'Chờ thanh toán', N'Đã thanh toán', N'Hoàn tất', N'Đã hủy'))
 );
+END;
 
 -- 18. ChiTietPhieuSuaChua
+IF OBJECT_ID(N'dbo.[ChiTietPhieuSuaChua]', N'U') IS NULL
+BEGIN
 CREATE TABLE dbo.[ChiTietPhieuSuaChua] (
     [maPSC] varchar(6) NOT NULL,
     [maDichVu] varchar(5) NOT NULL,
@@ -329,8 +414,11 @@ CREATE TABLE dbo.[ChiTietPhieuSuaChua] (
     CONSTRAINT [CK_ChiTietPhieuSuaChua_ThoiHan] CHECK (thoiHanBaoHanh>=0),
     CONSTRAINT [CK_ChiTietPhieuSuaChua_NgayBaoHanh] CHECK ((ngayBatDauBaoHanh IS NULL AND ngayHetHanBaoHanh IS NULL) OR (ngayBatDauBaoHanh IS NOT NULL AND ngayHetHanBaoHanh IS NOT NULL AND ngayHetHanBaoHanh>=ngayBatDauBaoHanh))
 );
+END;
 
 -- 19a. YeuCauNhapKho
+IF OBJECT_ID(N'dbo.[YeuCauNhapKho]', N'U') IS NULL
+BEGIN
 CREATE TABLE dbo.[YeuCauNhapKho] (
     [maYCNK] varchar(6) NOT NULL CONSTRAINT [DF_YeuCauNhapKho_Ma] DEFAULT ('YCN' + RIGHT('000' + CONVERT(varchar(3), NEXT VALUE FOR dbo.[Seq_YeuCauNhapKho]),3)),
     [maNCC] varchar(6) NOT NULL,
@@ -346,8 +434,11 @@ CREATE TABLE dbo.[YeuCauNhapKho] (
     CONSTRAINT [CK_YeuCauNhapKho_TrangThai] CHECK ([trangThai] IN (N'Chờ duyệt', N'Đã duyệt', N'Từ chối', N'Đã xử lý')),
     CONSTRAINT [CK_YeuCauNhapKho_NgayDuyet] CHECK (ngayDuyet IS NULL OR ngayDuyet>=ngayTao)
 );
+END;
 
 -- 19b. ChiTietYeuCauNhapKho
+IF OBJECT_ID(N'dbo.[ChiTietYeuCauNhapKho]', N'U') IS NULL
+BEGIN
 CREATE TABLE dbo.[ChiTietYeuCauNhapKho] (
     [maYCNK] varchar(6) NOT NULL,
     [maPhuTung] varchar(5) NOT NULL,
@@ -358,8 +449,11 @@ CREATE TABLE dbo.[ChiTietYeuCauNhapKho] (
     CONSTRAINT [CK_ChiTietYeuCauNhapKho_DonGia] CHECK (donGiaDuKien>=0),
     CONSTRAINT [CK_ChiTietYeuCauNhapKho_KhongPT000] CHECK ([maPhuTung]<>'PT000')
 );
+END;
 
 -- 19. PhieuNhapKho
+IF OBJECT_ID(N'dbo.[PhieuNhapKho]', N'U') IS NULL
+BEGIN
 CREATE TABLE dbo.[PhieuNhapKho] (
     [maPNK] varchar(6) NOT NULL CONSTRAINT [DF_PhieuNhapKho_Ma] DEFAULT ('PNK' + RIGHT('000' + CONVERT(varchar(3), NEXT VALUE FOR dbo.[Seq_PhieuNhapKho]),3)),
     [maNCC] varchar(6) NOT NULL,
@@ -370,10 +464,31 @@ CREATE TABLE dbo.[PhieuNhapKho] (
     CONSTRAINT [PK_PhieuNhapKho] PRIMARY KEY ([maPNK]),
     CONSTRAINT [CK_PhieuNhapKho_Ma] CHECK (DATALENGTH([maPNK]) = 6 AND [maPNK] COLLATE Latin1_General_100_BIN2 LIKE 'PNK[0-9][0-9][0-9]'),
     CONSTRAINT [CK_PhieuNhapKho_Ngay] CHECK (ngayNhap<=SYSDATETIME()),
-    CONSTRAINT [CK_PhieuNhapKho_TrangThai] CHECK ([trangThai] IN (N'Chờ xác nhận nhập kho', N'Đã nhập kho', N'Đã hủy'))
+    CONSTRAINT [CK_PhieuNhapKho_TrangThai] CHECK (
+        (
+            [maYCNK] IS NOT NULL
+            AND [trangThai] IN (
+                N'Chờ xác nhận nhập kho',
+                N'Đã nhập kho',
+                N'Đã hủy'
+            )
+        )
+        OR
+        (
+            [maYCNK] IS NULL
+            AND [trangThai] IN (
+                N'Chờ duyệt',
+                N'Đã duyệt',
+                N'Không duyệt'
+            )
+        )
+    )
 );
+END;
 
 -- 20. ChiTietPhieuNhapKho
+IF OBJECT_ID(N'dbo.[ChiTietPhieuNhapKho]', N'U') IS NULL
+BEGIN
 CREATE TABLE dbo.[ChiTietPhieuNhapKho] (
     [maPNK] varchar(6) NOT NULL,
     [maPhuTung] varchar(5) NOT NULL,
@@ -389,8 +504,11 @@ CREATE TABLE dbo.[ChiTietPhieuNhapKho] (
     CONSTRAINT [CK_ChiTietPhieuNhapKho_SoLuongThucNhan] CHECK (soLuongThucNhan IS NULL OR soLuongThucNhan>=0),
     CONSTRAINT [CK_ChiTietPhieuNhapKho_HopLeThucNhan] CHECK (soLuongThucNhan IS NULL OR (soLuongNhap<=soLuongThucNhan AND (soLuongYeuCau IS NULL OR soLuongThucNhan<=soLuongYeuCau)))
 );
+END;
 
 -- 21. HoaDon
+IF OBJECT_ID(N'dbo.[HoaDon]', N'U') IS NULL
+BEGIN
 CREATE TABLE dbo.[HoaDon] (
     [maHoaDon] varchar(5) NOT NULL CONSTRAINT [DF_HoaDon_Ma] DEFAULT ('HD' + RIGHT('000' + CONVERT(varchar(3), NEXT VALUE FOR dbo.[Seq_HoaDon]),3)),
     [maGiamGia] varchar(6) NULL,
@@ -413,8 +531,11 @@ CREATE TABLE dbo.[HoaDon] (
     CONSTRAINT [CK_HoaDon_GiamGia] CHECK (giamGia<=tienPhuTung+tienCong+dichVuKhac+thueVAT),
     CONSTRAINT [CK_HoaDon_TrangThai] CHECK (LEN(LTRIM(RTRIM([trangThaiThanhToan]))) > 0)
 );
+END;
 
 -- 22. ChiTietHoaDon
+IF OBJECT_ID(N'dbo.[ChiTietHoaDon]', N'U') IS NULL
+BEGIN
 CREATE TABLE dbo.[ChiTietHoaDon] (
     [maChiTietHoaDon] int IDENTITY(1,1) NOT NULL,
     [maHoaDon] varchar(5) NOT NULL,
@@ -428,8 +549,11 @@ CREATE TABLE dbo.[ChiTietHoaDon] (
     CONSTRAINT [CK_ChiTietHoaDon_SoLuong] CHECK (soLuong>=0),
     CONSTRAINT [CK_ChiTietHoaDon_DonGia] CHECK (donGia>=0)
 );
+END;
 
 -- 23. LichBaoHanh
+IF OBJECT_ID(N'dbo.[LichBaoHanh]', N'U') IS NULL
+BEGIN
 CREATE TABLE dbo.[LichBaoHanh] (
     [maLBH] varchar(6) NOT NULL CONSTRAINT [DF_LichBaoHanh_Ma] DEFAULT ('LBH' + RIGHT('000' + CONVERT(varchar(3), NEXT VALUE FOR dbo.[Seq_LichBaoHanh]),3)),
     [maPSC] varchar(6) NOT NULL,
@@ -447,8 +571,11 @@ CREATE TABLE dbo.[LichBaoHanh] (
     CONSTRAINT [CK_LichBaoHanh_HangMuc] CHECK ((maDichVu IS NULL AND maPhuTung IS NULL) OR (maDichVu IS NOT NULL AND maPhuTung IS NOT NULL)),
     CONSTRAINT [CK_LichBaoHanh_KetQua] CHECK (LEN(LTRIM(RTRIM([ketQuaXuLy]))) > 0)
 );
+END;
 
 -- 24. LichNhacBaoDuong
+IF OBJECT_ID(N'dbo.[LichNhacBaoDuong]', N'U') IS NULL
+BEGIN
 CREATE TABLE dbo.[LichNhacBaoDuong] (
     [maLichNhac] varchar(7) NOT NULL CONSTRAINT [DF_LichNhacBaoDuong_Ma] DEFAULT ('LNBD' + RIGHT('000' + CONVERT(varchar(3), NEXT VALUE FOR dbo.[Seq_LichNhacBaoDuong]),3)),
     [maKhachHang] varchar(5) NOT NULL,
@@ -462,8 +589,11 @@ CREATE TABLE dbo.[LichNhacBaoDuong] (
     CONSTRAINT [CK_LichNhacBaoDuong_NoiDung] CHECK (LEN(LTRIM(RTRIM([noiDung]))) > 0),
     CONSTRAINT [CK_LichNhacBaoDuong_TrangThai] CHECK (LEN(LTRIM(RTRIM([trangThai]))) > 0)
 );
+END;
 
 -- 25. LichSuTichDiem
+IF OBJECT_ID(N'dbo.[LichSuTichDiem]', N'U') IS NULL
+BEGIN
 CREATE TABLE dbo.[LichSuTichDiem] (
     [maLichSuTD] varchar(5) NOT NULL CONSTRAINT [DF_LichSuTichDiem_Ma] DEFAULT ('LS' + RIGHT('000' + CONVERT(varchar(3), NEXT VALUE FOR dbo.[Seq_LichSuTichDiem]),3)),
     [maKhachHang] varchar(5) NOT NULL,
@@ -478,86 +608,431 @@ CREATE TABLE dbo.[LichSuTichDiem] (
     CONSTRAINT [CK_LichSuTichDiem_Diem] CHECK (soDiem>=0),
     CONSTRAINT [CK_LichSuTichDiem_LyDo] CHECK (LEN(LTRIM(RTRIM([lyDo]))) > 0)
 );
+END;
 
-ALTER TABLE dbo.[TaiKhoan] WITH CHECK ADD CONSTRAINT [FK_TaiKhoan_NhanVien] FOREIGN KEY ([maNhanVien]) REFERENCES dbo.[NhanVien] ([maNhanVien]);
-ALTER TABLE dbo.[TonKho] WITH CHECK ADD CONSTRAINT [FK_TonKho_PhuTung] FOREIGN KEY ([maPhuTung]) REFERENCES dbo.[PhuTung] ([maPhuTung]);
-ALTER TABLE dbo.[PhuongTien] WITH CHECK ADD CONSTRAINT [FK_PhuongTien_ChuHienTai] FOREIGN KEY ([maKhachHangChuHienTai]) REFERENCES dbo.[KhachHang] ([maKhachHang]);
-ALTER TABLE dbo.[MaGiamGia] WITH CHECK ADD CONSTRAINT [FK_MaGiamGia_KhachHang] FOREIGN KEY ([maKhachHang]) REFERENCES dbo.[KhachHang] ([maKhachHang]);
-ALTER TABLE dbo.[PhieuTiepNhan] WITH CHECK ADD CONSTRAINT [FK_PhieuTiepNhan_KhachHang] FOREIGN KEY ([maKhachHang]) REFERENCES dbo.[KhachHang] ([maKhachHang]);
-ALTER TABLE dbo.[PhieuTiepNhan] WITH CHECK ADD CONSTRAINT [FK_PhieuTiepNhan_NhanVien] FOREIGN KEY ([maNhanVien]) REFERENCES dbo.[NhanVien] ([maNhanVien]);
-ALTER TABLE dbo.[PhieuTiepNhan] WITH CHECK ADD CONSTRAINT [FK_PhieuTiepNhan_PhuongTien] FOREIGN KEY ([VIN]) REFERENCES dbo.[PhuongTien] ([VIN]);
-ALTER TABLE dbo.[ChiTietPhieuTiepNhan] WITH CHECK ADD CONSTRAINT [FK_ChiTietPhieuTiepNhan_PhieuTiepNhan] FOREIGN KEY ([maPTN]) REFERENCES dbo.[PhieuTiepNhan] ([maPTN]);
-ALTER TABLE dbo.[ChiTietPhieuTiepNhan] WITH CHECK ADD CONSTRAINT [FK_ChiTietPhieuTiepNhan_DichVu] FOREIGN KEY ([maDichVu]) REFERENCES dbo.[DichVu] ([maDichVu]);
-ALTER TABLE dbo.[PhieuKiemTra] WITH CHECK ADD CONSTRAINT [FK_PhieuKiemTra_HoSoTiepNhan] FOREIGN KEY ([maPTN], [maKhachHang], [VIN]) REFERENCES dbo.[PhieuTiepNhan] ([maPTN], [maKhachHang], [VIN]);
-ALTER TABLE dbo.[PhieuKiemTra] WITH CHECK ADD CONSTRAINT [FK_PhieuKiemTra_NhanVien] FOREIGN KEY ([maNhanVien]) REFERENCES dbo.[NhanVien] ([maNhanVien]);
-ALTER TABLE dbo.[ChiTietPhieuKiemTra] WITH CHECK ADD CONSTRAINT [FK_ChiTietPhieuKiemTra_PhieuKiemTra] FOREIGN KEY ([maPKT]) REFERENCES dbo.[PhieuKiemTra] ([maPKT]);
-ALTER TABLE dbo.[ChiTietPhieuKiemTra] WITH CHECK ADD CONSTRAINT [FK_ChiTietPhieuKiemTra_DichVu] FOREIGN KEY ([maDichVu]) REFERENCES dbo.[DichVu] ([maDichVu]);
-ALTER TABLE dbo.[PhieuBaoGia] WITH CHECK ADD CONSTRAINT [FK_PhieuBaoGia_HoSoKiemTra] FOREIGN KEY ([maPKT], [maKhachHang], [VIN]) REFERENCES dbo.[PhieuKiemTra] ([maPKT], [maKhachHang], [VIN]);
-ALTER TABLE dbo.[PhieuBaoGia] WITH CHECK ADD CONSTRAINT [FK_PhieuBaoGia_KhachHang] FOREIGN KEY ([maKhachHang]) REFERENCES dbo.[KhachHang] ([maKhachHang]);
-ALTER TABLE dbo.[PhieuBaoGia] WITH CHECK ADD CONSTRAINT [FK_PhieuBaoGia_NhanVien] FOREIGN KEY ([maNhanVien]) REFERENCES dbo.[NhanVien] ([maNhanVien]);
-ALTER TABLE dbo.[ChiTietPhieuBaoGia] WITH CHECK ADD CONSTRAINT [FK_ChiTietPhieuBaoGia_PhieuBaoGia] FOREIGN KEY ([maBaoGia]) REFERENCES dbo.[PhieuBaoGia] ([maBaoGia]);
-ALTER TABLE dbo.[ChiTietPhieuBaoGia] WITH CHECK ADD CONSTRAINT [FK_ChiTietPhieuBaoGia_DichVu] FOREIGN KEY ([maDichVu]) REFERENCES dbo.[DichVu] ([maDichVu]);
-ALTER TABLE dbo.[ChiTietPhieuBaoGia] WITH CHECK ADD CONSTRAINT [FK_ChiTietPhieuBaoGia_PhuTung] FOREIGN KEY ([maPhuTung]) REFERENCES dbo.[PhuTung] ([maPhuTung]);
-ALTER TABLE dbo.[PhieuSuaChua] WITH CHECK ADD CONSTRAINT [FK_PhieuSuaChua_HoSoBaoGia] FOREIGN KEY ([maBaoGia], [maKhachHang], [VIN]) REFERENCES dbo.[PhieuBaoGia] ([maBaoGia], [maKhachHang], [VIN]);
-ALTER TABLE dbo.[PhieuSuaChua] WITH CHECK ADD CONSTRAINT [FK_PhieuSuaChua_KhachHang] FOREIGN KEY ([maKhachHang]) REFERENCES dbo.[KhachHang] ([maKhachHang]);
-ALTER TABLE dbo.[PhieuSuaChua] WITH CHECK ADD CONSTRAINT [FK_PhieuSuaChua_NhanVien] FOREIGN KEY ([maNhanVien]) REFERENCES dbo.[NhanVien] ([maNhanVien]);
-ALTER TABLE dbo.[PhieuSuaChua] WITH CHECK ADD CONSTRAINT [FK_PhieuSuaChua_NguoiDuyetHuy] FOREIGN KEY ([maNguoiDuyetHuy]) REFERENCES dbo.[NhanVien] ([maNhanVien]);
-ALTER TABLE dbo.[ChiTietPhieuSuaChua] WITH CHECK ADD CONSTRAINT [FK_ChiTietPhieuSuaChua_PhieuSuaChua] FOREIGN KEY ([maPSC]) REFERENCES dbo.[PhieuSuaChua] ([maPSC]);
-ALTER TABLE dbo.[ChiTietPhieuSuaChua] WITH CHECK ADD CONSTRAINT [FK_ChiTietPhieuSuaChua_DichVu] FOREIGN KEY ([maDichVu]) REFERENCES dbo.[DichVu] ([maDichVu]);
-ALTER TABLE dbo.[ChiTietPhieuSuaChua] WITH CHECK ADD CONSTRAINT [FK_ChiTietPhieuSuaChua_PhuTung] FOREIGN KEY ([maPhuTung]) REFERENCES dbo.[PhuTung] ([maPhuTung]);
-ALTER TABLE dbo.[ChiTietPhieuSuaChua] WITH CHECK ADD CONSTRAINT [FK_ChiTietPSC_NhanVienCapPhat] FOREIGN KEY ([maNhanVienCapPhat]) REFERENCES dbo.[NhanVien] ([maNhanVien]);
-ALTER TABLE dbo.[ChiTietPhieuSuaChua] WITH CHECK ADD CONSTRAINT [FK_ChiTietPSC_NhanVienHoanTra] FOREIGN KEY ([maNhanVienXacNhanHoanTra]) REFERENCES dbo.[NhanVien] ([maNhanVien]);
-ALTER TABLE dbo.[LichBaoHanh] WITH CHECK ADD CONSTRAINT [FK_LichBaoHanh_HangMuc] FOREIGN KEY ([maPSC],[maDichVu],[maPhuTung]) REFERENCES dbo.[ChiTietPhieuSuaChua] ([maPSC],[maDichVu],[maPhuTung]);
-ALTER TABLE dbo.[YeuCauNhapKho] WITH CHECK ADD CONSTRAINT [FK_YeuCauNhapKho_NhaCungCap] FOREIGN KEY ([maNCC]) REFERENCES dbo.[NhaCungCap] ([maNCC]);
-ALTER TABLE dbo.[YeuCauNhapKho] WITH CHECK ADD CONSTRAINT [FK_YeuCauNhapKho_NhanVien] FOREIGN KEY ([maNhanVien]) REFERENCES dbo.[NhanVien] ([maNhanVien]);
-ALTER TABLE dbo.[YeuCauNhapKho] WITH CHECK ADD CONSTRAINT [FK_YeuCauNhapKho_NhanVienDuyet] FOREIGN KEY ([maNhanVienDuyet]) REFERENCES dbo.[NhanVien] ([maNhanVien]);
-ALTER TABLE dbo.[ChiTietYeuCauNhapKho] WITH CHECK ADD CONSTRAINT [FK_ChiTietYeuCauNhapKho_YeuCauNhapKho] FOREIGN KEY ([maYCNK]) REFERENCES dbo.[YeuCauNhapKho] ([maYCNK]);
-ALTER TABLE dbo.[ChiTietYeuCauNhapKho] WITH CHECK ADD CONSTRAINT [FK_ChiTietYeuCauNhapKho_PhuTung] FOREIGN KEY ([maPhuTung]) REFERENCES dbo.[PhuTung] ([maPhuTung]);
-CREATE UNIQUE NONCLUSTERED INDEX [UQ_PhieuNhapKho_maYCNK] ON dbo.[PhieuNhapKho] ([maYCNK]) WHERE [maYCNK] IS NOT NULL;
-ALTER TABLE dbo.[PhieuNhapKho] WITH CHECK ADD CONSTRAINT [FK_PhieuNhapKho_YeuCauNhapKho] FOREIGN KEY ([maYCNK]) REFERENCES dbo.[YeuCauNhapKho] ([maYCNK]);
-ALTER TABLE dbo.[PhieuNhapKho] WITH CHECK ADD CONSTRAINT [FK_PhieuNhapKho_NhaCungCap] FOREIGN KEY ([maNCC]) REFERENCES dbo.[NhaCungCap] ([maNCC]);
-ALTER TABLE dbo.[PhieuNhapKho] WITH CHECK ADD CONSTRAINT [FK_PhieuNhapKho_NhanVien] FOREIGN KEY ([maNhanVien]) REFERENCES dbo.[NhanVien] ([maNhanVien]);
-ALTER TABLE dbo.[ChiTietPhieuNhapKho] WITH CHECK ADD CONSTRAINT [FK_ChiTietPhieuNhapKho_PhieuNhapKho] FOREIGN KEY ([maPNK]) REFERENCES dbo.[PhieuNhapKho] ([maPNK]);
-ALTER TABLE dbo.[ChiTietPhieuNhapKho] WITH CHECK ADD CONSTRAINT [FK_ChiTietPhieuNhapKho_PhuTung] FOREIGN KEY ([maPhuTung]) REFERENCES dbo.[PhuTung] ([maPhuTung]);
-ALTER TABLE dbo.[HoaDon] WITH CHECK ADD CONSTRAINT [FK_HoaDon_HoSoSuaChua] FOREIGN KEY ([maPSC], [maKhachHang], [VIN]) REFERENCES dbo.[PhieuSuaChua] ([maPSC], [maKhachHang], [VIN]);
-ALTER TABLE dbo.[LichBaoHanh] WITH CHECK ADD CONSTRAINT [FK_LichBaoHanh_HoSoSuaChua] FOREIGN KEY ([maPSC], [maKhachHang], [VIN]) REFERENCES dbo.[PhieuSuaChua] ([maPSC], [maKhachHang], [VIN]);
-ALTER TABLE dbo.[LichNhacBaoDuong] WITH CHECK ADD CONSTRAINT [FK_LichNhacBaoDuong_HoSoSuaChua] FOREIGN KEY ([maPSC], [maKhachHang], [VIN]) REFERENCES dbo.[PhieuSuaChua] ([maPSC], [maKhachHang], [VIN]);
-ALTER TABLE dbo.[HoaDon] WITH CHECK ADD CONSTRAINT [FK_HoaDon_NhanVien] FOREIGN KEY ([maNhanVien]) REFERENCES dbo.[NhanVien] ([maNhanVien]);
-ALTER TABLE dbo.[LichBaoHanh] WITH CHECK ADD CONSTRAINT [FK_LichBaoHanh_NhanVien] FOREIGN KEY ([maNhanVien]) REFERENCES dbo.[NhanVien] ([maNhanVien]);
-ALTER TABLE dbo.[HoaDon] WITH CHECK ADD CONSTRAINT [FK_HoaDon_MaGiamGiaKhachHang] FOREIGN KEY ([maGiamGia], [maKhachHang]) REFERENCES dbo.[MaGiamGia] ([maGiamGia], [maKhachHang]);
-ALTER TABLE dbo.[HoaDon] WITH CHECK ADD CONSTRAINT [FK_HoaDon_PhuongThucThanhToan] FOREIGN KEY ([maPhuongThuc]) REFERENCES dbo.[PhuongThucThanhToan] ([maPhuongThuc]);
-ALTER TABLE dbo.[ChiTietHoaDon] WITH CHECK ADD CONSTRAINT [FK_ChiTietHoaDon_HoaDon] FOREIGN KEY ([maHoaDon]) REFERENCES dbo.[HoaDon] ([maHoaDon]);
-ALTER TABLE dbo.[ChiTietHoaDon] WITH CHECK ADD CONSTRAINT [FK_ChiTietHoaDon_DichVu] FOREIGN KEY ([maDichVu]) REFERENCES dbo.[DichVu] ([maDichVu]);
-ALTER TABLE dbo.[ChiTietHoaDon] WITH CHECK ADD CONSTRAINT [FK_ChiTietHoaDon_PhuTung] FOREIGN KEY ([maPhuTung]) REFERENCES dbo.[PhuTung] ([maPhuTung]);
-ALTER TABLE dbo.[LichSuTichDiem] WITH CHECK ADD CONSTRAINT [FK_LichSuTichDiem_KhachHang] FOREIGN KEY ([maKhachHang]) REFERENCES dbo.[KhachHang] ([maKhachHang]);
-ALTER TABLE dbo.[LichSuTichDiem] WITH CHECK ADD CONSTRAINT [FK_LichSuTichDiem_HoaDon] FOREIGN KEY ([maHoaDon]) REFERENCES dbo.[HoaDon] ([maHoaDon]);
 
--- Định danh dòng hóa đơn với các FK tùy chọn, ngăn trùng cùng nội dung một hóa đơn.
-CREATE UNIQUE INDEX UX_ChiTietHoaDon_DichVu ON dbo.ChiTietHoaDon(maHoaDon,maDichVu)
-    WHERE maDichVu IS NOT NULL AND maPhuTung IS NULL;
-CREATE UNIQUE INDEX UX_ChiTietHoaDon_PhuTung ON dbo.ChiTietHoaDon(maHoaDon,maPhuTung)
-    WHERE maDichVu IS NULL AND maPhuTung IS NOT NULL;
-CREATE UNIQUE INDEX UX_ChiTietHoaDon_CaHai ON dbo.ChiTietHoaDon(maHoaDon,maDichVu,maPhuTung)
-    WHERE maDichVu IS NOT NULL AND maPhuTung IS NOT NULL;
-CREATE INDEX IX_PhieuTiepNhan_VIN_Ngay ON dbo.PhieuTiepNhan(VIN,ngayTiepNhan);
-CREATE INDEX IX_PhieuTiepNhan_KhachHang ON dbo.PhieuTiepNhan(maKhachHang);
-CREATE INDEX IX_PhieuSuaChua_TrangThai ON dbo.PhieuSuaChua(trangThai,ngayLap);
-CREATE INDEX IX_HoaDon_KhachHang_Ngay ON dbo.HoaDon(maKhachHang,ngayLap);
-CREATE INDEX IX_HoaDon_PhieuSuaChua ON dbo.HoaDon(maPSC);
-CREATE INDEX IX_LichNhac_Ngay_TrangThai ON dbo.LichNhacBaoDuong(ngayNhac,trangThai);
-CREATE INDEX IX_LichSuTichDiem_KhachHang ON dbo.LichSuTichDiem(maKhachHang,ngayTichDiem);
-CREATE UNIQUE INDEX UX_MaGiamGia_CoDiem ON dbo.MaGiamGia(maKhachHang,ngayBatDauChuKy,mocDiem) WHERE mocDiem IS NOT NULL AND ngayBatDauChuKy IS NOT NULL;
     COMMIT TRANSACTION;
+    PRINT N'[SCHEMA] Sequence và bảng đã sẵn sàng.';
 END TRY
 BEGIN CATCH
-    IF XACT_STATE()<>0 ROLLBACK TRANSACTION;
+    IF XACT_STATE() <> 0 ROLLBACK TRANSACTION;
     THROW;
 END CATCH;
 GO
 
+-- ============================================================================
+-- 2. BỔ SUNG CỘT SCHEMA CHO DATABASE ĐÃ TỒN TẠI
+-- ============================================================================
+BEGIN TRY
+    BEGIN TRANSACTION;
+
+-- ============================================================================
+-- A.1. BỔ SUNG CỘT SCHEMA CHO DATABASE ĐÃ CÓ
+-- ============================================================================
+-- 1. Bổ sung các cột nghiệp vụ upstream (sửa chữa, phương tiện, mã giảm giá, tích điểm, bảo hành)
+IF COL_LENGTH(N'dbo.PhuTung', N'thoiHanBaoHanh') IS NULL
+    ALTER TABLE dbo.PhuTung ADD thoiHanBaoHanh int NOT NULL CONSTRAINT DF_PhuTung_ThoiHanBaoHanh DEFAULT (0) WITH VALUES;
+IF COL_LENGTH(N'dbo.PhieuBaoGia', N'maKhachHang') IS NULL
+    ALTER TABLE dbo.PhieuBaoGia ADD maKhachHang varchar(5) NULL;
+IF COL_LENGTH(N'dbo.PhuongTien', N'maKhachHangChuHienTai') IS NULL
+    ALTER TABLE dbo.PhuongTien ADD maKhachHangChuHienTai varchar(5) NULL;
+IF COL_LENGTH(N'dbo.MaGiamGia', N'mocDiem') IS NULL
+    ALTER TABLE dbo.MaGiamGia ADD mocDiem int NULL;
+IF COL_LENGTH(N'dbo.MaGiamGia', N'ngayBatDauChuKy') IS NULL
+    ALTER TABLE dbo.MaGiamGia ADD ngayBatDauChuKy datetime2(0) NULL;
+IF COL_LENGTH(N'dbo.ChiTietPhieuSuaChua', N'soLuongCapPhat') IS NULL
+    ALTER TABLE dbo.ChiTietPhieuSuaChua ADD soLuongCapPhat int NOT NULL CONSTRAINT DF_Mig_ChiTietPSC_CapPhat DEFAULT(0) WITH VALUES;
+IF COL_LENGTH(N'dbo.ChiTietPhieuSuaChua', N'soLuongSuDung') IS NULL
+    ALTER TABLE dbo.ChiTietPhieuSuaChua ADD soLuongSuDung int NOT NULL CONSTRAINT DF_Mig_ChiTietPSC_SuDung DEFAULT(0) WITH VALUES;
+IF COL_LENGTH(N'dbo.ChiTietPhieuSuaChua', N'soLuongHoanTra') IS NULL
+    ALTER TABLE dbo.ChiTietPhieuSuaChua ADD soLuongHoanTra int NOT NULL CONSTRAINT DF_Mig_ChiTietPSC_HoanTra DEFAULT(0) WITH VALUES;
+IF COL_LENGTH(N'dbo.ChiTietPhieuSuaChua', N'ngayCapPhat') IS NULL
+    ALTER TABLE dbo.ChiTietPhieuSuaChua ADD ngayCapPhat datetime2(0) NULL;
+IF COL_LENGTH(N'dbo.ChiTietPhieuSuaChua', N'maNhanVienCapPhat') IS NULL
+    ALTER TABLE dbo.ChiTietPhieuSuaChua ADD maNhanVienCapPhat varchar(5) NULL;
+IF COL_LENGTH(N'dbo.ChiTietPhieuSuaChua', N'ngayHoanTra') IS NULL
+    ALTER TABLE dbo.ChiTietPhieuSuaChua ADD ngayHoanTra datetime2(0) NULL;
+IF COL_LENGTH(N'dbo.ChiTietPhieuSuaChua', N'maNhanVienXacNhanHoanTra') IS NULL
+    ALTER TABLE dbo.ChiTietPhieuSuaChua ADD maNhanVienXacNhanHoanTra varchar(5) NULL;
+IF COL_LENGTH(N'dbo.PhieuSuaChua', N'maNguoiDuyetHuy') IS NULL
+    ALTER TABLE dbo.PhieuSuaChua ADD maNguoiDuyetHuy varchar(5) NULL;
+IF COL_LENGTH(N'dbo.PhieuSuaChua', N'lyDoHuy') IS NULL
+    ALTER TABLE dbo.PhieuSuaChua ADD lyDoHuy nvarchar(500) NULL;
+IF COL_LENGTH(N'dbo.LichBaoHanh', N'maDichVu') IS NULL
+    ALTER TABLE dbo.LichBaoHanh ADD maDichVu varchar(5) NULL;
+IF COL_LENGTH(N'dbo.LichBaoHanh', N'maPhuTung') IS NULL
+    ALTER TABLE dbo.LichBaoHanh ADD maPhuTung varchar(5) NULL;
+IF COL_LENGTH(N'dbo.LichSuTichDiem', N'ngayHetHan') IS NULL
+    ALTER TABLE dbo.LichSuTichDiem ADD ngayHetHan datetime2(0) NULL;
+
+-- 2. Bổ sung các cột nghiệp vụ UC009 cho PhieuNhapKho và ChiTietPhieuNhapKho
+IF COL_LENGTH(N'dbo.PhieuNhapKho', N'maYCNK') IS NULL
+    ALTER TABLE dbo.PhieuNhapKho ADD maYCNK varchar(6) NULL;
+IF COL_LENGTH(N'dbo.ChiTietPhieuNhapKho', N'soLuongYeuCau') IS NULL
+    ALTER TABLE dbo.ChiTietPhieuNhapKho ADD soLuongYeuCau int NULL;
+IF COL_LENGTH(N'dbo.ChiTietPhieuNhapKho', N'soLuongThucNhan') IS NULL
+    ALTER TABLE dbo.ChiTietPhieuNhapKho ADD soLuongThucNhan int NULL;
+
+    COMMIT TRANSACTION;
+    PRINT N'[SCHEMA] Bổ sung cột mới thành công.';
+END TRY
+BEGIN CATCH
+    IF XACT_STATE() <> 0 ROLLBACK TRANSACTION;
+    THROW;
+END CATCH;
+GO
+
+-- ============================================================================
+-- 3. BACKFILL, KHÓA NGOẠI, RÀNG BUỘC CHECK VÀ CHỈ MỤC
+-- ============================================================================
+BEGIN TRY
+    BEGIN TRANSACTION;
+
+-- ============================================================================
+-- A.2. BACKFILL DỮ LIỆU LỊCH SỬ CHO DATABASE ĐÃ CÓ
+-- ============================================================================
+-- 1. Backfill an toàn cho các bản ghi lịch sử trong ChiTietPhieuNhapKho
+UPDATE dbo.[ChiTietPhieuNhapKho]
+SET [soLuongYeuCau] = COALESCE([soLuongYeuCau], [soLuongNhap]),
+    [soLuongThucNhan] = COALESCE([soLuongThucNhan], [soLuongNhap])
+WHERE [soLuongYeuCau] IS NULL OR [soLuongThucNhan] IS NULL;
+
+-- 2. Backfill maKhachHang cho PhieuBaoGia & đồng bộ ràng buộc hồ sơ (HoSo) 3 cột
+IF COL_LENGTH(N'dbo.PhieuBaoGia', N'maKhachHang') IS NOT NULL
+BEGIN
+    UPDATE b SET b.maKhachHang = k.maKhachHang
+    FROM dbo.PhieuBaoGia b JOIN dbo.PhieuKiemTra k ON k.maPKT = b.maPKT
+    WHERE b.maKhachHang IS NULL;
+
+    IF COLUMNPROPERTY(OBJECT_ID(N'dbo.PhieuBaoGia'), N'maKhachHang', 'AllowsNull') = 1
+        ALTER TABLE dbo.PhieuBaoGia ALTER COLUMN maKhachHang varchar(5) NOT NULL;
+END;
+
+IF (SELECT COUNT(*) FROM sys.index_columns WHERE object_id = OBJECT_ID(N'dbo.PhieuKiemTra') AND index_id = INDEXPROPERTY(OBJECT_ID(N'dbo.PhieuKiemTra'), N'UQ_PhieuKiemTra_HoSo', 'IndexID')) < 3
+BEGIN
+    IF EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_PhieuBaoGia_HoSoKiemTra')
+        ALTER TABLE dbo.PhieuBaoGia DROP CONSTRAINT FK_PhieuBaoGia_HoSoKiemTra;
+    ALTER TABLE dbo.PhieuKiemTra DROP CONSTRAINT UQ_PhieuKiemTra_HoSo;
+    ALTER TABLE dbo.PhieuKiemTra ADD CONSTRAINT UQ_PhieuKiemTra_HoSo UNIQUE (maPKT, maKhachHang, VIN);
+END;
+
+IF (SELECT COUNT(*) FROM sys.index_columns WHERE object_id = OBJECT_ID(N'dbo.PhieuBaoGia') AND index_id = INDEXPROPERTY(OBJECT_ID(N'dbo.PhieuBaoGia'), N'UQ_PhieuBaoGia_HoSo', 'IndexID')) < 3
+BEGIN
+    IF EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_PhieuSuaChua_HoSoBaoGia')
+        ALTER TABLE dbo.PhieuSuaChua DROP CONSTRAINT FK_PhieuSuaChua_HoSoBaoGia;
+    ALTER TABLE dbo.PhieuBaoGia DROP CONSTRAINT UQ_PhieuBaoGia_HoSo;
+    ALTER TABLE dbo.PhieuBaoGia ADD CONSTRAINT UQ_PhieuBaoGia_HoSo UNIQUE (maBaoGia, maKhachHang, VIN);
+END;
+
+-- 3. Backfill các trường bổ sung của upstream
+;WITH WarrantyCandidates AS (
+    SELECT l.maLBH, MIN(d.maDichVu) AS maDichVu, MIN(d.maPhuTung) AS maPhuTung, COUNT_BIG(*) AS candidateCount
+    FROM dbo.LichBaoHanh l JOIN dbo.ChiTietPhieuSuaChua d ON d.maPSC=l.maPSC
+    WHERE d.ketQuaNghiemThu=N'Đạt' AND d.ngayBatDauBaoHanh<=l.ngayXuLy AND d.ngayHetHanBaoHanh>=l.ngayXuLy
+    GROUP BY l.maLBH
+)
+UPDATE l SET maDichVu=c.maDichVu,maPhuTung=c.maPhuTung
+FROM dbo.LichBaoHanh l JOIN WarrantyCandidates c ON c.maLBH=l.maLBH
+WHERE l.maDichVu IS NULL AND l.maPhuTung IS NULL AND c.candidateCount=1;
+
+UPDATE historyRow SET ngayHetHan=DATEADD(year,1,cycleStart.firstEarn)
+FROM dbo.LichSuTichDiem historyRow
+CROSS APPLY(SELECT MIN(ngayTichDiem) AS firstEarn FROM dbo.LichSuTichDiem WHERE maKhachHang=historyRow.maKhachHang) cycleStart
+WHERE historyRow.ngayHetHan IS NULL;
+
+UPDATE v SET maKhachHangChuHienTai=r.maKhachHang
+FROM dbo.PhuongTien v CROSS APPLY(SELECT TOP(1) p.maKhachHang FROM dbo.PhieuTiepNhan p WHERE p.VIN=v.VIN ORDER BY p.ngayTiepNhan DESC,p.maPTN DESC) r
+WHERE v.maKhachHangChuHienTai IS NULL;
+
+
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_TaiKhoan_NhanVien')
+    ALTER TABLE dbo.[TaiKhoan] WITH CHECK ADD CONSTRAINT [FK_TaiKhoan_NhanVien] FOREIGN KEY ([maNhanVien]) REFERENCES dbo.[NhanVien] ([maNhanVien]);
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_TonKho_PhuTung')
+    ALTER TABLE dbo.[TonKho] WITH CHECK ADD CONSTRAINT [FK_TonKho_PhuTung] FOREIGN KEY ([maPhuTung]) REFERENCES dbo.[PhuTung] ([maPhuTung]);
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_PhuongTien_ChuHienTai')
+    ALTER TABLE dbo.[PhuongTien] WITH CHECK ADD CONSTRAINT [FK_PhuongTien_ChuHienTai] FOREIGN KEY ([maKhachHangChuHienTai]) REFERENCES dbo.[KhachHang] ([maKhachHang]);
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_MaGiamGia_KhachHang')
+    ALTER TABLE dbo.[MaGiamGia] WITH CHECK ADD CONSTRAINT [FK_MaGiamGia_KhachHang] FOREIGN KEY ([maKhachHang]) REFERENCES dbo.[KhachHang] ([maKhachHang]);
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_PhieuTiepNhan_KhachHang')
+    ALTER TABLE dbo.[PhieuTiepNhan] WITH CHECK ADD CONSTRAINT [FK_PhieuTiepNhan_KhachHang] FOREIGN KEY ([maKhachHang]) REFERENCES dbo.[KhachHang] ([maKhachHang]);
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_PhieuTiepNhan_NhanVien')
+    ALTER TABLE dbo.[PhieuTiepNhan] WITH CHECK ADD CONSTRAINT [FK_PhieuTiepNhan_NhanVien] FOREIGN KEY ([maNhanVien]) REFERENCES dbo.[NhanVien] ([maNhanVien]);
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_PhieuTiepNhan_PhuongTien')
+    ALTER TABLE dbo.[PhieuTiepNhan] WITH CHECK ADD CONSTRAINT [FK_PhieuTiepNhan_PhuongTien] FOREIGN KEY ([VIN]) REFERENCES dbo.[PhuongTien] ([VIN]);
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_ChiTietPhieuTiepNhan_PhieuTiepNhan')
+    ALTER TABLE dbo.[ChiTietPhieuTiepNhan] WITH CHECK ADD CONSTRAINT [FK_ChiTietPhieuTiepNhan_PhieuTiepNhan] FOREIGN KEY ([maPTN]) REFERENCES dbo.[PhieuTiepNhan] ([maPTN]);
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_ChiTietPhieuTiepNhan_DichVu')
+    ALTER TABLE dbo.[ChiTietPhieuTiepNhan] WITH CHECK ADD CONSTRAINT [FK_ChiTietPhieuTiepNhan_DichVu] FOREIGN KEY ([maDichVu]) REFERENCES dbo.[DichVu] ([maDichVu]);
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_PhieuKiemTra_HoSoTiepNhan')
+    ALTER TABLE dbo.[PhieuKiemTra] WITH CHECK ADD CONSTRAINT [FK_PhieuKiemTra_HoSoTiepNhan] FOREIGN KEY ([maPTN], [maKhachHang], [VIN]) REFERENCES dbo.[PhieuTiepNhan] ([maPTN], [maKhachHang], [VIN]);
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_PhieuKiemTra_NhanVien')
+    ALTER TABLE dbo.[PhieuKiemTra] WITH CHECK ADD CONSTRAINT [FK_PhieuKiemTra_NhanVien] FOREIGN KEY ([maNhanVien]) REFERENCES dbo.[NhanVien] ([maNhanVien]);
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_ChiTietPhieuKiemTra_PhieuKiemTra')
+    ALTER TABLE dbo.[ChiTietPhieuKiemTra] WITH CHECK ADD CONSTRAINT [FK_ChiTietPhieuKiemTra_PhieuKiemTra] FOREIGN KEY ([maPKT]) REFERENCES dbo.[PhieuKiemTra] ([maPKT]);
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_ChiTietPhieuKiemTra_DichVu')
+    ALTER TABLE dbo.[ChiTietPhieuKiemTra] WITH CHECK ADD CONSTRAINT [FK_ChiTietPhieuKiemTra_DichVu] FOREIGN KEY ([maDichVu]) REFERENCES dbo.[DichVu] ([maDichVu]);
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_PhieuBaoGia_HoSoKiemTra')
+    ALTER TABLE dbo.[PhieuBaoGia] WITH CHECK ADD CONSTRAINT [FK_PhieuBaoGia_HoSoKiemTra] FOREIGN KEY ([maPKT], [maKhachHang], [VIN]) REFERENCES dbo.[PhieuKiemTra] ([maPKT], [maKhachHang], [VIN]);
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_PhieuBaoGia_KhachHang')
+    ALTER TABLE dbo.[PhieuBaoGia] WITH CHECK ADD CONSTRAINT [FK_PhieuBaoGia_KhachHang] FOREIGN KEY ([maKhachHang]) REFERENCES dbo.[KhachHang] ([maKhachHang]);
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_PhieuBaoGia_NhanVien')
+    ALTER TABLE dbo.[PhieuBaoGia] WITH CHECK ADD CONSTRAINT [FK_PhieuBaoGia_NhanVien] FOREIGN KEY ([maNhanVien]) REFERENCES dbo.[NhanVien] ([maNhanVien]);
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_ChiTietPhieuBaoGia_PhieuBaoGia')
+    ALTER TABLE dbo.[ChiTietPhieuBaoGia] WITH CHECK ADD CONSTRAINT [FK_ChiTietPhieuBaoGia_PhieuBaoGia] FOREIGN KEY ([maBaoGia]) REFERENCES dbo.[PhieuBaoGia] ([maBaoGia]);
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_ChiTietPhieuBaoGia_DichVu')
+    ALTER TABLE dbo.[ChiTietPhieuBaoGia] WITH CHECK ADD CONSTRAINT [FK_ChiTietPhieuBaoGia_DichVu] FOREIGN KEY ([maDichVu]) REFERENCES dbo.[DichVu] ([maDichVu]);
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_ChiTietPhieuBaoGia_PhuTung')
+    ALTER TABLE dbo.[ChiTietPhieuBaoGia] WITH CHECK ADD CONSTRAINT [FK_ChiTietPhieuBaoGia_PhuTung] FOREIGN KEY ([maPhuTung]) REFERENCES dbo.[PhuTung] ([maPhuTung]);
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_PhieuSuaChua_HoSoBaoGia')
+    ALTER TABLE dbo.[PhieuSuaChua] WITH CHECK ADD CONSTRAINT [FK_PhieuSuaChua_HoSoBaoGia] FOREIGN KEY ([maBaoGia], [maKhachHang], [VIN]) REFERENCES dbo.[PhieuBaoGia] ([maBaoGia], [maKhachHang], [VIN]);
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_PhieuSuaChua_KhachHang')
+    ALTER TABLE dbo.[PhieuSuaChua] WITH CHECK ADD CONSTRAINT [FK_PhieuSuaChua_KhachHang] FOREIGN KEY ([maKhachHang]) REFERENCES dbo.[KhachHang] ([maKhachHang]);
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_PhieuSuaChua_NhanVien')
+    ALTER TABLE dbo.[PhieuSuaChua] WITH CHECK ADD CONSTRAINT [FK_PhieuSuaChua_NhanVien] FOREIGN KEY ([maNhanVien]) REFERENCES dbo.[NhanVien] ([maNhanVien]);
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_PhieuSuaChua_NguoiDuyetHuy')
+    ALTER TABLE dbo.[PhieuSuaChua] WITH CHECK ADD CONSTRAINT [FK_PhieuSuaChua_NguoiDuyetHuy] FOREIGN KEY ([maNguoiDuyetHuy]) REFERENCES dbo.[NhanVien] ([maNhanVien]);
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_ChiTietPhieuSuaChua_PhieuSuaChua')
+    ALTER TABLE dbo.[ChiTietPhieuSuaChua] WITH CHECK ADD CONSTRAINT [FK_ChiTietPhieuSuaChua_PhieuSuaChua] FOREIGN KEY ([maPSC]) REFERENCES dbo.[PhieuSuaChua] ([maPSC]);
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_ChiTietPhieuSuaChua_DichVu')
+    ALTER TABLE dbo.[ChiTietPhieuSuaChua] WITH CHECK ADD CONSTRAINT [FK_ChiTietPhieuSuaChua_DichVu] FOREIGN KEY ([maDichVu]) REFERENCES dbo.[DichVu] ([maDichVu]);
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_ChiTietPhieuSuaChua_PhuTung')
+    ALTER TABLE dbo.[ChiTietPhieuSuaChua] WITH CHECK ADD CONSTRAINT [FK_ChiTietPhieuSuaChua_PhuTung] FOREIGN KEY ([maPhuTung]) REFERENCES dbo.[PhuTung] ([maPhuTung]);
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_ChiTietPSC_NhanVienCapPhat')
+    ALTER TABLE dbo.[ChiTietPhieuSuaChua] WITH CHECK ADD CONSTRAINT [FK_ChiTietPSC_NhanVienCapPhat] FOREIGN KEY ([maNhanVienCapPhat]) REFERENCES dbo.[NhanVien] ([maNhanVien]);
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_ChiTietPSC_NhanVienHoanTra')
+    ALTER TABLE dbo.[ChiTietPhieuSuaChua] WITH CHECK ADD CONSTRAINT [FK_ChiTietPSC_NhanVienHoanTra] FOREIGN KEY ([maNhanVienXacNhanHoanTra]) REFERENCES dbo.[NhanVien] ([maNhanVien]);
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_LichBaoHanh_HangMuc')
+    ALTER TABLE dbo.[LichBaoHanh] WITH CHECK ADD CONSTRAINT [FK_LichBaoHanh_HangMuc] FOREIGN KEY ([maPSC],[maDichVu],[maPhuTung]) REFERENCES dbo.[ChiTietPhieuSuaChua] ([maPSC],[maDichVu],[maPhuTung]);
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_YeuCauNhapKho_NhaCungCap')
+    ALTER TABLE dbo.[YeuCauNhapKho] WITH CHECK ADD CONSTRAINT [FK_YeuCauNhapKho_NhaCungCap] FOREIGN KEY ([maNCC]) REFERENCES dbo.[NhaCungCap] ([maNCC]);
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_YeuCauNhapKho_NhanVien')
+    ALTER TABLE dbo.[YeuCauNhapKho] WITH CHECK ADD CONSTRAINT [FK_YeuCauNhapKho_NhanVien] FOREIGN KEY ([maNhanVien]) REFERENCES dbo.[NhanVien] ([maNhanVien]);
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_YeuCauNhapKho_NhanVienDuyet')
+    ALTER TABLE dbo.[YeuCauNhapKho] WITH CHECK ADD CONSTRAINT [FK_YeuCauNhapKho_NhanVienDuyet] FOREIGN KEY ([maNhanVienDuyet]) REFERENCES dbo.[NhanVien] ([maNhanVien]);
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_ChiTietYeuCauNhapKho_YeuCauNhapKho')
+    ALTER TABLE dbo.[ChiTietYeuCauNhapKho] WITH CHECK ADD CONSTRAINT [FK_ChiTietYeuCauNhapKho_YeuCauNhapKho] FOREIGN KEY ([maYCNK]) REFERENCES dbo.[YeuCauNhapKho] ([maYCNK]);
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_ChiTietYeuCauNhapKho_PhuTung')
+    ALTER TABLE dbo.[ChiTietYeuCauNhapKho] WITH CHECK ADD CONSTRAINT [FK_ChiTietYeuCauNhapKho_PhuTung] FOREIGN KEY ([maPhuTung]) REFERENCES dbo.[PhuTung] ([maPhuTung]);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UQ_PhieuNhapKho_maYCNK' AND object_id = OBJECT_ID(N'dbo.PhieuNhapKho'))
+    CREATE UNIQUE NONCLUSTERED INDEX [UQ_PhieuNhapKho_maYCNK] ON dbo.[PhieuNhapKho] ([maYCNK]) WHERE [maYCNK] IS NOT NULL;
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_PhieuNhapKho_YeuCauNhapKho')
+    ALTER TABLE dbo.[PhieuNhapKho] WITH CHECK ADD CONSTRAINT [FK_PhieuNhapKho_YeuCauNhapKho] FOREIGN KEY ([maYCNK]) REFERENCES dbo.[YeuCauNhapKho] ([maYCNK]);
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_PhieuNhapKho_NhaCungCap')
+    ALTER TABLE dbo.[PhieuNhapKho] WITH CHECK ADD CONSTRAINT [FK_PhieuNhapKho_NhaCungCap] FOREIGN KEY ([maNCC]) REFERENCES dbo.[NhaCungCap] ([maNCC]);
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_PhieuNhapKho_NhanVien')
+    ALTER TABLE dbo.[PhieuNhapKho] WITH CHECK ADD CONSTRAINT [FK_PhieuNhapKho_NhanVien] FOREIGN KEY ([maNhanVien]) REFERENCES dbo.[NhanVien] ([maNhanVien]);
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_ChiTietPhieuNhapKho_PhieuNhapKho')
+    ALTER TABLE dbo.[ChiTietPhieuNhapKho] WITH CHECK ADD CONSTRAINT [FK_ChiTietPhieuNhapKho_PhieuNhapKho] FOREIGN KEY ([maPNK]) REFERENCES dbo.[PhieuNhapKho] ([maPNK]);
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_ChiTietPhieuNhapKho_PhuTung')
+    ALTER TABLE dbo.[ChiTietPhieuNhapKho] WITH CHECK ADD CONSTRAINT [FK_ChiTietPhieuNhapKho_PhuTung] FOREIGN KEY ([maPhuTung]) REFERENCES dbo.[PhuTung] ([maPhuTung]);
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_HoaDon_HoSoSuaChua')
+    ALTER TABLE dbo.[HoaDon] WITH CHECK ADD CONSTRAINT [FK_HoaDon_HoSoSuaChua] FOREIGN KEY ([maPSC], [maKhachHang], [VIN]) REFERENCES dbo.[PhieuSuaChua] ([maPSC], [maKhachHang], [VIN]);
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_LichBaoHanh_HoSoSuaChua')
+    ALTER TABLE dbo.[LichBaoHanh] WITH CHECK ADD CONSTRAINT [FK_LichBaoHanh_HoSoSuaChua] FOREIGN KEY ([maPSC], [maKhachHang], [VIN]) REFERENCES dbo.[PhieuSuaChua] ([maPSC], [maKhachHang], [VIN]);
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_LichNhacBaoDuong_HoSoSuaChua')
+    ALTER TABLE dbo.[LichNhacBaoDuong] WITH CHECK ADD CONSTRAINT [FK_LichNhacBaoDuong_HoSoSuaChua] FOREIGN KEY ([maPSC], [maKhachHang], [VIN]) REFERENCES dbo.[PhieuSuaChua] ([maPSC], [maKhachHang], [VIN]);
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_HoaDon_NhanVien')
+    ALTER TABLE dbo.[HoaDon] WITH CHECK ADD CONSTRAINT [FK_HoaDon_NhanVien] FOREIGN KEY ([maNhanVien]) REFERENCES dbo.[NhanVien] ([maNhanVien]);
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_LichBaoHanh_NhanVien')
+    ALTER TABLE dbo.[LichBaoHanh] WITH CHECK ADD CONSTRAINT [FK_LichBaoHanh_NhanVien] FOREIGN KEY ([maNhanVien]) REFERENCES dbo.[NhanVien] ([maNhanVien]);
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_HoaDon_MaGiamGiaKhachHang')
+    ALTER TABLE dbo.[HoaDon] WITH CHECK ADD CONSTRAINT [FK_HoaDon_MaGiamGiaKhachHang] FOREIGN KEY ([maGiamGia], [maKhachHang]) REFERENCES dbo.[MaGiamGia] ([maGiamGia], [maKhachHang]);
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_HoaDon_PhuongThucThanhToan')
+    ALTER TABLE dbo.[HoaDon] WITH CHECK ADD CONSTRAINT [FK_HoaDon_PhuongThucThanhToan] FOREIGN KEY ([maPhuongThuc]) REFERENCES dbo.[PhuongThucThanhToan] ([maPhuongThuc]);
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_ChiTietHoaDon_HoaDon')
+    ALTER TABLE dbo.[ChiTietHoaDon] WITH CHECK ADD CONSTRAINT [FK_ChiTietHoaDon_HoaDon] FOREIGN KEY ([maHoaDon]) REFERENCES dbo.[HoaDon] ([maHoaDon]);
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_ChiTietHoaDon_DichVu')
+    ALTER TABLE dbo.[ChiTietHoaDon] WITH CHECK ADD CONSTRAINT [FK_ChiTietHoaDon_DichVu] FOREIGN KEY ([maDichVu]) REFERENCES dbo.[DichVu] ([maDichVu]);
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_ChiTietHoaDon_PhuTung')
+    ALTER TABLE dbo.[ChiTietHoaDon] WITH CHECK ADD CONSTRAINT [FK_ChiTietHoaDon_PhuTung] FOREIGN KEY ([maPhuTung]) REFERENCES dbo.[PhuTung] ([maPhuTung]);
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_LichSuTichDiem_KhachHang')
+    ALTER TABLE dbo.[LichSuTichDiem] WITH CHECK ADD CONSTRAINT [FK_LichSuTichDiem_KhachHang] FOREIGN KEY ([maKhachHang]) REFERENCES dbo.[KhachHang] ([maKhachHang]);
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_LichSuTichDiem_HoaDon')
+    ALTER TABLE dbo.[LichSuTichDiem] WITH CHECK ADD CONSTRAINT [FK_LichSuTichDiem_HoaDon] FOREIGN KEY ([maHoaDon]) REFERENCES dbo.[HoaDon] ([maHoaDon]);
+
+-- Định danh dòng hóa đơn với các FK tùy chọn, ngăn trùng cùng nội dung một hóa đơn.
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_ChiTietHoaDon_DichVu' AND object_id = OBJECT_ID(N'dbo.ChiTietHoaDon'))
+    CREATE UNIQUE INDEX [UX_ChiTietHoaDon_DichVu] ON dbo.[ChiTietHoaDon] (maHoaDon,maDichVu)
+    WHERE maDichVu IS NOT NULL AND maPhuTung IS NULL;
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_ChiTietHoaDon_PhuTung' AND object_id = OBJECT_ID(N'dbo.ChiTietHoaDon'))
+    CREATE UNIQUE INDEX [UX_ChiTietHoaDon_PhuTung] ON dbo.[ChiTietHoaDon] (maHoaDon,maPhuTung)
+    WHERE maDichVu IS NULL AND maPhuTung IS NOT NULL;
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_ChiTietHoaDon_CaHai' AND object_id = OBJECT_ID(N'dbo.ChiTietHoaDon'))
+    CREATE UNIQUE INDEX [UX_ChiTietHoaDon_CaHai] ON dbo.[ChiTietHoaDon] (maHoaDon,maDichVu,maPhuTung)
+    WHERE maDichVu IS NOT NULL AND maPhuTung IS NOT NULL;
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_PhieuTiepNhan_VIN_Ngay' AND object_id = OBJECT_ID(N'dbo.PhieuTiepNhan'))
+    CREATE INDEX [IX_PhieuTiepNhan_VIN_Ngay] ON dbo.[PhieuTiepNhan] (VIN,ngayTiepNhan);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_PhieuTiepNhan_KhachHang' AND object_id = OBJECT_ID(N'dbo.PhieuTiepNhan'))
+    CREATE INDEX [IX_PhieuTiepNhan_KhachHang] ON dbo.[PhieuTiepNhan] (maKhachHang);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_PhieuSuaChua_TrangThai' AND object_id = OBJECT_ID(N'dbo.PhieuSuaChua'))
+    CREATE INDEX [IX_PhieuSuaChua_TrangThai] ON dbo.[PhieuSuaChua] (trangThai,ngayLap);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_HoaDon_KhachHang_Ngay' AND object_id = OBJECT_ID(N'dbo.HoaDon'))
+    CREATE INDEX [IX_HoaDon_KhachHang_Ngay] ON dbo.[HoaDon] (maKhachHang,ngayLap);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_HoaDon_PhieuSuaChua' AND object_id = OBJECT_ID(N'dbo.HoaDon'))
+    CREATE INDEX [IX_HoaDon_PhieuSuaChua] ON dbo.[HoaDon] (maPSC);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_LichNhac_Ngay_TrangThai' AND object_id = OBJECT_ID(N'dbo.LichNhacBaoDuong'))
+    CREATE INDEX [IX_LichNhac_Ngay_TrangThai] ON dbo.[LichNhacBaoDuong] (ngayNhac,trangThai);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_LichSuTichDiem_KhachHang' AND object_id = OBJECT_ID(N'dbo.LichSuTichDiem'))
+    CREATE INDEX [IX_LichSuTichDiem_KhachHang] ON dbo.[LichSuTichDiem] (maKhachHang,ngayTichDiem);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_MaGiamGia_CoDiem' AND object_id = OBJECT_ID(N'dbo.MaGiamGia'))
+    CREATE UNIQUE INDEX [UX_MaGiamGia_CoDiem] ON dbo.[MaGiamGia] (maKhachHang,ngayBatDauChuKy,mocDiem) WHERE mocDiem IS NOT NULL AND ngayBatDauChuKy IS NOT NULL;
+
+
+-- ============================================================================
+-- A.2. RÀNG BUỘC CHECK ĐỒNG BỘ CHO CẢ UC009 VÀ DỮ LIỆU LỊCH SỬ
+-- ============================================================================
+-- 1. CK_PhieuNhapKho_TrangThai: Siết chặt trạng thái hợp lệ - UC009 bắt buộc có maYCNK, 36 PNK lịch sử giữ nguyên trạng thái gốc
+IF OBJECT_ID(N'dbo.[PhieuNhapKho]', N'U') IS NOT NULL
+BEGIN
+    -- Guard: Kiểm tra toàn vẹn dữ liệu PNK trước khi áp dụng constraint
+    IF EXISTS (
+        SELECT 1
+        FROM dbo.[PhieuNhapKho]
+        WHERE [trangThai] IS NULL
+           OR (
+                [maYCNK] IS NULL
+                AND [trangThai] NOT IN (
+                    N'Chờ duyệt',
+                    N'Đã duyệt',
+                    N'Không duyệt'
+                )
+           )
+           OR (
+                [maYCNK] IS NOT NULL
+                AND [trangThai] NOT IN (
+                    N'Chờ xác nhận nhập kho',
+                    N'Đã nhập kho',
+                    N'Đã hủy'
+                )
+           )
+    )
+    BEGIN
+        SELECT [maPNK], [maYCNK], [trangThai]
+        FROM dbo.[PhieuNhapKho]
+        WHERE [trangThai] IS NULL
+           OR (
+                [maYCNK] IS NULL
+                AND [trangThai] NOT IN (
+                    N'Chờ duyệt',
+                    N'Đã duyệt',
+                    N'Không duyệt'
+                )
+           )
+           OR (
+                [maYCNK] IS NOT NULL
+                AND [trangThai] NOT IN (
+                    N'Chờ xác nhận nhập kho',
+                    N'Đã nhập kho',
+                    N'Đã hủy'
+                )
+           );
+
+        THROW 51000,
+            N'Dữ liệu PNK hiện tại không tương thích với CK_PhieuNhapKho_TrangThai. Cần kiểm tra trước khi nâng cấp.',
+            1;
+    END;
+
+    -- Kiểm tra idempotency và định nghĩa hiện hành của constraint
+    DECLARE @pnk_ck_def nvarchar(max);
+    DECLARE @pnk_ck_disabled bit;
+    DECLARE @pnk_ck_not_trusted bit;
+
+    SELECT
+        @pnk_ck_def = [definition],
+        @pnk_ck_disabled = is_disabled,
+        @pnk_ck_not_trusted = is_not_trusted
+    FROM sys.check_constraints
+    WHERE name = N'CK_PhieuNhapKho_TrangThai' AND parent_object_id = OBJECT_ID(N'dbo.PhieuNhapKho');
+
+    IF @pnk_ck_def IS NULL
+       OR @pnk_ck_def NOT LIKE N'%maYCNK%IS NOT NULL%'
+       OR @pnk_ck_def NOT LIKE N'%maYCNK%IS NULL%'
+       OR @pnk_ck_def LIKE N'%maYCNK%IS NULL%Chờ xác nhận nhập kho%'
+       OR @pnk_ck_def LIKE N'%maYCNK%IS NULL%Đã nhập kho%'
+       OR @pnk_ck_def LIKE N'%maYCNK%IS NULL%Đã hủy%'
+    BEGIN
+        IF @pnk_ck_def IS NOT NULL
+            ALTER TABLE dbo.[PhieuNhapKho] DROP CONSTRAINT [CK_PhieuNhapKho_TrangThai];
+
+        ALTER TABLE dbo.[PhieuNhapKho] WITH CHECK ADD CONSTRAINT [CK_PhieuNhapKho_TrangThai]
+            CHECK (
+                (
+                    [maYCNK] IS NOT NULL
+                    AND [trangThai] IN (
+                        N'Chờ xác nhận nhập kho',
+                        N'Đã nhập kho',
+                        N'Đã hủy'
+                    )
+                )
+                OR
+                (
+                    [maYCNK] IS NULL
+                    AND [trangThai] IN (
+                        N'Chờ duyệt',
+                        N'Đã duyệt',
+                        N'Không duyệt'
+                    )
+                )
+            );
+    END;
+
+    -- Đảm bảo constraint được ENABLED và TRUSTED
+    IF EXISTS (
+        SELECT 1
+        FROM sys.check_constraints
+        WHERE name = N'CK_PhieuNhapKho_TrangThai'
+          AND parent_object_id = OBJECT_ID(N'dbo.PhieuNhapKho')
+          AND (is_disabled = 1 OR is_not_trusted = 1)
+    )
+    BEGIN
+        ALTER TABLE dbo.[PhieuNhapKho] WITH CHECK CHECK CONSTRAINT [CK_PhieuNhapKho_TrangThai];
+    END;
+END;
+
+-- Đồng bộ ràng buộc trạng thái cho ChiTietPhieuSuaChua và ChiTietPhieuBaoGia theo schema chuẩn
+IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'CK_ChiTietPhieuSuaChua_TrangThai')
+    ALTER TABLE dbo.[ChiTietPhieuSuaChua] DROP CONSTRAINT [CK_ChiTietPhieuSuaChua_TrangThai];
+ALTER TABLE dbo.[ChiTietPhieuSuaChua] WITH CHECK ADD CONSTRAINT [CK_ChiTietPhieuSuaChua_TrangThai]
+    CHECK ([trangThaiHangMuc] IN (N'Chờ sửa chữa', N'Đang sửa chữa', N'Thiếu phụ tùng', N'Hoàn thành'));
+
+IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'CK_ChiTietPhieuBaoGia_TrangThai')
+    ALTER TABLE dbo.[ChiTietPhieuBaoGia] DROP CONSTRAINT [CK_ChiTietPhieuBaoGia_TrangThai];
+ALTER TABLE dbo.[ChiTietPhieuBaoGia] WITH CHECK ADD CONSTRAINT [CK_ChiTietPhieuBaoGia_TrangThai]
+    CHECK ([trangThai] IN (N'Chờ xác nhận', N'Chờ sửa chữa', N'Thiếu phụ tùng', N'Thiếu phụ tùng + Chờ xác nhận'));
+
+-- 2. Ràng buộc số lượng trên ChiTietPhieuNhapKho (thỏa mãn cho cả bản ghi lịch sử và mới)
+IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'CK_ChiTietPhieuNhapKho_SoLuong')
+    ALTER TABLE dbo.[ChiTietPhieuNhapKho] DROP CONSTRAINT [CK_ChiTietPhieuNhapKho_SoLuong];
+ALTER TABLE dbo.[ChiTietPhieuNhapKho] WITH CHECK ADD CONSTRAINT [CK_ChiTietPhieuNhapKho_SoLuong] CHECK ([soLuongNhap] >= 0);
+
+IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'CK_ChiTietPhieuNhapKho_SoLuongYeuCau')
+    ALTER TABLE dbo.[ChiTietPhieuNhapKho] WITH CHECK ADD CONSTRAINT [CK_ChiTietPhieuNhapKho_SoLuongYeuCau] CHECK ([soLuongYeuCau] IS NULL OR [soLuongYeuCau] > 0);
+
+IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'CK_ChiTietPhieuNhapKho_SoLuongThucNhan')
+    ALTER TABLE dbo.[ChiTietPhieuNhapKho] WITH CHECK ADD CONSTRAINT [CK_ChiTietPhieuNhapKho_SoLuongThucNhan] CHECK ([soLuongThucNhan] IS NULL OR [soLuongThucNhan] >= 0);
+
+IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'CK_ChiTietPhieuNhapKho_HopLeThucNhan')
+    ALTER TABLE dbo.[ChiTietPhieuNhapKho] WITH CHECK ADD CONSTRAINT [CK_ChiTietPhieuNhapKho_HopLeThucNhan]
+    CHECK ([soLuongThucNhan] IS NULL OR ([soLuongNhap] <= [soLuongThucNhan] AND ([soLuongYeuCau] IS NULL OR [soLuongThucNhan] <= [soLuongYeuCau])));
+
+-- 3. Ràng buộc upstream đối soát sửa chữa và bảo hành
+IF NOT EXISTS(SELECT 1 FROM sys.check_constraints WHERE name=N'CK_ChiTietPSC_DoiSoat')
+    ALTER TABLE dbo.ChiTietPhieuSuaChua WITH CHECK ADD CONSTRAINT CK_ChiTietPSC_DoiSoat CHECK(soLuongCapPhat>=0 AND soLuongSuDung>=0 AND soLuongHoanTra>=0 AND soLuongSuDung+soLuongHoanTra<=soLuongCapPhat AND soLuongCapPhat<=soLuongPhuTung AND (soLuongCapPhat=0 OR (ngayCapPhat IS NOT NULL AND maNhanVienCapPhat IS NOT NULL)) AND (soLuongHoanTra=0 OR (ngayHoanTra IS NOT NULL AND maNhanVienXacNhanHoanTra IS NOT NULL)));
+
+IF NOT EXISTS(SELECT 1 FROM sys.check_constraints WHERE name=N'CK_LichBaoHanh_HangMuc')
+    ALTER TABLE dbo.LichBaoHanh WITH CHECK ADD CONSTRAINT CK_LichBaoHanh_HangMuc CHECK((maDichVu IS NULL AND maPhuTung IS NULL) OR (maDichVu IS NOT NULL AND maPhuTung IS NOT NULL));
+
+    COMMIT TRANSACTION;
+    PRINT N'[SCHEMA] Backfill, khóa ngoại và ràng buộc CHECK đã được thiết lập.';
+END TRY
+BEGIN CATCH
+    IF XACT_STATE() <> 0 ROLLBACK TRANSACTION;
+    THROW;
+END CATCH;
+GO
 -- B. RÀNG BUỘC LIÊN BẢNG (set-based, hỗ trợ INSERT/UPDATE nhiều dòng).
 -- Không thêm trạng thái hay cơ chế kho/điểm mới ngoài hợp đồng của OOAD.
-CREATE TRIGGER dbo.TR_PhieuSuaChua_HoSo ON dbo.PhieuSuaChua AFTER INSERT, UPDATE AS
+CREATE OR ALTER TRIGGER dbo.TR_PhieuSuaChua_HoSo ON dbo.PhieuSuaChua AFTER INSERT, UPDATE AS
 BEGIN
     SET NOCOUNT ON;
     IF EXISTS(SELECT 1 FROM inserted i JOIN dbo.PhieuBaoGia bg ON bg.maBaoGia=i.maBaoGia
@@ -568,7 +1043,7 @@ BEGIN
         THROW 51002,N'Ngày bắt đầu bảo hành không được trước ngày hoàn thành sửa chữa.',1;
 END;
 GO
-CREATE TRIGGER dbo.TR_PhieuKiemTra_HoSo ON dbo.PhieuKiemTra AFTER UPDATE AS
+CREATE OR ALTER TRIGGER dbo.TR_PhieuKiemTra_HoSo ON dbo.PhieuKiemTra AFTER UPDATE AS
 BEGIN
     SET NOCOUNT ON;
     IF EXISTS(SELECT 1 FROM inserted i JOIN dbo.PhieuBaoGia bg ON bg.maPKT=i.maPKT
@@ -576,7 +1051,7 @@ BEGIN
         THROW 51003,N'Không được đổi hồ sơ kiểm tra làm sai khách hàng của phiếu sửa chữa đã liên kết.',1;
 END;
 GO
-CREATE TRIGGER dbo.TR_PhieuBaoGia_HoSo ON dbo.PhieuBaoGia AFTER UPDATE AS
+CREATE OR ALTER TRIGGER dbo.TR_PhieuBaoGia_HoSo ON dbo.PhieuBaoGia AFTER UPDATE AS
 BEGIN
     SET NOCOUNT ON;
     IF EXISTS(SELECT 1 FROM inserted i JOIN dbo.PhieuKiemTra kt ON kt.maPKT=i.maPKT
@@ -584,7 +1059,7 @@ BEGIN
         THROW 51004,N'Không được đổi báo giá làm sai khách hàng của phiếu sửa chữa đã liên kết.',1;
 END;
 GO
-CREATE TRIGGER dbo.TR_ChiTietPSC_BaoHanh ON dbo.ChiTietPhieuSuaChua AFTER INSERT, UPDATE AS
+CREATE OR ALTER TRIGGER dbo.TR_ChiTietPSC_BaoHanh ON dbo.ChiTietPhieuSuaChua AFTER INSERT, UPDATE AS
 BEGIN
     SET NOCOUNT ON;
     IF EXISTS(SELECT 1 FROM inserted i JOIN dbo.PhieuSuaChua sc ON sc.maPSC=i.maPSC
@@ -592,7 +1067,7 @@ BEGIN
         THROW 51005,N'Ngày bắt đầu bảo hành không được trước ngày hoàn thành sửa chữa.',1;
 END;
 GO
-CREATE TRIGGER dbo.TR_ChiTietBaoGia_PT000 ON dbo.ChiTietPhieuBaoGia AFTER INSERT, UPDATE AS
+CREATE OR ALTER TRIGGER dbo.TR_ChiTietBaoGia_PT000 ON dbo.ChiTietPhieuBaoGia AFTER INSERT, UPDATE AS
 BEGIN
     SET NOCOUNT ON;
     IF EXISTS (
@@ -606,7 +1081,7 @@ BEGIN
     ) THROW 51008,N'Một dịch vụ trong báo giá không thể đồng thời có PT000 và phụ tùng thật.',1;
 END;
 GO
-CREATE TRIGGER dbo.TR_ChiTietPSC_PT000 ON dbo.ChiTietPhieuSuaChua AFTER INSERT, UPDATE AS
+CREATE OR ALTER TRIGGER dbo.TR_ChiTietPSC_PT000 ON dbo.ChiTietPhieuSuaChua AFTER INSERT, UPDATE AS
 BEGIN
     SET NOCOUNT ON;
     IF EXISTS (
@@ -620,14 +1095,14 @@ BEGIN
     ) THROW 51009,N'Một dịch vụ trong phiếu sửa chữa không thể đồng thời có PT000 và phụ tùng thật.',1;
 END;
 GO
-CREATE TRIGGER dbo.TR_PhuTung_PT000 ON dbo.PhuTung AFTER UPDATE, DELETE AS
+CREATE OR ALTER TRIGGER dbo.TR_PhuTung_PT000 ON dbo.PhuTung AFTER UPDATE, DELETE AS
 BEGIN
     SET NOCOUNT ON;
     IF EXISTS (SELECT 1 FROM deleted WHERE maPhuTung='PT000')
         THROW 51010,N'PT000 là mã hệ thống, không được sửa hoặc xóa.',1;
 END;
 GO
-CREATE TRIGGER dbo.TR_LichSuTichDiem_KhachHang ON dbo.LichSuTichDiem AFTER INSERT, UPDATE AS
+CREATE OR ALTER TRIGGER dbo.TR_LichSuTichDiem_KhachHang ON dbo.LichSuTichDiem AFTER INSERT, UPDATE AS
 BEGIN
     SET NOCOUNT ON;
     IF EXISTS(SELECT 1 FROM inserted i JOIN dbo.HoaDon h ON h.maHoaDon=i.maHoaDon
@@ -635,7 +1110,7 @@ BEGIN
         THROW 51006,N'Lịch sử điểm phải đúng khách hàng và không trước ngày lập hóa đơn.',1;
 END;
 GO
-CREATE TRIGGER dbo.TR_HoaDon_LichSu ON dbo.HoaDon AFTER UPDATE AS
+CREATE OR ALTER TRIGGER dbo.TR_HoaDon_LichSu ON dbo.HoaDon AFTER UPDATE AS
 BEGIN
     SET NOCOUNT ON;
     IF EXISTS(SELECT 1 FROM inserted i JOIN dbo.LichSuTichDiem l ON l.maHoaDon=i.maHoaDon
@@ -644,35 +1119,45 @@ BEGIN
 END;
 GO
 
+
+GO
 -- C. VIEW TÍNH TOÁN ĐỌC, KHÔNG THAY ĐỔI NGHIỆP VỤ.
-CREATE VIEW dbo.vw_TongTienBaoGia AS
+CREATE OR ALTER VIEW dbo.vw_TongTienBaoGia AS
 SELECT b.maBaoGia,CONVERT(decimal(18,2),COALESCE(SUM(c.soLuongPhuTung*c.donGiaPhuTung+c.chiPhiNhanCong),0)) AS tongChiPhi
 FROM dbo.PhieuBaoGia b LEFT JOIN dbo.ChiTietPhieuBaoGia c ON c.maBaoGia=b.maBaoGia
 GROUP BY b.maBaoGia;
 GO
-CREATE VIEW dbo.vw_TongTienNhapKho AS
+CREATE OR ALTER VIEW dbo.vw_TongTienNhapKho AS
 SELECT n.maPNK,CONVERT(decimal(18,2),COALESCE(SUM(c.soLuongNhap*c.donGiaNhap),0)) AS tongTien
 FROM dbo.PhieuNhapKho n LEFT JOIN dbo.ChiTietPhieuNhapKho c ON c.maPNK=n.maPNK
 GROUP BY n.maPNK;
 GO
-CREATE VIEW dbo.vw_HoaDonTongHop AS
+CREATE OR ALTER VIEW dbo.vw_HoaDonTongHop AS
 SELECT h.*,CONVERT(decimal(18,2),h.tienPhuTung+h.tienCong+h.dichVuKhac+h.thueVAT-h.giamGia) AS tongThanhToan
 FROM dbo.HoaDon h;
 GO
-CREATE VIEW dbo.vw_KhachHangDiemTichLuy AS
+CREATE OR ALTER VIEW dbo.vw_KhachHangDiemTichLuy AS
 SELECT k.maKhachHang,k.hoTenKH,COALESCE(SUM(CONVERT(bigint,l.soDiem)),0) AS tongDiemTichLuy
 FROM dbo.KhachHang k LEFT JOIN dbo.LichSuTichDiem l ON l.maKhachHang=k.maKhachHang AND l.ngayHetHan>SYSDATETIME()
 GROUP BY k.maKhachHang,k.hoTenKH;
 GO
-CREATE VIEW dbo.vw_NhanVienHienThi AS
+CREATE OR ALTER VIEW dbo.vw_NhanVienHienThi AS
 SELECT n.*,CASE WHEN n.gioiTinh=1 THEN N'Nam' ELSE N'Nữ' END AS tenGioiTinh
 FROM dbo.NhanVien n;
 GO
 
+GO
 
-DECLARE @NgayMau datetime2(0)=CONVERT(date,SYSDATETIME());
-BEGIN TRY
-    BEGIN TRANSACTION;
+-- ============================================================================
+-- D. DỮ LIỆU MẪU CƠ SỞ (Tự động nạp khi cài đặt mới, giữ nguyên khi nâng cấp)
+-- ============================================================================
+IF NOT EXISTS (SELECT 1 FROM dbo.NhanVien WHERE maNhanVien = N'NV001')
+BEGIN
+    PRINT N'[SEED] Đang nạp bộ dữ liệu mẫu cơ sở...';
+    DECLARE @NgayMau datetime2(0) = CONVERT(date, SYSDATETIME());
+    BEGIN TRY
+        BEGIN TRANSACTION;
+
 
 -- NhanVien: 4 thành viên và 1 admin
 INSERT INTO dbo.NhanVien
@@ -2081,38 +2566,163 @@ FROM dbo.PhieuSuaChua p JOIN dbo.ChiTietPhieuBaoGia c ON c.maBaoGia=p.maBaoGia
 WHERE p.trangThai=N'Chờ sửa chữa'
   AND NOT EXISTS(SELECT 1 FROM dbo.ChiTietPhieuSuaChua d WHERE d.maPSC=p.maPSC);
 
--- YeuCauNhapKho: 5 bản ghi mẫu chuẩn hóa theo quy trình UC009
-INSERT INTO dbo.[YeuCauNhapKho] ([maYCNK], [maNCC], [maNhanVien], [ngayTao], [trangThai], [maNhanVienDuyet], [ngayDuyet], [ghiChu])
-VALUES
-    (N'YCN001', N'NCC001', N'NV002', DATEADD(minute,480,DATEADD(day,-1,@NgayMau)), N'Chờ duyệt', NULL, NULL, N'Yêu cầu nhập bổ sung dầu động cơ và lọc nhớt quý 4'),
-    (N'YCN002', N'NCC002', N'NV002', DATEADD(minute,500,DATEADD(day,-2,@NgayMau)), N'Đã duyệt', N'NV004', DATEADD(minute,540,DATEADD(day,-1,@NgayMau)), N'Yêu cầu nhập má phanh phục vụ bảo dưỡng định kỳ'),
-    (N'YCN003', N'NCC001', N'NV002', DATEADD(minute,520,DATEADD(day,-3,@NgayMau)), N'Đã duyệt', N'NV004', DATEADD(minute,560,DATEADD(day,-2,@NgayMau)), N'Yêu cầu nhập phụ tùng lọc gió điều hòa và bugi'),
-    (N'YCN004', N'NCC003', N'NV002', DATEADD(minute,480,DATEADD(day,-5,@NgayMau)), N'Đã xử lý', N'NV004', DATEADD(minute,520,DATEADD(day,-4,@NgayMau)), N'Nhập phụ tùng dầu động cơ đầu tháng'),
-    (N'YCN005', N'NCC002', N'NV002', DATEADD(minute,500,DATEADD(day,-6,@NgayMau)), N'Từ chối', N'NV004', DATEADD(minute,540,DATEADD(day,-5,@NgayMau)), N'Yêu cầu nhập má phanh ngoài danh mục tiêu chuẩn (bị từ chối)');
 
--- ChiTietYeuCauNhapKho: 7 bản ghi mẫu
-INSERT INTO dbo.[ChiTietYeuCauNhapKho] ([maYCNK], [maPhuTung], [soLuongYeuCau], [donGiaDuKien])
-VALUES
-    (N'YCN001', N'PT001', 20, 120000.00),
-    (N'YCN001', N'PT002', 15, 85000.00),
-    (N'YCN002', N'PT003', 10, 350000.00),
-    (N'YCN003', N'PT004', 25, 110000.00),
-    (N'YCN003', N'PT005', 30, 95000.00),
-    (N'YCN004', N'PT001', 10, 120000.00),
-    (N'YCN005', N'PT003', 50, 350000.00);
 
--- PhieuNhapKho: 2 bản ghi mẫu chuẩn hóa theo quy trình UC009 (gắn 1:1 với YeuCauNhapKho)
-INSERT INTO dbo.[PhieuNhapKho] ([maPNK], [maNCC], [maNhanVien], [ngayNhap], [trangThai], [maYCNK])
+    -- 36 phiếu nhập kho lịch sử (PNK001 - PNK036) cho fresh install
+INSERT INTO dbo.[PhieuNhapKho] ([maPNK], [maNCC], [maNhanVien], [ngayNhap], [trangThai])
 VALUES
-    (N'PNK001', N'NCC001', N'NV002', DATEADD(minute,600,DATEADD(day,-1,@NgayMau)), N'Chờ xác nhận nhập kho', N'YCN003'),
-    (N'PNK002', N'NCC003', N'NV002', DATEADD(minute,600,DATEADD(day,-4,@NgayMau)), N'Đã nhập kho', N'YCN004');
+    (N'PNK001', N'NCC001', N'NV002', DATEADD(minute,600,DATEADD(day,-176,@NgayMau)), N'Chờ duyệt'),
+    (N'PNK002', N'NCC002', N'NV002', DATEADD(minute,600,DATEADD(day,-172,@NgayMau)), N'Đã duyệt'),
+    (N'PNK003', N'NCC003', N'NV002', DATEADD(minute,600,DATEADD(day,-168,@NgayMau)), N'Không duyệt'),
+    (N'PNK004', N'NCC004', N'NV002', DATEADD(minute,600,DATEADD(day,-164,@NgayMau)), N'Chờ duyệt'),
+    (N'PNK005', N'NCC005', N'NV002', DATEADD(minute,600,DATEADD(day,-160,@NgayMau)), N'Đã duyệt'),
+    (N'PNK006', N'NCC006', N'NV002', DATEADD(minute,600,DATEADD(day,-156,@NgayMau)), N'Không duyệt'),
+    (N'PNK007', N'NCC007', N'NV002', DATEADD(minute,600,DATEADD(day,-152,@NgayMau)), N'Chờ duyệt'),
+    (N'PNK008', N'NCC008', N'NV002', DATEADD(minute,600,DATEADD(day,-148,@NgayMau)), N'Đã duyệt'),
+    (N'PNK009', N'NCC009', N'NV002', DATEADD(minute,600,DATEADD(day,-144,@NgayMau)), N'Không duyệt'),
+    (N'PNK010', N'NCC010', N'NV002', DATEADD(minute,600,DATEADD(day,-140,@NgayMau)), N'Chờ duyệt'),
+    (N'PNK011', N'NCC011', N'NV002', DATEADD(minute,600,DATEADD(day,-136,@NgayMau)), N'Đã duyệt'),
+    (N'PNK012', N'NCC012', N'NV002', DATEADD(minute,600,DATEADD(day,-132,@NgayMau)), N'Không duyệt'),
+    (N'PNK013', N'NCC001', N'NV002', DATEADD(minute,600,DATEADD(day,-128,@NgayMau)), N'Chờ duyệt'),
+    (N'PNK014', N'NCC002', N'NV002', DATEADD(minute,600,DATEADD(day,-124,@NgayMau)), N'Đã duyệt'),
+    (N'PNK015', N'NCC003', N'NV002', DATEADD(minute,600,DATEADD(day,-120,@NgayMau)), N'Không duyệt'),
+    (N'PNK016', N'NCC004', N'NV002', DATEADD(minute,600,DATEADD(day,-116,@NgayMau)), N'Chờ duyệt'),
+    (N'PNK017', N'NCC005', N'NV002', DATEADD(minute,600,DATEADD(day,-112,@NgayMau)), N'Đã duyệt'),
+    (N'PNK018', N'NCC006', N'NV002', DATEADD(minute,600,DATEADD(day,-108,@NgayMau)), N'Không duyệt'),
+    (N'PNK019', N'NCC007', N'NV002', DATEADD(minute,600,DATEADD(day,-104,@NgayMau)), N'Chờ duyệt'),
+    (N'PNK020', N'NCC008', N'NV002', DATEADD(minute,600,DATEADD(day,-100,@NgayMau)), N'Đã duyệt'),
+    (N'PNK021', N'NCC009', N'NV002', DATEADD(minute,600,DATEADD(day,-96,@NgayMau)), N'Không duyệt'),
+    (N'PNK022', N'NCC010', N'NV002', DATEADD(minute,600,DATEADD(day,-92,@NgayMau)), N'Chờ duyệt'),
+    (N'PNK023', N'NCC011', N'NV002', DATEADD(minute,600,DATEADD(day,-88,@NgayMau)), N'Đã duyệt'),
+    (N'PNK024', N'NCC012', N'NV002', DATEADD(minute,600,DATEADD(day,-84,@NgayMau)), N'Không duyệt'),
+    (N'PNK025', N'NCC001', N'NV002', DATEADD(minute,600,DATEADD(day,-80,@NgayMau)), N'Chờ duyệt'),
+    (N'PNK026', N'NCC002', N'NV002', DATEADD(minute,600,DATEADD(day,-76,@NgayMau)), N'Đã duyệt'),
+    (N'PNK027', N'NCC003', N'NV002', DATEADD(minute,600,DATEADD(day,-72,@NgayMau)), N'Không duyệt'),
+    (N'PNK028', N'NCC004', N'NV002', DATEADD(minute,600,DATEADD(day,-68,@NgayMau)), N'Chờ duyệt'),
+    (N'PNK029', N'NCC005', N'NV002', DATEADD(minute,600,DATEADD(day,-64,@NgayMau)), N'Đã duyệt'),
+    (N'PNK030', N'NCC006', N'NV002', DATEADD(minute,600,DATEADD(day,-60,@NgayMau)), N'Không duyệt'),
+    (N'PNK031', N'NCC007', N'NV002', DATEADD(minute,600,DATEADD(day,-56,@NgayMau)), N'Chờ duyệt'),
+    (N'PNK032', N'NCC008', N'NV002', DATEADD(minute,600,DATEADD(day,-52,@NgayMau)), N'Đã duyệt'),
+    (N'PNK033', N'NCC009', N'NV002', DATEADD(minute,600,DATEADD(day,-48,@NgayMau)), N'Không duyệt'),
+    (N'PNK034', N'NCC010', N'NV002', DATEADD(minute,600,DATEADD(day,-44,@NgayMau)), N'Chờ duyệt'),
+    (N'PNK035', N'NCC011', N'NV002', DATEADD(minute,600,DATEADD(day,-40,@NgayMau)), N'Đã duyệt'),
+    (N'PNK036', N'NCC012', N'NV002', DATEADD(minute,600,DATEADD(day,-36,@NgayMau)), N'Không duyệt');
 
--- ChiTietPhieuNhapKho: 3 bản ghi mẫu chuẩn hóa theo quy trình UC009 (0 <= soLuongNhap <= soLuongThucNhan <= soLuongYeuCau)
-INSERT INTO dbo.[ChiTietPhieuNhapKho] ([maPNK], [maPhuTung], [soLuongYeuCau], [soLuongThucNhan], [soLuongNhap], [donGiaNhap])
+-- ChiTietPhieuNhapKho: 108 bản ghi
+INSERT INTO dbo.[ChiTietPhieuNhapKho] ([maPNK], [maPhuTung], [soLuongNhap], [donGiaNhap])
 VALUES
-    (N'PNK001', N'PT004', 25, 25, 23, 110000.00),
-    (N'PNK001', N'PT005', 30, 28, 28, 95000.00),
-    (N'PNK002', N'PT001', 10, 10, 10, 120000.00);
+    (N'PNK001', N'PT003', 8, 684000.00),
+    (N'PNK001', N'PT004', 9, 158400.00),
+    (N'PNK001', N'PT005', 10, 1332000.00),
+    (N'PNK002', N'PT006', 8, 108000.00),
+    (N'PNK002', N'PT007', 10, 468000.00),
+    (N'PNK002', N'PT008', 12, 180000.00),
+    (N'PNK003', N'PT009', 8, 1656000.00),
+    (N'PNK003', N'PT010', 11, 2520000.00),
+    (N'PNK003', N'PT011', 14, 900000.00),
+    (N'PNK004', N'PT012', 8, 2016000.00),
+    (N'PNK004', N'PT013', 12, 1296000.00),
+    (N'PNK004', N'PT014', 16, 230400.00),
+    (N'PNK005', N'PT015', 8, 345600.00),
+    (N'PNK005', N'PT016', 13, 252000.00),
+    (N'PNK005', N'PT017', 18, 1044000.00),
+    (N'PNK006', N'PT018', 8, 684000.00),
+    (N'PNK006', N'PT019', 14, 4680000.00),
+    (N'PNK006', N'PT020', 20, 612000.00),
+    (N'PNK007', N'PT021', 8, 28800000.00),
+    (N'PNK007', N'PT022', 15, 25200000.00),
+    (N'PNK007', N'PT023', 22, 2304000.00),
+    (N'PNK008', N'PT024', 8, 3456000.00),
+    (N'PNK008', N'PT025', 16, 2736000.00),
+    (N'PNK008', N'PT026', 24, 6120000.00),
+    (N'PNK009', N'PT027', 8, 540000.00),
+    (N'PNK009', N'PT028', 17, 684000.00),
+    (N'PNK009', N'PT029', 26, 1332000.00),
+    (N'PNK010', N'PT030', 8, 1872000.00),
+    (N'PNK010', N'PT031', 18, 489600.00),
+    (N'PNK010', N'PT032', 28, 1188000.00),
+    (N'PNK011', N'PT033', 8, 2304000.00),
+    (N'PNK011', N'PT034', 19, 324000.00),
+    (N'PNK011', N'PT035', 30, 129600.00),
+    (N'PNK012', N'PT036', 8, 68400.00),
+    (N'PNK012', N'PT037', 20, 10800.00),
+    (N'PNK012', N'PT038', 32, 18000.00),
+    (N'PNK013', N'PT039', 8, 0.00),
+    (N'PNK013', N'PT040', 21, 0.00),
+    (N'PNK013', N'PT001', 34, 612000.00),
+    (N'PNK014', N'PT002', 8, 129600.00),
+    (N'PNK014', N'PT003', 22, 684000.00),
+    (N'PNK014', N'PT004', 36, 158400.00),
+    (N'PNK015', N'PT005', 8, 1332000.00),
+    (N'PNK015', N'PT006', 23, 108000.00),
+    (N'PNK015', N'PT007', 38, 468000.00),
+    (N'PNK016', N'PT008', 8, 180000.00),
+    (N'PNK016', N'PT009', 24, 1656000.00),
+    (N'PNK016', N'PT010', 40, 2520000.00),
+    (N'PNK017', N'PT011', 8, 900000.00),
+    (N'PNK017', N'PT012', 25, 2016000.00),
+    (N'PNK017', N'PT013', 42, 1296000.00),
+    (N'PNK018', N'PT014', 8, 230400.00),
+    (N'PNK018', N'PT015', 26, 345600.00),
+    (N'PNK018', N'PT016', 44, 252000.00),
+    (N'PNK019', N'PT017', 8, 1044000.00),
+    (N'PNK019', N'PT018', 27, 684000.00),
+    (N'PNK019', N'PT019', 46, 4680000.00),
+    (N'PNK020', N'PT020', 8, 612000.00),
+    (N'PNK020', N'PT021', 28, 28800000.00),
+    (N'PNK020', N'PT022', 48, 25200000.00),
+    (N'PNK021', N'PT023', 8, 2304000.00),
+    (N'PNK021', N'PT024', 29, 3456000.00),
+    (N'PNK021', N'PT025', 50, 2736000.00),
+    (N'PNK022', N'PT026', 8, 6120000.00),
+    (N'PNK022', N'PT027', 30, 540000.00),
+    (N'PNK022', N'PT028', 52, 684000.00),
+    (N'PNK023', N'PT029', 8, 1332000.00),
+    (N'PNK023', N'PT030', 31, 1872000.00),
+    (N'PNK023', N'PT031', 54, 489600.00),
+    (N'PNK024', N'PT032', 8, 1188000.00),
+    (N'PNK024', N'PT033', 32, 2304000.00),
+    (N'PNK024', N'PT034', 56, 324000.00),
+    (N'PNK025', N'PT035', 8, 129600.00),
+    (N'PNK025', N'PT036', 33, 68400.00),
+    (N'PNK025', N'PT037', 58, 10800.00),
+    (N'PNK026', N'PT038', 8, 18000.00),
+    (N'PNK026', N'PT039', 34, 0.00),
+    (N'PNK026', N'PT040', 60, 0.00),
+    (N'PNK027', N'PT001', 8, 612000.00),
+    (N'PNK027', N'PT002', 35, 129600.00),
+    (N'PNK027', N'PT003', 62, 684000.00),
+    (N'PNK028', N'PT004', 8, 158400.00),
+    (N'PNK028', N'PT005', 36, 1332000.00),
+    (N'PNK028', N'PT006', 64, 108000.00),
+    (N'PNK029', N'PT007', 8, 468000.00),
+    (N'PNK029', N'PT008', 37, 180000.00),
+    (N'PNK029', N'PT009', 66, 1656000.00),
+    (N'PNK030', N'PT010', 8, 2520000.00),
+    (N'PNK030', N'PT011', 38, 900000.00),
+    (N'PNK030', N'PT012', 68, 2016000.00),
+    (N'PNK031', N'PT013', 8, 1296000.00),
+    (N'PNK031', N'PT014', 39, 230400.00),
+    (N'PNK031', N'PT015', 70, 345600.00),
+    (N'PNK032', N'PT016', 8, 252000.00),
+    (N'PNK032', N'PT017', 40, 1044000.00),
+    (N'PNK032', N'PT018', 72, 684000.00),
+    (N'PNK033', N'PT019', 8, 4680000.00),
+    (N'PNK033', N'PT020', 41, 612000.00),
+    (N'PNK033', N'PT021', 74, 28800000.00),
+    (N'PNK034', N'PT022', 8, 25200000.00),
+    (N'PNK034', N'PT023', 42, 2304000.00),
+    (N'PNK034', N'PT024', 76, 3456000.00),
+    (N'PNK035', N'PT025', 8, 2736000.00),
+    (N'PNK035', N'PT026', 43, 6120000.00),
+    (N'PNK035', N'PT027', 78, 540000.00),
+    (N'PNK036', N'PT028', 8, 684000.00),
+    (N'PNK036', N'PT029', 44, 1332000.00),
+    (N'PNK036', N'PT030', 80, 1872000.00);
+
+-- HoaDon dịch vụ: 30 bản ghi; thêm 12 hóa đơn bán hàng ở phần nâng cấp cuối file.
+
+
 
 -- HoaDon dịch vụ: 30 bản ghi; thêm 12 hóa đơn bán hàng ở phần nâng cấp cuối file.
 INSERT INTO dbo.[HoaDon] ([maHoaDon], [maGiamGia], [maKhachHang], [maNhanVien], [maPSC], [VIN], [ngayLap], [tienPhuTung], [tienCong], [dichVuKhac], [thueVAT], [giamGia], [trangThaiThanhToan], [maPhuongThuc])
@@ -2386,215 +2996,95 @@ UPDATE v SET maKhachHangChuHienTai=r.maKhachHang
 FROM dbo.PhuongTien v
 CROSS APPLY (SELECT TOP (1) p.maKhachHang FROM dbo.PhieuTiepNhan p WHERE p.VIN=v.VIN ORDER BY p.ngayTiepNhan DESC,p.maPTN DESC) r;
 
-    COMMIT TRANSACTION;
-    PRINT N'Đã nạp đầy đủ dữ liệu mẫu cho 25 bảng.';
-END TRY
-BEGIN CATCH
-    IF XACT_STATE()<>0 ROLLBACK TRANSACTION;
-    THROW;
-END CATCH;
-GO
 
--- D.1. MIGRATION NGHIỆP VỤ ĐÃ ĐƯỢC GỘP TỪ Migration_20261028_FixNghiepVu.sql
--- Chạy sau khi schema và dữ liệu mẫu nền đã được tạo; chỉ cần chạy file GaraOto.sql một lần.
-/*
-    Migration bổ sung nghiệp vụ đã đối chiếu theo N06_2 QAs.
-    Chỉ chạy trên bản sao/DB đã sao lưu sau khi kiểm tra đúng database.
-    Script không xóa dữ liệu nghiệp vụ; các cột lịch sử cũ được backfill có điều kiện.
-*/
-IF DB_ID(N'GaraOto') IS NULL
+        COMMIT TRANSACTION;
+        PRINT N'[SEED] Nạp bộ dữ liệu mẫu cơ sở thành công.';
+    END TRY
+    BEGIN CATCH
+        IF XACT_STATE() <> 0 ROLLBACK TRANSACTION;
+        THROW;
+    END CATCH;
+END
+ELSE
 BEGIN
-    THROW 51200, N'Không tìm thấy database GaraOto trên instance hiện tại.', 1;
-END;
+    PRINT N'[SEED] Dữ liệu mẫu cơ sở đã tồn tại, không nạp lại để bảo toàn dữ liệu hiện có.';
+END
 GO
-USE [GaraOto];
-GO
-IF OBJECT_ID(N'dbo.PhuongTien',N'U') IS NULL
-   OR OBJECT_ID(N'dbo.KhachHang',N'U') IS NULL
-   OR OBJECT_ID(N'dbo.NhanVien',N'U') IS NULL
-   OR OBJECT_ID(N'dbo.HoaDon',N'U') IS NULL
-   OR OBJECT_ID(N'dbo.PhieuSuaChua',N'U') IS NULL
+
+
+-- ============================================================================
+-- D.2. DỮ LIỆU KỊCH BẢN UC009 & ĐỒNG BỘ SEQUENCE (Idempotent)
+-- ============================================================================
+DECLARE @NgayMau datetime2(0) = CONVERT(date, SYSDATETIME());
+
+-- 1. Nạp 5 yêu cầu nhập kho chuẩn hóa nếu chưa có
+IF NOT EXISTS (SELECT 1 FROM dbo.YeuCauNhapKho WHERE maYCNK = N'YCN001')
 BEGIN
-    THROW 51201, N'Database GaraOto chưa có schema nền cần cho migration; không có thay đổi nào được áp dụng.', 1;
-END;
+    PRINT N'[SEED] Đang nạp 5 kịch bản YeuCauNhapKho UC009 (YCN001..YCN005)...';
+    INSERT INTO dbo.[YeuCauNhapKho] ([maYCNK], [maNCC], [maNhanVien], [ngayTao], [trangThai], [maNhanVienDuyet], [ngayDuyet], [ghiChu])
+    VALUES
+        (N'YCN001', N'NCC001', N'NV002', DATEADD(minute,480,DATEADD(day,-1,@NgayMau)), N'Chờ duyệt', NULL, NULL, N'Yêu cầu nhập bổ sung dầu động cơ và lọc nhớt quý 4'),
+        (N'YCN002', N'NCC002', N'NV002', DATEADD(minute,500,DATEADD(day,-2,@NgayMau)), N'Đã duyệt', N'NV004', DATEADD(minute,540,DATEADD(day,-1,@NgayMau)), N'Yêu cầu nhập má phanh phục vụ bảo dưỡng định kỳ'),
+        (N'YCN003', N'NCC001', N'NV002', DATEADD(minute,520,DATEADD(day,-3,@NgayMau)), N'Đã duyệt', N'NV004', DATEADD(minute,560,DATEADD(day,-2,@NgayMau)), N'Yêu cầu nhập phụ tùng lọc gió điều hòa và bugi'),
+        (N'YCN004', N'NCC003', N'NV002', DATEADD(minute,480,DATEADD(day,-5,@NgayMau)), N'Đã xử lý', N'NV004', DATEADD(minute,520,DATEADD(day,-4,@NgayMau)), N'Nhập phụ tùng dầu động cơ đầu tháng'),
+        (N'YCN005', N'NCC002', N'NV002', DATEADD(minute,500,DATEADD(day,-6,@NgayMau)), N'Từ chối', N'NV004', DATEADD(minute,540,DATEADD(day,-5,@NgayMau)), N'Yêu cầu nhập má phanh ngoài danh mục tiêu chuẩn (bị từ chối)');
+
+    INSERT INTO dbo.[ChiTietYeuCauNhapKho] ([maYCNK], [maPhuTung], [soLuongYeuCau], [donGiaDuKien])
+    VALUES
+        (N'YCN001', N'PT001', 20, 120000.00),
+        (N'YCN001', N'PT002', 15, 85000.00),
+        (N'YCN002', N'PT003', 10, 350000.00),
+        (N'YCN003', N'PT004', 25, 110000.00),
+        (N'YCN003', N'PT005', 30, 95000.00),
+        (N'YCN004', N'PT001', 10, 120000.00),
+        (N'YCN005', N'PT003', 50, 350000.00);
+    PRINT N'[SEED] Nạp YeuCauNhapKho thành công.';
+END
+
+-- 2. Nạp phiếu nhập kho liên kết cho YCN003 (Chờ xác nhận nhập kho) và YCN004 (Đã nhập kho)
+IF NOT EXISTS (SELECT 1 FROM dbo.PhieuNhapKho WHERE maYCNK = N'YCN003')
+BEGIN
+    PRINT N'[SEED] Đang khởi tạo PNK liên kết cho kịch bản UC009...';
+    DECLARE @MaxPNK int = 0;
+    SELECT @MaxPNK = ISNULL(MAX(CONVERT(int, SUBSTRING(maPNK, 4, 3))), 0)
+    FROM dbo.PhieuNhapKho WHERE maPNK LIKE 'PNK[0-9][0-9][0-9]';
+
+    DECLARE @PnkId1 varchar(6) = 'PNK' + RIGHT('000' + CONVERT(varchar(3), @MaxPNK + 1), 3);
+    DECLARE @PnkId2 varchar(6) = 'PNK' + RIGHT('000' + CONVERT(varchar(3), @MaxPNK + 2), 3);
+
+    INSERT INTO dbo.[PhieuNhapKho] ([maPNK], [maNCC], [maNhanVien], [ngayNhap], [trangThai], [maYCNK])
+    VALUES
+        (@PnkId1, N'NCC001', N'NV002', DATEADD(minute,600,DATEADD(day,-1,@NgayMau)), N'Chờ xác nhận nhập kho', N'YCN003'),
+        (@PnkId2, N'NCC003', N'NV002', DATEADD(minute,600,DATEADD(day,-4,@NgayMau)), N'Đã nhập kho', N'YCN004');
+
+    INSERT INTO dbo.[ChiTietPhieuNhapKho] ([maPNK], [maPhuTung], [soLuongYeuCau], [soLuongThucNhan], [soLuongNhap], [donGiaNhap])
+    VALUES
+        (@PnkId1, N'PT004', 25, 25, 23, 110000.00),
+        (@PnkId1, N'PT005', 30, 28, 28, 95000.00),
+        (@PnkId2, N'PT001', 10, 10, 10, 120000.00);
+    PRINT N'[SEED] Khởi tạo PNK ' + @PnkId1 + N' (YCN003) và ' + @PnkId2 + N' (YCN004) thành công.';
+END
+
+-- 3. Đồng bộ lại Sequences theo MAX thực tế
+DECLARE @CurMaxPNK int = 0;
+SELECT @CurMaxPNK = ISNULL(MAX(CONVERT(int, SUBSTRING(maPNK, 4, 3))), 0)
+FROM dbo.PhieuNhapKho WHERE maPNK LIKE 'PNK[0-9][0-9][0-9]';
+DECLARE @NextValPNK int = CASE WHEN @CurMaxPNK > 0 THEN @CurMaxPNK + 1 ELSE 1 END;
+DECLARE @SqlSeqPNK nvarchar(500) = N'ALTER SEQUENCE dbo.Seq_PhieuNhapKho RESTART WITH ' + CONVERT(nvarchar(10), @NextValPNK) + N';';
+EXEC sp_executesql @SqlSeqPNK;
+
+DECLARE @CurMaxYCN int = 0;
+SELECT @CurMaxYCN = ISNULL(MAX(CONVERT(int, SUBSTRING(maYCNK, 4, 3))), 0)
+FROM dbo.YeuCauNhapKho WHERE maYCNK LIKE 'YCN[0-9][0-9][0-9]';
+DECLARE @NextValYCN int = CASE WHEN @CurMaxYCN > 0 THEN @CurMaxYCN + 1 ELSE 1 END;
+DECLARE @SqlSeqYCN nvarchar(500) = N'ALTER SEQUENCE dbo.Seq_YeuCauNhapKho RESTART WITH ' + CONVERT(nvarchar(10), @NextValYCN) + N';';
+EXEC sp_executesql @SqlSeqYCN;
 GO
 
-SET XACT_ABORT ON;
-BEGIN TRY
-    BEGIN TRANSACTION;
 
-
-    IF COL_LENGTH(N'dbo.PhuongTien',N'maKhachHangChuHienTai') IS NULL
-        ALTER TABLE dbo.PhuongTien ADD maKhachHangChuHienTai varchar(5) NULL;
-    IF COL_LENGTH(N'dbo.MaGiamGia',N'mocDiem') IS NULL ALTER TABLE dbo.MaGiamGia ADD mocDiem int NULL;
-    IF COL_LENGTH(N'dbo.MaGiamGia',N'ngayBatDauChuKy') IS NULL ALTER TABLE dbo.MaGiamGia ADD ngayBatDauChuKy datetime2(0) NULL;
-    IF COL_LENGTH(N'dbo.ChiTietPhieuSuaChua',N'soLuongCapPhat') IS NULL ALTER TABLE dbo.ChiTietPhieuSuaChua ADD soLuongCapPhat int NOT NULL CONSTRAINT DF_Mig_ChiTietPSC_CapPhat DEFAULT(0) WITH VALUES;
-    IF COL_LENGTH(N'dbo.ChiTietPhieuSuaChua',N'soLuongSuDung') IS NULL ALTER TABLE dbo.ChiTietPhieuSuaChua ADD soLuongSuDung int NOT NULL CONSTRAINT DF_Mig_ChiTietPSC_SuDung DEFAULT(0) WITH VALUES;
-    IF COL_LENGTH(N'dbo.ChiTietPhieuSuaChua',N'soLuongHoanTra') IS NULL ALTER TABLE dbo.ChiTietPhieuSuaChua ADD soLuongHoanTra int NOT NULL CONSTRAINT DF_Mig_ChiTietPSC_HoanTra DEFAULT(0) WITH VALUES;
-    IF COL_LENGTH(N'dbo.ChiTietPhieuSuaChua',N'ngayCapPhat') IS NULL ALTER TABLE dbo.ChiTietPhieuSuaChua ADD ngayCapPhat datetime2(0) NULL;
-    IF COL_LENGTH(N'dbo.ChiTietPhieuSuaChua',N'maNhanVienCapPhat') IS NULL ALTER TABLE dbo.ChiTietPhieuSuaChua ADD maNhanVienCapPhat varchar(5) NULL;
-    IF COL_LENGTH(N'dbo.ChiTietPhieuSuaChua',N'ngayHoanTra') IS NULL ALTER TABLE dbo.ChiTietPhieuSuaChua ADD ngayHoanTra datetime2(0) NULL;
-    IF COL_LENGTH(N'dbo.ChiTietPhieuSuaChua',N'maNhanVienXacNhanHoanTra') IS NULL ALTER TABLE dbo.ChiTietPhieuSuaChua ADD maNhanVienXacNhanHoanTra varchar(5) NULL;
-    IF COL_LENGTH(N'dbo.PhieuSuaChua',N'maNguoiDuyetHuy') IS NULL ALTER TABLE dbo.PhieuSuaChua ADD maNguoiDuyetHuy varchar(5) NULL;
-    IF COL_LENGTH(N'dbo.PhieuSuaChua',N'lyDoHuy') IS NULL ALTER TABLE dbo.PhieuSuaChua ADD lyDoHuy nvarchar(500) NULL;
-    IF COL_LENGTH(N'dbo.LichBaoHanh',N'maDichVu') IS NULL ALTER TABLE dbo.LichBaoHanh ADD maDichVu varchar(5) NULL;
-    IF COL_LENGTH(N'dbo.LichBaoHanh',N'maPhuTung') IS NULL ALTER TABLE dbo.LichBaoHanh ADD maPhuTung varchar(5) NULL;
-    IF COL_LENGTH(N'dbo.LichSuTichDiem',N'ngayHetHan') IS NULL ALTER TABLE dbo.LichSuTichDiem ADD ngayHetHan datetime2(0) NULL;
-
-    IF NOT EXISTS(SELECT 1 FROM sys.foreign_keys WHERE name=N'FK_PhuongTien_ChuHienTai')
-        ALTER TABLE dbo.PhuongTien WITH CHECK ADD CONSTRAINT FK_PhuongTien_ChuHienTai FOREIGN KEY(maKhachHangChuHienTai) REFERENCES dbo.KhachHang(maKhachHang);
-    IF NOT EXISTS(SELECT 1 FROM sys.foreign_keys WHERE name=N'FK_PhieuSuaChua_NguoiDuyetHuy')
-        ALTER TABLE dbo.PhieuSuaChua WITH CHECK ADD CONSTRAINT FK_PhieuSuaChua_NguoiDuyetHuy FOREIGN KEY(maNguoiDuyetHuy) REFERENCES dbo.NhanVien(maNhanVien);
-    IF NOT EXISTS(SELECT 1 FROM sys.foreign_keys WHERE name=N'FK_ChiTietPSC_NhanVienCapPhat')
-        ALTER TABLE dbo.ChiTietPhieuSuaChua WITH CHECK ADD CONSTRAINT FK_ChiTietPSC_NhanVienCapPhat FOREIGN KEY(maNhanVienCapPhat) REFERENCES dbo.NhanVien(maNhanVien);
-    IF NOT EXISTS(SELECT 1 FROM sys.foreign_keys WHERE name=N'FK_ChiTietPSC_NhanVienHoanTra')
-        ALTER TABLE dbo.ChiTietPhieuSuaChua WITH CHECK ADD CONSTRAINT FK_ChiTietPSC_NhanVienHoanTra FOREIGN KEY(maNhanVienXacNhanHoanTra) REFERENCES dbo.NhanVien(maNhanVien);
-    IF NOT EXISTS(SELECT 1 FROM sys.foreign_keys WHERE name=N'FK_LichBaoHanh_HangMuc')
-        ALTER TABLE dbo.LichBaoHanh WITH CHECK ADD CONSTRAINT FK_LichBaoHanh_HangMuc FOREIGN KEY(maPSC,maDichVu,maPhuTung) REFERENCES dbo.ChiTietPhieuSuaChua(maPSC,maDichVu,maPhuTung);
-
-    IF NOT EXISTS(SELECT 1 FROM sys.check_constraints WHERE name=N'CK_ChiTietPSC_DoiSoat')
-        ALTER TABLE dbo.ChiTietPhieuSuaChua WITH CHECK ADD CONSTRAINT CK_ChiTietPSC_DoiSoat CHECK(soLuongCapPhat>=0 AND soLuongSuDung>=0 AND soLuongHoanTra>=0 AND soLuongSuDung+soLuongHoanTra<=soLuongCapPhat AND soLuongCapPhat<=soLuongPhuTung AND (soLuongCapPhat=0 OR (ngayCapPhat IS NOT NULL AND maNhanVienCapPhat IS NOT NULL)) AND (soLuongHoanTra=0 OR (ngayHoanTra IS NOT NULL AND maNhanVienXacNhanHoanTra IS NOT NULL)));
-    IF NOT EXISTS(SELECT 1 FROM sys.check_constraints WHERE name=N'CK_LichBaoHanh_HangMuc')
-        ALTER TABLE dbo.LichBaoHanh WITH CHECK ADD CONSTRAINT CK_LichBaoHanh_HangMuc CHECK((maDichVu IS NULL AND maPhuTung IS NULL) OR (maDichVu IS NOT NULL AND maPhuTung IS NOT NULL));
-
-    ;WITH WarrantyCandidates AS (
-        SELECT l.maLBH, MIN(d.maDichVu) AS maDichVu, MIN(d.maPhuTung) AS maPhuTung, COUNT_BIG(*) AS candidateCount
-        FROM dbo.LichBaoHanh l JOIN dbo.ChiTietPhieuSuaChua d ON d.maPSC=l.maPSC
-        WHERE d.ketQuaNghiemThu=N'Đạt' AND d.ngayBatDauBaoHanh<=l.ngayXuLy AND d.ngayHetHanBaoHanh>=l.ngayXuLy
-        GROUP BY l.maLBH
-    )
-    UPDATE l SET maDichVu=c.maDichVu,maPhuTung=c.maPhuTung
-    FROM dbo.LichBaoHanh l JOIN WarrantyCandidates c ON c.maLBH=l.maLBH
-    WHERE l.maDichVu IS NULL AND l.maPhuTung IS NULL AND c.candidateCount=1;
-
-    UPDATE historyRow SET ngayHetHan=DATEADD(year,1,cycleStart.firstEarn)
-    FROM dbo.LichSuTichDiem historyRow
-    CROSS APPLY(SELECT MIN(ngayTichDiem) AS firstEarn FROM dbo.LichSuTichDiem WHERE maKhachHang=historyRow.maKhachHang) cycleStart
-    WHERE historyRow.ngayHetHan IS NULL;
-    UPDATE v SET maKhachHangChuHienTai=r.maKhachHang
-    FROM dbo.PhuongTien v CROSS APPLY(SELECT TOP(1) p.maKhachHang FROM dbo.PhieuTiepNhan p WHERE p.VIN=v.VIN ORDER BY p.ngayTiepNhan DESC,p.maPTN DESC) r
-    WHERE v.maKhachHangChuHienTai IS NULL;
-    IF NOT EXISTS(SELECT 1 FROM sys.indexes WHERE object_id=OBJECT_ID(N'dbo.MaGiamGia') AND name=N'UX_MaGiamGia_CoDiem')
-        CREATE UNIQUE INDEX UX_MaGiamGia_CoDiem ON dbo.MaGiamGia(maKhachHang,ngayBatDauChuKy,mocDiem) WHERE mocDiem IS NOT NULL AND ngayBatDauChuKy IS NOT NULL;
-    EXEC(N'CREATE OR ALTER VIEW dbo.vw_KhachHangDiemTichLuy AS
-        SELECT k.maKhachHang,k.hoTenKH,COALESCE(SUM(CASE WHEN l.ngayHetHan IS NULL OR l.ngayHetHan>=SYSDATETIME() THEN l.soDiem ELSE 0 END),0) AS tongDiemTichLuy
-        FROM dbo.KhachHang k LEFT JOIN dbo.LichSuTichDiem l ON l.maKhachHang=k.maKhachHang
-        GROUP BY k.maKhachHang,k.hoTenKH;');
-
-    COMMIT TRANSACTION;
-    PRINT N'Migration nghiệp vụ đã hoàn tất.';
-END TRY
-BEGIN CATCH
-    IF @@TRANCOUNT>0 ROLLBACK TRANSACTION;
-    THROW;
-END CATCH;
-GO
-
--- E. KIỂM TRA SỐ LƯỢNG VÀ ĐỘ BAO PHỦ.
--- Tất cả các FK/CHECK đều được bật và trusted; không dùng NOCHECK để nạp mẫu.
-DBCC CHECKCONSTRAINTS WITH ALL_CONSTRAINTS;
-GO
-SELECT N'NhanVien' AS TenBang, COUNT_BIG(*) AS SoBanGhi FROM dbo.NhanVien
-UNION ALL SELECT N'KhachHang',COUNT_BIG(*) FROM dbo.[KhachHang]
-UNION ALL SELECT N'PhuongTien',COUNT_BIG(*) FROM dbo.[PhuongTien]
-UNION ALL SELECT N'DichVu',COUNT_BIG(*) FROM dbo.[DichVu]
-UNION ALL SELECT N'PhuTung',COUNT_BIG(*) FROM dbo.[PhuTung]
-UNION ALL SELECT N'NhaCungCap',COUNT_BIG(*) FROM dbo.[NhaCungCap]
-UNION ALL SELECT N'PhuongThucThanhToan',COUNT_BIG(*) FROM dbo.[PhuongThucThanhToan]
-UNION ALL SELECT N'TaiKhoan',COUNT_BIG(*) FROM dbo.[TaiKhoan]
-UNION ALL SELECT N'TonKho',COUNT_BIG(*) FROM dbo.[TonKho]
-UNION ALL SELECT N'MaGiamGia',COUNT_BIG(*) FROM dbo.[MaGiamGia]
-UNION ALL SELECT N'PhieuTiepNhan',COUNT_BIG(*) FROM dbo.[PhieuTiepNhan]
-UNION ALL SELECT N'ChiTietPhieuTiepNhan',COUNT_BIG(*) FROM dbo.[ChiTietPhieuTiepNhan]
-UNION ALL SELECT N'PhieuKiemTra',COUNT_BIG(*) FROM dbo.[PhieuKiemTra]
-UNION ALL SELECT N'ChiTietPhieuKiemTra',COUNT_BIG(*) FROM dbo.[ChiTietPhieuKiemTra]
-UNION ALL SELECT N'PhieuBaoGia',COUNT_BIG(*) FROM dbo.[PhieuBaoGia]
-UNION ALL SELECT N'ChiTietPhieuBaoGia',COUNT_BIG(*) FROM dbo.[ChiTietPhieuBaoGia]
-UNION ALL SELECT N'PhieuSuaChua',COUNT_BIG(*) FROM dbo.[PhieuSuaChua]
-UNION ALL SELECT N'ChiTietPhieuSuaChua',COUNT_BIG(*) FROM dbo.[ChiTietPhieuSuaChua]
-UNION ALL SELECT N'YeuCauNhapKho',COUNT_BIG(*) FROM dbo.[YeuCauNhapKho]
-UNION ALL SELECT N'ChiTietYeuCauNhapKho',COUNT_BIG(*) FROM dbo.[ChiTietYeuCauNhapKho]
-UNION ALL SELECT N'PhieuNhapKho',COUNT_BIG(*) FROM dbo.[PhieuNhapKho]
-UNION ALL SELECT N'ChiTietPhieuNhapKho',COUNT_BIG(*) FROM dbo.[ChiTietPhieuNhapKho]
-UNION ALL SELECT N'HoaDon',COUNT_BIG(*) FROM dbo.[HoaDon]
-UNION ALL SELECT N'ChiTietHoaDon',COUNT_BIG(*) FROM dbo.[ChiTietHoaDon]
-UNION ALL SELECT N'LichBaoHanh',COUNT_BIG(*) FROM dbo.[LichBaoHanh]
-UNION ALL SELECT N'LichNhacBaoDuong',COUNT_BIG(*) FROM dbo.[LichNhacBaoDuong]
-UNION ALL SELECT N'LichSuTichDiem',COUNT_BIG(*) FROM dbo.[LichSuTichDiem]
-ORDER BY TenBang;
-GO
-SELECT N'NhanVien.vaiTro' AS Truong, [vaiTro] AS GiaTri,COUNT_BIG(*) AS SoBanGhi FROM dbo.[NhanVien] GROUP BY [vaiTro];
-GO
-SELECT N'NhanVien.trangThai' AS Truong, [trangThai] AS GiaTri,COUNT_BIG(*) AS SoBanGhi FROM dbo.[NhanVien] GROUP BY [trangThai];
-GO
-SELECT N'NhanVien.gioiTinh' AS Truong, [gioiTinh] AS GiaTri,COUNT_BIG(*) AS SoBanGhi FROM dbo.[NhanVien] GROUP BY [gioiTinh];
-GO
-SELECT N'KhachHang.gioiTinh' AS Truong, [gioiTinh] AS GiaTri,COUNT_BIG(*) AS SoBanGhi FROM dbo.[KhachHang] GROUP BY [gioiTinh];
-GO
-SELECT N'TaiKhoan.trangThai' AS Truong, [trangThai] AS GiaTri,COUNT_BIG(*) AS SoBanGhi FROM dbo.[TaiKhoan] GROUP BY [trangThai];
-GO
-SELECT N'PhieuBaoGia.trangThai' AS Truong, [trangThai] AS GiaTri,COUNT_BIG(*) AS SoBanGhi FROM dbo.[PhieuBaoGia] GROUP BY [trangThai];
-GO
-SELECT N'ChiTietPhieuBaoGia.trangThai' AS Truong, [trangThai] AS GiaTri,COUNT_BIG(*) AS SoBanGhi FROM dbo.[ChiTietPhieuBaoGia] GROUP BY [trangThai];
-GO
-SELECT N'PhieuSuaChua.trangThai' AS Truong, [trangThai] AS GiaTri,COUNT_BIG(*) AS SoBanGhi FROM dbo.[PhieuSuaChua] GROUP BY [trangThai];
-GO
-SELECT N'ChiTietPhieuSuaChua.trangThaiHangMuc' AS Truong, [trangThaiHangMuc] AS GiaTri,COUNT_BIG(*) AS SoBanGhi FROM dbo.[ChiTietPhieuSuaChua] GROUP BY [trangThaiHangMuc];
-GO
-SELECT N'ChiTietPhieuSuaChua.ketQuaNghiemThu' AS Truong, [ketQuaNghiemThu] AS GiaTri,COUNT_BIG(*) AS SoBanGhi FROM dbo.[ChiTietPhieuSuaChua] GROUP BY [ketQuaNghiemThu];
-GO
-SELECT N'YeuCauNhapKho.trangThai' AS Truong, [trangThai] AS GiaTri,COUNT_BIG(*) AS SoBanGhi FROM dbo.[YeuCauNhapKho] GROUP BY [trangThai];
-GO
-SELECT N'PhieuNhapKho.trangThai' AS Truong, [trangThai] AS GiaTri,COUNT_BIG(*) AS SoBanGhi FROM dbo.[PhieuNhapKho] GROUP BY [trangThai];
-GO
-SELECT N'MaGiamGia.trangThai' AS Truong, [trangThai] AS GiaTri,COUNT_BIG(*) AS SoBanGhi FROM dbo.[MaGiamGia] GROUP BY [trangThai];
-GO
-SELECT N'DichVu.trangThai' AS Truong, [trangThai] AS GiaTri,COUNT_BIG(*) AS SoBanGhi FROM dbo.[DichVu] GROUP BY [trangThai];
-GO
-SELECT N'HoaDon.trangThaiThanhToan' AS Truong, [trangThaiThanhToan] AS GiaTri,COUNT_BIG(*) AS SoBanGhi FROM dbo.[HoaDon] GROUP BY [trangThaiThanhToan];
-GO
-SELECT N'LichNhacBaoDuong.trangThai' AS Truong, [trangThai] AS GiaTri,COUNT_BIG(*) AS SoBanGhi FROM dbo.[LichNhacBaoDuong] GROUP BY [trangThai];
-SELECT N'PhuTung.thoiHanBaoHanh' AS Truong, CONVERT(nvarchar(10), [thoiHanBaoHanh]) AS GiaTri, COUNT_BIG(*) AS SoBanGhi FROM dbo.[PhuTung] GROUP BY [thoiHanBaoHanh];
-GO
-
--- Biên/NULL/mối liên hệ: kết quả phải có đủ các tình huống mẫu.
-SELECT N'Khách không có lịch sử tiếp nhận' AS TruongHop,COUNT(*) AS SoLuong FROM dbo.KhachHang k
-WHERE NOT EXISTS(SELECT 1 FROM dbo.PhieuTiepNhan p WHERE p.maKhachHang=k.maKhachHang)
-UNION ALL SELECT N'VIN có nhiều lần tiếp nhận',COUNT(*) FROM
- (SELECT VIN FROM dbo.PhieuTiepNhan GROUP BY VIN HAVING COUNT(*)>1) d
-UNION ALL SELECT N'Kiểm tra chưa có kết quả',COUNT(*) FROM dbo.ChiTietPhieuKiemTra WHERE ketQuaKiemTra IS NULL
-UNION ALL SELECT N'Báo giá chưa xác nhận',COUNT(*) FROM dbo.PhieuBaoGia WHERE thoiGianXacNhan IS NULL
-UNION ALL SELECT N'Phiếu sửa chưa hoàn thành',COUNT(*) FROM dbo.PhieuSuaChua WHERE ngayHoanThanh IS NULL
-UNION ALL SELECT N'Hạng mục chưa có bảo hành',COUNT(*) FROM dbo.ChiTietPhieuSuaChua WHERE ngayBatDauBaoHanh IS NULL
-UNION ALL SELECT N'Bảo hành đã hết hạn',COUNT(*) FROM dbo.ChiTietPhieuSuaChua WHERE ngayHetHanBaoHanh<SYSDATETIME()
-UNION ALL SELECT N'Bảo hành còn hạn',COUNT(*) FROM dbo.ChiTietPhieuSuaChua WHERE ngayHetHanBaoHanh>=SYSDATETIME()
-UNION ALL SELECT N'Tồn kho bằng 0',COUNT(*) FROM dbo.TonKho WHERE soLuongHienTai=0
-UNION ALL SELECT N'Tồn kho dưới tối thiểu',COUNT(*) FROM dbo.TonKho WHERE soLuongHienTai<soLuongToiThieu
-UNION ALL SELECT N'Tồn kho đúng tối thiểu',COUNT(*) FROM dbo.TonKho WHERE soLuongHienTai=soLuongToiThieu
-UNION ALL SELECT N'Tồn kho trên tối thiểu',COUNT(*) FROM dbo.TonKho WHERE soLuongHienTai>soLuongToiThieu
-UNION ALL SELECT N'Nhà cung cấp không email',COUNT(*) FROM dbo.NhaCungCap WHERE email IS NULL
-UNION ALL SELECT N'Dịch vụ miễn phí',COUNT(*) FROM dbo.DichVu WHERE donGia=0
-UNION ALL SELECT N'Phụ tùng miễn phí',COUNT(*) FROM dbo.PhuTung WHERE donGia=0 AND maPhuTung<>'PT000'
-UNION ALL SELECT N'Hóa đơn không mã giảm',COUNT(*) FROM dbo.HoaDon WHERE maGiamGia IS NULL
-UNION ALL SELECT N'Hóa đơn có mã giảm',COUNT(*) FROM dbo.HoaDon WHERE maGiamGia IS NOT NULL
-UNION ALL SELECT N'Chi tiết chỉ dịch vụ',COUNT(*) FROM dbo.ChiTietHoaDon WHERE maDichVu IS NOT NULL AND maPhuTung IS NULL
-UNION ALL SELECT N'Chi tiết chỉ phụ tùng',COUNT(*) FROM dbo.ChiTietHoaDon WHERE maDichVu IS NULL AND maPhuTung IS NOT NULL
-UNION ALL SELECT N'Chi tiết cả dịch vụ/phụ tùng',COUNT(*) FROM dbo.ChiTietHoaDon WHERE maDichVu IS NOT NULL AND maPhuTung IS NOT NULL
-UNION ALL SELECT N'Chi tiết số lượng 0',COUNT(*) FROM dbo.ChiTietHoaDon WHERE soLuong=0
-UNION ALL SELECT N'Lịch sử nhận 0 điểm',COUNT(*) FROM dbo.LichSuTichDiem WHERE soDiem=0
-UNION ALL SELECT N'Lịch nhắc quá hạn',COUNT(*) FROM dbo.LichNhacBaoDuong WHERE ngayNhac<SYSDATETIME()
-UNION ALL SELECT N'Lịch nhắc tương lai',COUNT(*) FROM dbo.LichNhacBaoDuong WHERE ngayNhac>SYSDATETIME();
-GO
-
--- Đối soát tiền phụ tùng/công trên dữ liệu mẫu: phải trả 0 dòng.
-SELECT h.maHoaDon,h.tienPhuTung,h.tienCong,c.tienPhuTungChiTiet,c.tienCongChiTiet
-FROM dbo.HoaDon h CROSS APPLY
- (SELECT SUM(CASE WHEN maPhuTung IS NOT NULL THEN soLuong*donGia ELSE 0 END) AS tienPhuTungChiTiet,
-         SUM(CASE WHEN maPhuTung IS NULL AND maDichVu IS NOT NULL THEN soLuong*donGia ELSE 0 END) AS tienCongChiTiet
-  FROM dbo.ChiTietHoaDon WHERE maHoaDon=h.maHoaDon) c
-WHERE h.tienPhuTung<>COALESCE(c.tienPhuTungChiTiet,0) OR h.tienCong<>COALESCE(c.tienCongChiTiet,0);
-GO
-
+-- ============================================================================
+-- F. HÓA ĐƠN BÁN HÀNG VÀ DỮ LIỆU BÁN LẺ UPSTREAM (Idempotent)
+-- ============================================================================
 -- F. HAI LOẠI HÓA ĐƠN VÀ MẪU BÁN HÀNG
 -- Nâng cấp tại chỗ, không xóa database và không thay đổi hóa đơn cũ.
 -- Chạy trên database đã chọn trong SSMS; sao lưu trước khi nâng cấp.
@@ -2671,6 +3161,11 @@ SET CONCAT_NULL_YIELDS_NULL ON;
 SET ARITHABORT ON;
 SET NUMERIC_ROUNDABORT OFF;
 GO
+
+
+IF NOT EXISTS (SELECT 1 FROM dbo.HoaDon WHERE maHoaDon = N'HD031')
+BEGIN
+    PRINT N'[SEED] Đang nạp hóa đơn bán hàng bán lẻ HD031..HD042...';
 BEGIN TRY
     BEGIN TRANSACTION;
     DECLARE @NgayHoaDonMau datetime2(0)=CONVERT(date,SYSDATETIME());
@@ -2737,13 +3232,23 @@ BEGIN CATCH
     IF XACT_STATE()<>0 ROLLBACK;
     THROW;
 END CATCH;
+
+    PRINT N'[SEED] Nạp hóa đơn bán lẻ thành công.';
+END
+ELSE
+BEGIN
+    PRINT N'[SEED] Hóa đơn bán lẻ đã tồn tại, không nạp lại.';
+END
 GO
-SELECT CASE WHEN maPSC IS NULL THEN N'Bán hàng phụ tùng' ELSE N'Dịch vụ sửa chữa' END AS loaiHoaDon,COUNT(*) soHoaDon
-FROM dbo.HoaDon GROUP BY CASE WHEN maPSC IS NULL THEN N'Bán hàng phụ tùng' ELSE N'Dịch vụ sửa chữa' END;
+
+
+-- ============================================================================
+-- E. KIỂM TRA TÍNH TOÀN VẸN RÀNG BUỘC (VERIFICATION)
+-- ============================================================================
+PRINT N'[VERIFY] Đang kiểm tra toàn vẹn ràng buộc với DBCC CHECKCONSTRAINTS...';
+DBCC CHECKCONSTRAINTS WITH ALL_CONSTRAINTS;
 GO
-
-SET NOEXEC OFF;
+PRINT N'============================================================================';
+PRINT N'CÀI ĐẶT / NÂNG CẤP DATABASE [GaraOto] HOÀN TẤT THÀNH CÔNG.';
+PRINT N'============================================================================';
 GO
-
-
-
