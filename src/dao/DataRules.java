@@ -36,6 +36,71 @@ public final class DataRules {
                     if(Math.max(0,normalized.scale())>Integer.parseInt(size[1].trim()) || Math.max(0,normalized.precision()-normalized.scale())>Integer.parseInt(size[0].trim())-Integer.parseInt(size[1].trim())) fail(field,"Số tiền vượt độ chính xác cho phép: " + field);
                 }
             }
+            
+            if (field.equals("maNhanVien") && !raw.matches("NV[0-9]{3}"))
+                fail(field, "Mã nhân viên phải có dạng NV001.");
+
+            if (field.equals("maKhachHang") && !raw.matches("KH[0-9]{3}"))
+                fail(field, "Mã khách hàng phải có dạng KH001.");
+
+            if (field.equals("maNCC") && !raw.matches("NCC[0-9]{3}"))
+                fail(field, "Mã nhà cung cấp phải có dạng NCC001.");
+
+            if (field.equals("maTaiKhoan") && !raw.matches("TK[0-9]{3}"))
+                fail(field, "Mã tài khoản phải có dạng TK001.");
+
+            if (field.equals("maGiamGia") && !raw.matches("MGG[0-9]{3}"))
+                fail(field, "Mã giảm giá phải có dạng MGG001.");
+
+            if (field.equals("maDichVu") && !raw.matches("DV[0-9]{3}"))
+                fail(field, "Mã dịch vụ phải có dạng DV001.");
+
+            if (field.equals("maPhuTung") && !raw.matches("PT[0-9]{3}"))
+                fail(field, "Mã phụ tùng phải có dạng PT001.");
+
+            if (table.equals("NhanVien") && field.equals("vaiTro")
+                    && !java.util.Set.of(
+                        "Nhân viên kỹ thuật",
+                        "Nhân viên kho",
+                        "Nhân viên bán hàng",
+                        "Nhân viên quản lý"
+                    ).contains(raw))
+                fail(field, "Vai trò nhân viên không hợp lệ.");
+
+            if (table.equals("NhanVien") && field.equals("trangThai")
+                    && !java.util.Set.of("Đang làm", "Đã nghỉ").contains(raw))
+                fail(field, "Trạng thái nhân viên không hợp lệ.");
+
+            if (table.equals("TaiKhoan") && field.equals("trangThai")
+                    && !java.util.Set.of(
+                        "Đang hoạt động", "Ngừng hoạt động"
+                    ).contains(raw))
+                fail(field, "Trạng thái tài khoản không hợp lệ.");
+
+            if (table.equals("NhaCungCap") && field.equals("tenNCC")
+                    && !raw.matches("(?s).*[\\p{L}].*"))
+                fail(field, "Tên nhà cung cấp phải chứa ít nhất một chữ cái.");
+
+            if ((table.equals("KhachHang") && field.equals("hoTenKH"))
+                    || (table.equals("NhanVien") && field.equals("hoTenNV"))) {
+
+                if (!raw.matches("[\\p{L}\\p{M}]+(?:[ ]+[\\p{L}\\p{M}]+)*"))
+                    fail(field, "Họ tên chỉ được chứa chữ cái và khoảng trắng.");
+            }
+
+            if ((table.equals("DichVu") && field.equals("tenDichVu"))
+                    || (table.equals("PhuTung") && field.equals("tenPhuTung"))) {
+
+                if (!raw.matches("(?s).*[\\p{L}].*"))
+                    fail(field, "Tên dịch vụ hoặc phụ tùng phải chứa ít nhất một chữ cái.");
+            }
+
+            if (table.equals("DichVu") && field.equals("trangThai")
+                    && !java.util.Set.of(
+                        "Hoạt động", "Ngừng hoạt động"
+                    ).contains(raw))
+                fail(field, "Trạng thái dịch vụ chỉ được chọn Hoạt động hoặc Ngừng hoạt động.");
+
             if(field.equals("soDienThoai") && !raw.matches("0[35789][0-9]{8}")) fail(field,"Số điện thoại gồm 10 chữ số, đầu số 03, 05, 07, 08 hoặc 09.");
             if(field.equals("email") && !raw.matches("[^\\s@]+@[^\\s@]+\\.[^\\s@]+")) fail(field,"Email không hợp lệ.");
             if(field.equals("VIN") && !raw.matches("[A-HJ-NPR-Z0-9]{17}")) fail(field,"VIN phải gồm 17 ký tự hợp lệ.");
@@ -65,6 +130,7 @@ public final class DataRules {
         if(row.get(start) instanceof java.util.Date a && row.get(end) instanceof java.util.Date b && (strict ? !b.after(a) : b.before(a))) fail(end,"Ngày kết thúc không hợp lệ.");
     }
     public static final class Invalid extends SQLException {
+        private static final long serialVersionUID = 1L;
         public final String field;
         Invalid(String field,String message) { super(message); this.field=field; }
     }
