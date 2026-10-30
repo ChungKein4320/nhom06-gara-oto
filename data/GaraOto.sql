@@ -34,7 +34,7 @@ GO
 BEGIN TRY
     BEGIN TRANSACTION;
 IF NOT EXISTS (SELECT 1 FROM sys.sequences WHERE name = N'Seq_NhanVien' AND schema_id = SCHEMA_ID(N'dbo'))
-    CREATE SEQUENCE dbo.[Seq_NhanVien] AS int START WITH 6 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
+    CREATE SEQUENCE dbo.[Seq_NhanVien] AS int START WITH 14 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
 IF NOT EXISTS (SELECT 1 FROM sys.sequences WHERE name = N'Seq_KhachHang' AND schema_id = SCHEMA_ID(N'dbo'))
     CREATE SEQUENCE dbo.[Seq_KhachHang] AS int START WITH 61 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
 IF NOT EXISTS (SELECT 1 FROM sys.sequences WHERE name = N'Seq_DichVu' AND schema_id = SCHEMA_ID(N'dbo'))
@@ -46,7 +46,7 @@ IF NOT EXISTS (SELECT 1 FROM sys.sequences WHERE name = N'Seq_NhaCungCap' AND sc
 IF NOT EXISTS (SELECT 1 FROM sys.sequences WHERE name = N'Seq_PhuongThucThanhToan' AND schema_id = SCHEMA_ID(N'dbo'))
     CREATE SEQUENCE dbo.[Seq_PhuongThucThanhToan] AS int START WITH 5 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
 IF NOT EXISTS (SELECT 1 FROM sys.sequences WHERE name = N'Seq_TaiKhoan' AND schema_id = SCHEMA_ID(N'dbo'))
-    CREATE SEQUENCE dbo.[Seq_TaiKhoan] AS int START WITH 6 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
+    CREATE SEQUENCE dbo.[Seq_TaiKhoan] AS int START WITH 14 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
 IF NOT EXISTS (SELECT 1 FROM sys.sequences WHERE name = N'Seq_TonKho' AND schema_id = SCHEMA_ID(N'dbo'))
     CREATE SEQUENCE dbo.[Seq_TonKho] AS int START WITH 51 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
 IF NOT EXISTS (SELECT 1 FROM sys.sequences WHERE name = N'Seq_MaGiamGia' AND schema_id = SCHEMA_ID(N'dbo'))
@@ -60,7 +60,7 @@ IF NOT EXISTS (SELECT 1 FROM sys.sequences WHERE name = N'Seq_PhieuBaoGia' AND s
 IF NOT EXISTS (SELECT 1 FROM sys.sequences WHERE name = N'Seq_PhieuSuaChua' AND schema_id = SCHEMA_ID(N'dbo'))
     CREATE SEQUENCE dbo.[Seq_PhieuSuaChua] AS int START WITH 71 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
 IF NOT EXISTS (SELECT 1 FROM sys.sequences WHERE name = N'Seq_YeuCauNhapKho' AND schema_id = SCHEMA_ID(N'dbo'))
-    CREATE SEQUENCE dbo.[Seq_YeuCauNhapKho] AS int START WITH 6 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
+    CREATE SEQUENCE dbo.[Seq_YeuCauNhapKho] AS int START WITH 14 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
 IF NOT EXISTS (SELECT 1 FROM sys.sequences WHERE name = N'Seq_PhieuNhapKho' AND schema_id = SCHEMA_ID(N'dbo'))
     CREATE SEQUENCE dbo.[Seq_PhieuNhapKho] AS int START WITH 3 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
 IF NOT EXISTS (SELECT 1 FROM sys.sequences WHERE name = N'Seq_HoaDon' AND schema_id = SCHEMA_ID(N'dbo'))
@@ -120,7 +120,6 @@ BEGIN
 CREATE TABLE dbo.[PhuongTien] (
     [VIN] varchar(17) NOT NULL,
     [bienSo] varchar(8) NOT NULL,
-    [maKhachHangChuHienTai] varchar(5) NULL,
     [hangXe] nvarchar(100) NOT NULL,
     [dongXe] nvarchar(100) NOT NULL,
     [mauXe] nvarchar(50) NOT NULL,
@@ -634,8 +633,6 @@ IF COL_LENGTH(N'dbo.PhuTung', N'thoiHanBaoHanh') IS NULL
     ALTER TABLE dbo.PhuTung ADD thoiHanBaoHanh int NOT NULL CONSTRAINT DF_PhuTung_ThoiHanBaoHanh DEFAULT (0) WITH VALUES;
 IF COL_LENGTH(N'dbo.PhieuBaoGia', N'maKhachHang') IS NULL
     ALTER TABLE dbo.PhieuBaoGia ADD maKhachHang varchar(5) NULL;
-IF COL_LENGTH(N'dbo.PhuongTien', N'maKhachHangChuHienTai') IS NULL
-    ALTER TABLE dbo.PhuongTien ADD maKhachHangChuHienTai varchar(5) NULL;
 IF COL_LENGTH(N'dbo.MaGiamGia', N'mocDiem') IS NULL
     ALTER TABLE dbo.MaGiamGia ADD mocDiem int NULL;
 IF COL_LENGTH(N'dbo.MaGiamGia', N'ngayBatDauChuKy') IS NULL
@@ -740,17 +737,12 @@ FROM dbo.LichSuTichDiem historyRow
 CROSS APPLY(SELECT MIN(ngayTichDiem) AS firstEarn FROM dbo.LichSuTichDiem WHERE maKhachHang=historyRow.maKhachHang) cycleStart
 WHERE historyRow.ngayHetHan IS NULL;
 
-UPDATE v SET maKhachHangChuHienTai=r.maKhachHang
-FROM dbo.PhuongTien v CROSS APPLY(SELECT TOP(1) p.maKhachHang FROM dbo.PhieuTiepNhan p WHERE p.VIN=v.VIN ORDER BY p.ngayTiepNhan DESC,p.maPTN DESC) r
-WHERE v.maKhachHangChuHienTai IS NULL;
 
 
 IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_TaiKhoan_NhanVien')
     ALTER TABLE dbo.[TaiKhoan] WITH CHECK ADD CONSTRAINT [FK_TaiKhoan_NhanVien] FOREIGN KEY ([maNhanVien]) REFERENCES dbo.[NhanVien] ([maNhanVien]);
 IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_TonKho_PhuTung')
     ALTER TABLE dbo.[TonKho] WITH CHECK ADD CONSTRAINT [FK_TonKho_PhuTung] FOREIGN KEY ([maPhuTung]) REFERENCES dbo.[PhuTung] ([maPhuTung]);
-IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_PhuongTien_ChuHienTai')
-    ALTER TABLE dbo.[PhuongTien] WITH CHECK ADD CONSTRAINT [FK_PhuongTien_ChuHienTai] FOREIGN KEY ([maKhachHangChuHienTai]) REFERENCES dbo.[KhachHang] ([maKhachHang]);
 IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_MaGiamGia_KhachHang')
     ALTER TABLE dbo.[MaGiamGia] WITH CHECK ADD CONSTRAINT [FK_MaGiamGia_KhachHang] FOREIGN KEY ([maKhachHang]) REFERENCES dbo.[KhachHang] ([maKhachHang]);
 IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_PhieuTiepNhan_KhachHang')
@@ -1179,9 +1171,18 @@ VALUES
     ('NV004', N'Châu Ngọc Khanh', '20051117', '0901000004',
      'khanh.123@garage.vn', N'Thành phố Thủ Đức, TP. Hồ Chí Minh',
      N'Nhân viên quản lý', 1, N'Đang làm'),
-     ('NV005', N'Admin', '20050505', '0909888777',
+
+    ('NV005', N'Admin', '20050505', '0909888777',
      'admin.123@garage.vn', N'Quận 7, TP. Hồ Chí Minh',
-     N'Nhân viên quản lý', 1, N'Đang làm');
+     N'Nhân viên quản lý', 1, N'Đang làm'),
+    ('NV006', N'Trần Minh Quân', '19990115', '0902000006', 'quan.tran@garage.vn', N'Quận 1, TP. Hồ Chí Minh', N'Nhân viên bán hàng', 1, N'Đang làm'),
+    ('NV007', N'Lê Ngọc Phương', '20010322', '0902000007', 'phuong.le@garage.vn', N'Quận 3, TP. Hồ Chí Minh', N'Nhân viên bán hàng', 0, N'Đang làm'),
+    ('NV008', N'Phạm Quốc Hưng', '19980711', '0902000008', 'hung.pham@garage.vn', N'Quận 5, TP. Hồ Chí Minh', N'Nhân viên bán hàng', 1, N'Đang làm'),
+    ('NV009', N'Nguyễn Thành Đạt', '19970218', '0902000009', 'dat.nguyen@garage.vn', N'Gò Vấp, TP. Hồ Chí Minh', N'Nhân viên kỹ thuật', 1, N'Đang làm'),
+    ('NV010', N'Võ Minh Tâm', '20000526', '0902000010', 'tam.vo@garage.vn', N'Bình Thạnh, TP. Hồ Chí Minh', N'Nhân viên kỹ thuật', 1, N'Đang làm'),
+    ('NV011', N'Đỗ Hoàng Long', '19991003', '0902000011', 'long.do@garage.vn', N'Tân Bình, TP. Hồ Chí Minh', N'Nhân viên kỹ thuật', 1, N'Đang làm'),
+    ('NV012', N'Bùi Thanh Phúc', '20010812', '0902000012', 'phuc.bui@garage.vn', N'Quận 10, TP. Hồ Chí Minh', N'Nhân viên kho', 1, N'Đang làm'),
+    ('NV013', N'Nguyễn Thị Thu Hà', '19981204', '0902000013', 'ha.nguyen@garage.vn', N'Thành phố Thủ Đức, TP. Hồ Chí Minh', N'Nhân viên kho', 0, N'Đang làm');
 
 -- KhachHang: 60 bản ghi
 INSERT INTO dbo.[KhachHang] ([maKhachHang], [hoTenKH], [soDienThoai], [gioiTinh], [email], [diaChi])
@@ -1434,7 +1435,15 @@ VALUES
     ('TK002', 'NV002', 'kien123',  'kien123',  N'Đang hoạt động', '20261012'),
     ('TK003', 'NV003', 'chau123',  'chau123',  N'Đang hoạt động', '20261012'),
     ('TK004', 'NV004', 'khanh123', 'khanh123', N'Đang hoạt động', '20261012'),
-    ('TK005', 'NV005', 'admin', 'admin', N'Đang hoạt động', '20261012');
+    ('TK005', 'NV005', 'admin', 'admin', N'Đang hoạt động', '20261012'),
+    ('TK006', 'NV006', 'quan123', 'quan123', N'Đang hoạt động', '20261012'),
+    ('TK007', 'NV007', 'phuong123', 'phuong123', N'Đang hoạt động', '20261012'),
+    ('TK008', 'NV008', 'hung123', 'hung123', N'Đang hoạt động', '20261012'),
+    ('TK009', 'NV009', 'dat123', 'dat123', N'Đang hoạt động', '20261012'),
+    ('TK010', 'NV010', 'tam123', 'tam123', N'Đang hoạt động', '20261012'),
+    ('TK011', 'NV011', 'long123', 'long123', N'Đang hoạt động', '20261012'),
+    ('TK012', 'NV012', 'phuc123', 'phuc123', N'Đang hoạt động', '20261012'),
+    ('TK013', 'NV013', 'ha123', 'ha123', N'Đang hoạt động', '20261012');
 
 -- TonKho: 50 bản ghi
 INSERT INTO dbo.[TonKho] ([maTonKho], [maPhuTung], [soLuongHienTai], [soLuongToiThieu])
@@ -2991,10 +3000,28 @@ FROM dbo.LichSuTichDiem historyRow
 CROSS APPLY(SELECT MIN(ngayTichDiem) AS firstEarn FROM dbo.LichSuTichDiem WHERE maKhachHang=historyRow.maKhachHang) cycleStart
 WHERE historyRow.ngayHetHan IS NULL;
 
--- Khởi tạo chủ xe hiện tại từ lần tiếp nhận mới nhất có dữ liệu khách hàng.
-UPDATE v SET maKhachHangChuHienTai=r.maKhachHang
-FROM dbo.PhuongTien v
-CROSS APPLY (SELECT TOP (1) p.maKhachHang FROM dbo.PhieuTiepNhan p WHERE p.VIN=v.VIN ORDER BY p.ngayTiepNhan DESC,p.maPTN DESC) r;
+UPDATE q
+SET maNhanVien=CASE (CONVERT(int,RIGHT(q.maBaoGia,3))-1)%4
+    WHEN 1 THEN 'NV009' WHEN 2 THEN 'NV010' WHEN 3 THEN 'NV011' ELSE 'NV003' END
+FROM dbo.PhieuBaoGia q;
+UPDATE k
+SET maNhanVien=CASE (CONVERT(int,RIGHT(q.maBaoGia,3))-1)%4
+    WHEN 1 THEN 'NV009' WHEN 2 THEN 'NV010' WHEN 3 THEN 'NV011' ELSE 'NV003' END
+FROM dbo.PhieuKiemTra k
+JOIN dbo.PhieuBaoGia q ON q.maPKT=k.maPKT;
+UPDATE p
+SET maNhanVien=q.maNhanVien
+FROM dbo.PhieuSuaChua p
+JOIN dbo.PhieuBaoGia q ON q.maBaoGia=p.maBaoGia;
+UPDATE l
+SET maNhanVien=p.maNhanVien
+FROM dbo.LichBaoHanh l
+JOIN dbo.PhieuSuaChua p ON p.maPSC=l.maPSC;
+
+UPDATE dbo.PhieuNhapKho
+SET maNhanVien=CASE WHEN CONVERT(int,RIGHT(maPNK,3))%2=1 THEN 'NV012' ELSE 'NV013' END
+WHERE maPNK BETWEEN 'PNK013' AND 'PNK036';
+
 
 
         COMMIT TRANSACTION;
@@ -3083,6 +3110,174 @@ GO
 
 
 -- ============================================================================
+-- E.1. ĐỒNG BỘ DỮ LIỆU CƠ SỞ & NÂNG CẤP IDEMPOTENT (Hỗ trợ database đã có)
+-- ============================================================================
+IF OBJECT_ID(N'dbo.PhuongThucThanhToan', N'U') IS NOT NULL
+BEGIN
+    INSERT INTO dbo.[PhuongThucThanhToan] ([maPhuongThuc], [tenPhuongThuc])
+    SELECT v.maPhuongThuc, v.tenPhuongThuc
+    FROM (VALUES
+        (N'TT001', N'Tiền mặt'),
+        (N'TT002', N'Chuyển khoản ngân hàng'),
+        (N'TT003', N'Chuyển khoản ngân hàng (Internet Banking)'),
+        (N'TT004', N'Thẻ thanh toán POS (Visa/Mastercard/Napas)')
+    ) AS v(maPhuongThuc, tenPhuongThuc)
+    WHERE NOT EXISTS (SELECT 1 FROM dbo.PhuongThucThanhToan WHERE maPhuongThuc = v.maPhuongThuc);
+
+    IF EXISTS (SELECT 1 FROM sys.sequences WHERE object_id = OBJECT_ID(N'dbo.Seq_PhuongThucThanhToan'))
+    BEGIN
+        DECLARE @CurMaxTT int = 0;
+        SELECT @CurMaxTT = ISNULL(MAX(CONVERT(int, SUBSTRING(maPhuongThuc, 3, 3))), 0)
+        FROM dbo.PhuongThucThanhToan WHERE maPhuongThuc LIKE 'TT[0-9][0-9][0-9]';
+        DECLARE @NextValTT int = CASE WHEN @CurMaxTT > 0 THEN @CurMaxTT + 1 ELSE 5 END;
+        IF @NextValTT < 5 SET @NextValTT = 5;
+        DECLARE @SqlSeqTT nvarchar(500) = N'ALTER SEQUENCE dbo.Seq_PhuongThucThanhToan RESTART WITH ' + CONVERT(nvarchar(10), @NextValTT) + N';';
+        EXEC sp_executesql @SqlSeqTT;
+    END;
+END;
+
+IF OBJECT_ID(N'dbo.PhuTung', N'U') IS NOT NULL
+BEGIN
+    INSERT INTO dbo.[PhuTung] ([maPhuTung], [tenPhuTung], [donGia], [loaiPhuTung], [thoiHanBaoHanh])
+    SELECT v.maPhuTung, v.tenPhuTung, v.donGia, v.loaiPhuTung, v.thoiHanBaoHanh
+    FROM (VALUES
+        (N'PT000', N'Không sử dụng phụ tùng', 0.00, N'Hệ thống', 0),
+        (N'PT041', N'Bugi Iridium Denso', 320000.00, N'Đánh lửa', 24),
+        (N'PT042', N'Dây curoa tổng Gates', 850000.00, N'Truyền động', 24),
+        (N'PT043', N'Má phanh sau Brembo', 1150000.00, N'Hệ thống phanh', 24),
+        (N'PT044', N'Giảm xóc sau KYB', 2900000.00, N'Hệ thống treo', 60),
+        (N'PT045', N'Càng chữ A dưới', 1750000.00, N'Hệ thống treo', 60),
+        (N'PT046', N'Lốc điều hòa Sanden', 7200000.00, N'Điều hòa', 60),
+        (N'PT047', N'Cảm biến áp suất lốp TPMS', 1450000.00, N'Điện', 24),
+        (N'PT048', N'Cụm bơm xăng Bosch', 3600000.00, N'Nhiên liệu', 60),
+        (N'PT049', N'Cụm thước lái trợ lực điện EPS', 14500000.00, N'Hệ thống lái', 120),
+        (N'PT050', N'Bộ vi sai cầu sau', 18500000.00, N'Truyền động', 120)
+    ) AS v(maPhuTung, tenPhuTung, donGia, loaiPhuTung, thoiHanBaoHanh)
+    WHERE NOT EXISTS (SELECT 1 FROM dbo.PhuTung WHERE maPhuTung = v.maPhuTung);
+
+    IF OBJECT_ID(N'dbo.TonKho', N'U') IS NOT NULL
+    BEGIN
+        INSERT INTO dbo.[TonKho] ([maTonKho], [maPhuTung], [soLuongHienTai], [soLuongToiThieu])
+        SELECT v.maTonKho, v.maPhuTung, v.soLuongHienTai, v.soLuongToiThieu
+        FROM (VALUES
+            (N'TKH041', N'PT041', 15, 5),
+            (N'TKH042', N'PT042', 12, 4),
+            (N'TKH043', N'PT043', 20, 6),
+            (N'TKH044', N'PT044', 8, 3),
+            (N'TKH045', N'PT045', 10, 4),
+            (N'TKH046', N'PT046', 5, 2),
+            (N'TKH047', N'PT047', 25, 8),
+            (N'TKH048', N'PT048', 6, 2),
+            (N'TKH049', N'PT049', 4, 1),
+            (N'TKH050', N'PT050', 3, 1)
+        ) AS v(maTonKho, maPhuTung, soLuongHienTai, soLuongToiThieu)
+        WHERE NOT EXISTS (SELECT 1 FROM dbo.TonKho WHERE maTonKho = v.maTonKho);
+    END;
+
+    IF EXISTS (SELECT 1 FROM sys.sequences WHERE object_id = OBJECT_ID(N'dbo.Seq_PhuTung'))
+    BEGIN
+        DECLARE @CurMaxPT int = 0;
+        SELECT @CurMaxPT = ISNULL(MAX(CONVERT(int, SUBSTRING(maPhuTung, 3, 3))), 0)
+        FROM dbo.PhuTung WHERE maPhuTung LIKE 'PT[0-9][0-9][0-9]';
+        DECLARE @NextValPT int = CASE WHEN @CurMaxPT > 0 THEN @CurMaxPT + 1 ELSE 51 END;
+        IF @NextValPT < 51 SET @NextValPT = 51;
+        DECLARE @SqlSeqPT nvarchar(500) = N'ALTER SEQUENCE dbo.Seq_PhuTung RESTART WITH ' + CONVERT(nvarchar(10), @NextValPT) + N';';
+        EXEC sp_executesql @SqlSeqPT;
+    END;
+
+    IF EXISTS (SELECT 1 FROM sys.sequences WHERE object_id = OBJECT_ID(N'dbo.Seq_TonKho'))
+    BEGIN
+        DECLARE @CurMaxTKH int = 0;
+        SELECT @CurMaxTKH = ISNULL(MAX(CONVERT(int, SUBSTRING(maTonKho, 4, 3))), 0)
+        FROM dbo.TonKho WHERE maTonKho LIKE 'TKH[0-9][0-9][0-9]';
+        DECLARE @NextValTKH int = CASE WHEN @CurMaxTKH > 0 THEN @CurMaxTKH + 1 ELSE 51 END;
+        IF @NextValTKH < 51 SET @NextValTKH = 51;
+        DECLARE @SqlSeqTKH nvarchar(500) = N'ALTER SEQUENCE dbo.Seq_TonKho RESTART WITH ' + CONVERT(nvarchar(10), @NextValTKH) + N';';
+        EXEC sp_executesql @SqlSeqTKH;
+    END;
+END;
+
+IF OBJECT_ID(N'dbo.NhanVien', N'U') IS NOT NULL
+BEGIN
+    INSERT INTO dbo.NhanVien (maNhanVien, hoTenNV, ngaySinh, soDienThoai, email, diaChi, vaiTro, gioiTinh, trangThai)
+    SELECT v.maNhanVien, v.hoTenNV, v.ngaySinh, v.soDienThoai, v.email, v.diaChi, v.vaiTro, v.gioiTinh, v.trangThai
+    FROM (VALUES
+        ('NV006', N'Trần Minh Quân', '19990115', '0902000006', 'quan.tran@garage.vn', N'Quận 1, TP. Hồ Chí Minh', N'Nhân viên bán hàng', 1, N'Đang làm'),
+        ('NV007', N'Lê Ngọc Phương', '20010322', '0902000007', 'phuong.le@garage.vn', N'Quận 3, TP. Hồ Chí Minh', N'Nhân viên bán hàng', 0, N'Đang làm'),
+        ('NV008', N'Phạm Quốc Hưng', '19980711', '0902000008', 'hung.pham@garage.vn', N'Quận 5, TP. Hồ Chí Minh', N'Nhân viên bán hàng', 1, N'Đang làm'),
+        ('NV009', N'Nguyễn Thành Đạt', '19970218', '0902000009', 'dat.nguyen@garage.vn', N'Gò Vấp, TP. Hồ Chí Minh', N'Nhân viên kỹ thuật', 1, N'Đang làm'),
+        ('NV010', N'Võ Minh Tâm', '20000526', '0902000010', 'tam.vo@garage.vn', N'Bình Thạnh, TP. Hồ Chí Minh', N'Nhân viên kỹ thuật', 1, N'Đang làm'),
+        ('NV011', N'Đỗ Hoàng Long', '19991003', '0902000011', 'long.do@garage.vn', N'Tân Bình, TP. Hồ Chí Minh', N'Nhân viên kỹ thuật', 1, N'Đang làm'),
+        ('NV012', N'Bùi Thanh Phúc', '20010812', '0902000012', 'phuc.bui@garage.vn', N'Quận 10, TP. Hồ Chí Minh', N'Nhân viên kho', 1, N'Đang làm'),
+        ('NV013', N'Nguyễn Thị Thu Hà', '19981204', '0902000013', 'ha.nguyen@garage.vn', N'Thành phố Thủ Đức, TP. Hồ Chí Minh', N'Nhân viên kho', 0, N'Đang làm')
+    ) AS v(maNhanVien, hoTenNV, ngaySinh, soDienThoai, email, diaChi, vaiTro, gioiTinh, trangThai)
+    WHERE NOT EXISTS (SELECT 1 FROM dbo.NhanVien WHERE maNhanVien = v.maNhanVien);
+
+    IF OBJECT_ID(N'dbo.TaiKhoan', N'U') IS NOT NULL
+    BEGIN
+        INSERT INTO dbo.TaiKhoan (maTaiKhoan, maNhanVien, tenDangNhap, matKhau, trangThai, ngayTao)
+        SELECT t.maTaiKhoan, t.maNhanVien, t.tenDangNhap, t.matKhau, t.trangThai, t.ngayTao
+        FROM (VALUES
+            ('TK006', 'NV006', 'quan123', 'quan123', N'Đang hoạt động', '20261012'),
+            ('TK007', 'NV007', 'phuong123', 'phuong123', N'Đang hoạt động', '20261012'),
+            ('TK008', 'NV008', 'hung123', 'hung123', N'Đang hoạt động', '20261012'),
+            ('TK009', 'NV009', 'dat123', 'dat123', N'Đang hoạt động', '20261012'),
+            ('TK010', 'NV010', 'tam123', 'tam123', N'Đang hoạt động', '20261012'),
+            ('TK011', 'NV011', 'long123', 'long123', N'Đang hoạt động', '20261012'),
+            ('TK012', 'NV012', 'phuc123', 'phuc123', N'Đang hoạt động', '20261012'),
+            ('TK013', 'NV013', 'ha123', 'ha123', N'Đang hoạt động', '20261012')
+        ) AS t(maTaiKhoan, maNhanVien, tenDangNhap, matKhau, trangThai, ngayTao)
+        WHERE NOT EXISTS (SELECT 1 FROM dbo.TaiKhoan WHERE maTaiKhoan = t.maTaiKhoan);
+    END;
+
+    -- Đồng bộ sequence nhân viên và tài khoản
+    IF EXISTS (SELECT 1 FROM sys.sequences WHERE object_id = OBJECT_ID(N'dbo.Seq_NhanVien'))
+    BEGIN
+        DECLARE @CurMaxNV int = 0;
+        SELECT @CurMaxNV = ISNULL(MAX(CONVERT(int, SUBSTRING(maNhanVien, 3, 3))), 0)
+        FROM dbo.NhanVien WHERE maNhanVien LIKE 'NV[0-9][0-9][0-9]';
+        DECLARE @NextValNV int = CASE WHEN @CurMaxNV > 0 THEN @CurMaxNV + 1 ELSE 14 END;
+        IF @NextValNV < 14 SET @NextValNV = 14;
+        DECLARE @SqlSeqNV nvarchar(500) = N'ALTER SEQUENCE dbo.Seq_NhanVien RESTART WITH ' + CONVERT(nvarchar(10), @NextValNV) + N';';
+        EXEC sp_executesql @SqlSeqNV;
+    END;
+
+    IF EXISTS (SELECT 1 FROM sys.sequences WHERE object_id = OBJECT_ID(N'dbo.Seq_TaiKhoan'))
+    BEGIN
+        DECLARE @CurMaxTK int = 0;
+        SELECT @CurMaxTK = ISNULL(MAX(CONVERT(int, SUBSTRING(maTaiKhoan, 3, 3))), 0)
+        FROM dbo.TaiKhoan WHERE maTaiKhoan LIKE 'TK[0-9][0-9][0-9]';
+        DECLARE @NextValTK int = CASE WHEN @CurMaxTK > 0 THEN @CurMaxTK + 1 ELSE 14 END;
+        IF @NextValTK < 14 SET @NextValTK = 14;
+        DECLARE @SqlSeqTK nvarchar(500) = N'ALTER SEQUENCE dbo.Seq_TaiKhoan RESTART WITH ' + CONVERT(nvarchar(10), @NextValTK) + N';';
+        EXEC sp_executesql @SqlSeqTK;
+    END;
+
+    -- Cập nhật nhân viên bán lẻ cho HD031..HD042 nếu đang là mặc định
+    IF OBJECT_ID(N'dbo.HoaDon', N'U') IS NOT NULL
+    BEGIN
+        UPDATE h
+        SET h.maNhanVien = v.maNhanVien
+        FROM dbo.HoaDon h
+        JOIN (VALUES
+            ('HD031', 'NV006'), ('HD032', 'NV008'), ('HD033', 'NV008'), ('HD034', 'NV008'),
+            ('HD035', 'NV007'), ('HD036', 'NV008'), ('HD037', 'NV006'), ('HD038', 'NV007'),
+            ('HD039', 'NV008'), ('HD040', 'NV006'), ('HD041', 'NV007'), ('HD042', 'NV008')
+        ) AS v(maHoaDon, maNhanVien) ON h.maHoaDon = v.maHoaDon
+        WHERE h.maNhanVien = 'NV001';
+    END;
+
+    -- Phân bổ kỹ thuật viên và nhân viên kho theo chuẩn PR upstream
+    IF OBJECT_ID(N'dbo.PhieuNhapKho', N'U') IS NOT NULL
+    BEGIN
+        UPDATE dbo.PhieuNhapKho
+        SET maNhanVien = CASE WHEN CONVERT(int, RIGHT(maPNK, 3)) % 2 = 1 THEN 'NV012' ELSE 'NV013' END
+        WHERE maPNK BETWEEN 'PNK013' AND 'PNK036' AND maNhanVien = 'NV002';
+    END;
+END;
+GO
+
+-- ============================================================================
 -- F. HÓA ĐƠN BÁN HÀNG VÀ DỮ LIỆU BÁN LẺ UPSTREAM (Idempotent)
 -- ============================================================================
 -- F. HAI LOẠI HÓA ĐƠN VÀ MẪU BÁN HÀNG
@@ -3169,14 +3364,14 @@ BEGIN
 BEGIN TRY
     BEGIN TRANSACTION;
     DECLARE @NgayHoaDonMau datetime2(0)=CONVERT(date,SYSDATETIME());
-    DECLARE @Mau TABLE(maHoaDon varchar(5) PRIMARY KEY,maKhachHang varchar(5),ngayLui int,trangThai nvarchar(50),maPhuongThuc varchar(5));
+    DECLARE @Mau TABLE(maHoaDon varchar(5) PRIMARY KEY,maKhachHang varchar(5),maNhanVien varchar(5),ngayLui int,trangThai nvarchar(50),maPhuongThuc varchar(5));
     INSERT @Mau VALUES
-      ('HD031','KH001',12,N'Đã thanh toán','TT001'),('HD032','KH002',11,N'Đã thanh toán','TT002'),
-      ('HD033','KH003',10,N'Đã thanh toán','TT001'),('HD034','KH004',9,N'Đã thanh toán','TT002'),
-      ('HD035','KH005',8,N'Chờ thanh toán','TT001'),('HD036','KH001',7,N'Chờ thanh toán','TT002'),
-      ('HD037','KH002',6,N'Chờ thanh toán','TT001'),('HD038','KH003',5,N'Chờ thanh toán','TT002'),
-      ('HD039','KH004',4,N'Chưa thanh toán','TT001'),('HD040','KH005',3,N'Chưa thanh toán','TT002'),
-      ('HD041','KH001',2,N'Chưa thanh toán','TT001'),('HD042','KH002',1,N'Chưa thanh toán','TT002');
+      ('HD031','KH001','NV006',12,N'Đã thanh toán','TT001'),('HD032','KH002','NV008',11,N'Đã thanh toán','TT002'),
+      ('HD033','KH003','NV008',10,N'Đã thanh toán','TT001'),('HD034','KH004','NV008',9,N'Đã thanh toán','TT002'),
+      ('HD035','KH005','NV007',8,N'Chờ thanh toán','TT001'),('HD036','KH001','NV008',7,N'Chờ thanh toán','TT002'),
+      ('HD037','KH002','NV006',6,N'Chờ thanh toán','TT001'),('HD038','KH003','NV007',5,N'Chờ thanh toán','TT002'),
+      ('HD039','KH004','NV008',4,N'Chưa thanh toán','TT001'),('HD040','KH005','NV006',3,N'Chưa thanh toán','TT002'),
+      ('HD041','KH001','NV007',2,N'Chưa thanh toán','TT001'),('HD042','KH002','NV008',1,N'Chưa thanh toán','TT002');
     DECLARE @Dong TABLE(maHoaDon varchar(5),maPhuTung varchar(6),soLuong int,donGia decimal(18,2),PRIMARY KEY(maHoaDon,maPhuTung));
     INSERT @Dong VALUES
       ('HD031','PT001',1,850000),('HD031','PT002',1,180000),
@@ -3193,7 +3388,7 @@ BEGIN TRY
       ('HD042','PT001',1,850000),('HD042','PT002',2,180000);
     -- Không chiếm mã của hóa đơn người dùng đã lập. Có thể chạy lại đúng bộ seed này.
     IF EXISTS(SELECT 1 FROM @Mau m JOIN dbo.HoaDon h WITH(UPDLOCK,HOLDLOCK) ON h.maHoaDon=m.maHoaDon
-       WHERE h.maPSC IS NOT NULL OR h.VIN IS NOT NULL OR h.maKhachHang<>m.maKhachHang OR h.maNhanVien<>'NV001'
+       WHERE h.maPSC IS NOT NULL OR h.VIN IS NOT NULL OR h.maKhachHang<>m.maKhachHang OR h.maNhanVien<>m.maNhanVien
        OR h.tienCong<>0 OR h.dichVuKhac<>0 OR h.maGiamGia IS NOT NULL OR COALESCE(h.giamGia,0)<>0
        OR h.tienPhuTung<>(SELECT SUM(d.soLuong*d.donGia) FROM @Dong d WHERE d.maHoaDon=m.maHoaDon)
        OR h.thueVAT<>ROUND(h.tienPhuTung*0.08,2)
@@ -3203,7 +3398,7 @@ BEGIN TRY
     DECLARE @Moi TABLE(maHoaDon varchar(5) PRIMARY KEY);
     INSERT dbo.HoaDon(maHoaDon,maGiamGia,maKhachHang,maNhanVien,maPSC,VIN,ngayLap,tienPhuTung,tienCong,dichVuKhac,thueVAT,giamGia,trangThaiThanhToan,maPhuongThuc)
     OUTPUT inserted.maHoaDon INTO @Moi
-    SELECT m.maHoaDon,NULL,m.maKhachHang,'NV001',NULL,NULL,DATEADD(hour,10,DATEADD(day,-m.ngayLui,@NgayHoaDonMau)),
+    SELECT m.maHoaDon,NULL,m.maKhachHang,m.maNhanVien,NULL,NULL,DATEADD(hour,10,DATEADD(day,-m.ngayLui,@NgayHoaDonMau)),
        t.tien,0,0,ROUND(t.tien*0.08,2),0,m.trangThai,m.maPhuongThuc
     FROM @Mau m CROSS APPLY(SELECT SUM(d.soLuong*d.donGia) tien FROM @Dong d WHERE d.maHoaDon=m.maHoaDon)t
     WHERE NOT EXISTS(SELECT 1 FROM dbo.HoaDon h WITH(UPDLOCK,HOLDLOCK) WHERE h.maHoaDon=m.maHoaDon);

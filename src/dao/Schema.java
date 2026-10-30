@@ -26,7 +26,7 @@ public final class Schema {
                 "diaChi=nvarchar:255");
         define("PhuongTien", new String[] { "VIN" },
                 new String[] { "VIN", "bienSo", "hangXe", "dongXe", "mauXe", "namSanXuat", "soMay", "soKM" },
-                "VIN=varchar:17", "bienSo=varchar:8", "maKhachHangChuHienTai=varchar:5", "hangXe=nvarchar:100", "dongXe=nvarchar:100", "mauXe=nvarchar:50",
+                "VIN=varchar:17", "bienSo=varchar:8", "hangXe=nvarchar:100", "dongXe=nvarchar:100", "mauXe=nvarchar:50",
                 "namSanXuat=int:", "soMay=varchar:100", "soKM=decimal:12,2");
         define("DichVu", new String[] { "maDichVu" }, new String[] { "maDichVu", "tenDichVu", "donGia", "trangThai" },
                 "maDichVu=varchar:5", "tenDichVu=nvarchar:150", "moTa=nvarchar:500", "donGia=decimal:18,2",
