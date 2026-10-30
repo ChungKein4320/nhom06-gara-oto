@@ -11,8 +11,11 @@ import javax.swing.event.PopupMenuListener;
 /** Danh sách khóa ngoại: hiển thị mã và mô tả, giá trị lưu chỉ là mã. */
 final class OChonThamChieu extends OChonTimKiem<LuaChonDuLieu.Choice> {
     @java.io.Serial private static final long serialVersionUID = 1L;
+    private final String owner;
     private final String field;
+    private final String target;
     private final String query;
+    private String preservedId;
     private boolean refreshing;
     @Override protected void fireActionEvent() { if(!refreshing) super.fireActionEvent(); }
 
@@ -25,12 +28,19 @@ final class OChonThamChieu extends OChonTimKiem<LuaChonDuLieu.Choice> {
     }
 
     static OChonThamChieu create(String owner, String field) {
-        String target = targetTable(owner, field);
-        return target == null ? null : new OChonThamChieu(owner, field, target);
+        return create(owner, field, null);
     }
 
-    private OChonThamChieu(String owner, String field, String target) {
+    static OChonThamChieu create(String owner, String field, String initialValue) {
+        String target = targetTable(owner, field);
+        return target == null ? null : new OChonThamChieu(owner, field, target, initialValue);
+    }
+
+    private OChonThamChieu(String owner, String field, String target, String initialValue) {
+        this.owner = owner;
         this.field = field;
+        this.target = target;
+        this.preservedId = (initialValue != null && !initialValue.isBlank()) ? initialValue.trim() : null;
         String primary = Schema.PRIMARY.get(target);
         String description = switch (target) {
             case "NhanVien" -> "hoTenNV";
@@ -74,11 +84,16 @@ final class OChonThamChieu extends OChonTimKiem<LuaChonDuLieu.Choice> {
         });
     }
 
+    private boolean shouldFilterHidden() {
+        return ("YeuCauNhapKho".equals(owner) && "maNCC".equals(field))
+            || ("ChiTietYeuCauNhapKho".equals(owner) && "maPhuTung".equals(field));
+    }
+
     void refresh() throws SQLException {
         String previous = selectedId();
         refreshing=true;
         try {
-            LuaChonDuLieu.load(this, query);
+            LuaChonDuLieu.load(this, query, target, preservedId, shouldFilterHidden());
             insertItemAt(new LuaChonDuLieu.Choice("", "— Chọn " + NhanCot.forField(field).toLowerCase() + " —"), 0);
             setSelectedIndex(0);
             if (!previous.isEmpty()) {
@@ -104,6 +119,13 @@ final class OChonThamChieu extends OChonTimKiem<LuaChonDuLieu.Choice> {
     void selectId(String id) {
         if (id == null || id.isBlank()) { if(getItemCount()>0) setSelectedIndex(0); else setSelectedIndex(-1); return; }
         for(int i=0;i<getItemCount();i++) if(id.equals(getItemAt(i).id())) { setSelectedIndex(i); return; }
+        if (shouldFilterHidden() && (preservedId == null || !preservedId.equals(id.trim()))) {
+            preservedId = id.trim();
+            try {
+                refresh();
+                for(int i=0;i<getItemCount();i++) if(id.equals(getItemAt(i).id())) { setSelectedIndex(i); return; }
+            } catch (SQLException ignored) { }
+        }
         addItem(new LuaChonDuLieu.Choice(id,id)); setSelectedIndex(getItemCount()-1);
     }
 

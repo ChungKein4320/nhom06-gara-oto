@@ -29,7 +29,7 @@ final class BieuMauBanGhi extends JPanel {
             String type=Schema.TYPES.get(table).get(field).split(":",2)[0];
             Object old=row==null ? null : row.get(field); String value=old==null ? "" : old.toString();
             JComponent input;
-            OChonThamChieu cmbReference=readOnly ? null : OChonThamChieu.create(table,field);
+            OChonThamChieu cmbReference=readOnly ? null : OChonThamChieu.create(table,field,value);
             JComboBox<String> cmbOptions=LuaChonBieuMau.create(table,field,value,existing);
             if(readOnly) {
                 JTextField txtDisplay=GiaoDien.field("");
