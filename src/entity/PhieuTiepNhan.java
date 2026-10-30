@@ -4,9 +4,9 @@ import java.sql.Timestamp;
 
 public class PhieuTiepNhan {
     private String maPTN;
-    private String maKhachHang;
-    private String VIN;
-    private String maNhanVien;
+    private KhachHang maKhachHang;
+    private PhuongTien VIN;
+    private NhanVien maNhanVien;
     private Timestamp ngayTiepNhan;
     private String soODO;
 
@@ -20,27 +20,27 @@ public class PhieuTiepNhan {
         this.maPTN = value;
     }
 
-    public String getMaKhachHang() {
+    public KhachHang getMaKhachHang() {
         return maKhachHang;
     }
 
-    public void setMaKhachHang(String value) {
+    public void setMaKhachHang(KhachHang value) {
         this.maKhachHang = value;
     }
 
-    public String getVIN() {
+    public PhuongTien getVIN() {
         return VIN;
     }
 
-    public void setVIN(String value) {
+    public void setVIN(PhuongTien value) {
         this.VIN = value;
     }
 
-    public String getMaNhanVien() {
+    public NhanVien getMaNhanVien() {
         return maNhanVien;
     }
 
-    public void setMaNhanVien(String value) {
+    public void setMaNhanVien(NhanVien value) {
         this.maNhanVien = value;
     }
 
@@ -60,4 +60,27 @@ public class PhieuTiepNhan {
         this.soODO = value;
     }
 
+     public PhieuTiepNhan(String maPTN, KhachHang maKhachHang,
+                         NhanVien maNhanVien, PhuongTien VIN,
+                         Timestamp ngayTiepNhan, String soODO) {
+
+        this.maPTN = getMaPTN();
+        setMaKhachHang(maKhachHang);
+        setMaNhanVien(maNhanVien);
+        setVIN(VIN);
+        setNgayTiepNhan(ngayTiepNhan);
+        setSoODO(soODO);
+    }
+
+     @Override
+    public String toString() {
+        return "PhieuTiepNhan{" +
+                "maPTN='" + maPTN + '\'' +
+                ", maKhachHang=" + maKhachHang +
+                ", maNhanVien=" + maNhanVien +
+                ", VIN=" + VIN +
+                ", ngayTiepNhan=" + ngayTiepNhan +
+                ", soODO='" + soODO + '\'' +
+                '}';
+    }
 }

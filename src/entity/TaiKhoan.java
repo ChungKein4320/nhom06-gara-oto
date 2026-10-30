@@ -4,7 +4,7 @@ import java.sql.Timestamp;
 
 public class TaiKhoan {
     private String maTaiKhoan;
-    private String maNhanVien;
+    private NhanVien maNhanVien;
     private String tenDangNhap;
     private String matKhau;
     private String trangThai;
@@ -12,7 +12,7 @@ public class TaiKhoan {
 
     public TaiKhoan() { }
 
-    public TaiKhoan(String maTaiKhoan, String maNhanVien, String tenDangNhap, String matKhau, String trangThai,
+    public TaiKhoan(String maTaiKhoan, NhanVien maNhanVien, String tenDangNhap, String matKhau, String trangThai,
 			Timestamp ngayTao) {
 		super();
 		this.maTaiKhoan = maTaiKhoan;
@@ -31,11 +31,11 @@ public class TaiKhoan {
         this.maTaiKhoan = value;
     }
 
-    public String getMaNhanVien() {
+    public NhanVien getMaNhanVien() {
         return maNhanVien;
     }
 
-    public void setMaNhanVien(String value) {
+    public void setMaNhanVien(NhanVien value) {
         this.maNhanVien = value;
     }
 

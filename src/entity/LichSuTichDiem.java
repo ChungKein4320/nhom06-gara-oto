@@ -4,8 +4,8 @@ import java.sql.Timestamp;
 
 public class LichSuTichDiem {
     private String maLichSuTD;
-    private String maKhachHang;
-    private String maHoaDon;
+    private KhachHang maKhachHang;
+    private HoaDon maHoaDon;
     private Timestamp ngayTichDiem;
     private Timestamp ngayHetHan;
     private Integer soDiem;
@@ -21,19 +21,19 @@ public class LichSuTichDiem {
         this.maLichSuTD = value;
     }
 
-    public String getMaKhachHang() {
+    public KhachHang getMaKhachHang() {
         return maKhachHang;
     }
 
-    public void setMaKhachHang(String value) {
+    public void setMaKhachHang(KhachHang value) {
         this.maKhachHang = value;
     }
 
-    public String getMaHoaDon() {
+    public HoaDon getMaHoaDon() {
         return maHoaDon;
     }
 
-    public void setMaHoaDon(String value) {
+    public void setMaHoaDon(HoaDon value) {
         this.maHoaDon = value;
     }
 
@@ -62,6 +62,31 @@ public class LichSuTichDiem {
 
     public void setLyDo(String value) {
         this.lyDo = value;
+    }
+
+     public LichSuTichDiem(String maLichSu,
+            KhachHang maKhachHang, HoaDon maHoaDon,
+            Timestamp ngayTichDiem, Integer soDiem, String lyDo) {
+
+        this();
+        setMaKhachHang(maKhachHang);
+        setMaHoaDon(maHoaDon);
+        setNgayTichDiem(ngayTichDiem);
+        setSoDiem(soDiem);
+        setLyDo(lyDo);
+    }
+
+    @Override
+    public String toString() {
+        return "LichSuTichDiem{"
+                + "maLichSuTD='" + maLichSuTD + '\''
+                + ", maKhachHang=" + maKhachHang
+                + ", maHoaDon=" + maHoaDon
+                + ", ngayTichDiem=" + ngayTichDiem
+                + ", ngayHetHan=" + ngayHetHan
+                + ", soDiem=" + soDiem
+                + ", lyDo='" + lyDo + '\''
+                + '}';
     }
 
 }

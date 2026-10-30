@@ -1,27 +1,27 @@
 package entity;
 
 public class ChiTietPhieuKiemTra {
-    private String maPKT;
-    private String maDichVu;
+    private PhieuKiemTra maPKT;
+    private DichVu maDichVu;
     private String hangMucKiemTra;
     private String ketQuaChuanDoan;
     private String ketQuaKiemTra;
 
     public ChiTietPhieuKiemTra() { }
 
-    public String getMaPKT() {
+    public PhieuKiemTra getMaPKT() {
         return maPKT;
     }
 
-    public void setMaPKT(String value) {
+    public void setMaPKT(PhieuKiemTra value) {
         this.maPKT = value;
     }
 
-    public String getMaDichVu() {
+    public DichVu getMaDichVu() {
         return maDichVu;
     }
 
-    public void setMaDichVu(String value) {
+    public void setMaDichVu(DichVu value) {
         this.maDichVu = value;
     }
 
@@ -52,4 +52,27 @@ public class ChiTietPhieuKiemTra {
         this.ketQuaKiemTra = value;
     }
 
+     public ChiTietPhieuKiemTra(PhieuKiemTra maPKT,
+                               DichVu maDichVu,
+                               String hangMucKiemTra,
+                               String ketQuaChuanDoan,
+                               String ketQuaKiemTra) {
+
+        setMaPKT(maPKT);
+        setMaDichVu(maDichVu);
+        setHangMucKiemTra(hangMucKiemTra);
+        setKetQuaChanDoan(ketQuaChuanDoan);
+        setKetQuaKiemTra(ketQuaKiemTra);
+    }
+
+    @Override
+    public String toString() {
+        return "ChiTietPhieuKiemTra{" +
+                "maPKT=" + maPKT +
+                ", maDichVu=" + maDichVu +
+                ", hangMucKiemTra='" + hangMucKiemTra + '\'' +
+                ", ketQuaChuanDoan='" + ketQuaChuanDoan + '\'' +
+                ", ketQuaKiemTra='" + ketQuaKiemTra + '\'' +
+                '}';
+    }
 }

@@ -4,9 +4,9 @@ import java.sql.Timestamp;
 
 public class LichNhacBaoDuong {
     private String maLichNhac;
-    private String maKhachHang;
-    private String maPSC;
-    private String VIN;
+    private KhachHang maKhachHang;
+    private PhieuSuaChua maPSC;
+    private PhuongTien VIN;
     private Timestamp ngayNhac;
     private String noiDung;
     private String trangThai;
@@ -21,27 +21,27 @@ public class LichNhacBaoDuong {
         this.maLichNhac = value;
     }
 
-    public String getMaKhachHang() {
+    public KhachHang getMaKhachHang() {
         return maKhachHang;
     }
 
-    public void setMaKhachHang(String value) {
+    public void setMaKhachHang(KhachHang   value) {
         this.maKhachHang = value;
     }
 
-    public String getMaPSC() {
+    public PhieuSuaChua getMaPSC() {
         return maPSC;
     }
 
-    public void setMaPSC(String value) {
+    public void setMaPSC(PhieuSuaChua value) {
         this.maPSC = value;
     }
 
-    public String getVIN() {
+    public PhuongTien getVIN() {
         return VIN;
     }
 
-    public void setVIN(String value) {
+    public void setVIN(PhuongTien value) {
         this.VIN = value;
     }
 
@@ -67,6 +67,33 @@ public class LichNhacBaoDuong {
 
     public void setTrangThai(String value) {
         this.trangThai = value;
+    }
+
+     public LichNhacBaoDuong(String maLichNhac,
+            KhachHang maKhachHang, PhuongTien VIN,
+            PhieuSuaChua maPSC, Timestamp ngayNhac,
+            String noiDung, String trangThai) {
+
+        this();
+        setMaKhachHang(maKhachHang);
+        setVIN(VIN);
+        setMaPSC(maPSC);
+        setNgayNhac(ngayNhac);
+        setNoiDung(noiDung);
+        setTrangThai(trangThai);
+    }
+
+    @Override
+    public String toString() {
+        return "LichNhacBaoDuong{"
+                + "maLichNhac='" + maLichNhac + '\''
+                + ", maKhachHang=" + maKhachHang
+                + ", maPSC=" + maPSC
+                + ", VIN=" + VIN
+                + ", ngayNhac=" + ngayNhac
+                + ", noiDung='" + noiDung + '\''
+                + ", trangThai='" + trangThai + '\''
+                + '}';
     }
 
 }
