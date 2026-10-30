@@ -65,6 +65,8 @@ public final class ManHinhDuLieu extends JPanel {
     private final String[] fields;
     private final String[] displayFields;
     private final BoLocTrangThai statusFilters;
+    private final JButton btnAllocate;
+    private final JButton btnReturn;
 
     @java.io.Serial
     private void readObject(java.io.ObjectInputStream input)
@@ -221,7 +223,10 @@ public final class ManHinhDuLieu extends JPanel {
         tblTable.setAutoCreateRowSorter(true);
 
         statusFilters = new BoLocTrangThai(tblTable);
-        statusFilters.onChange(this::updateCount);
+        statusFilters.onChange(() -> {
+            updateCount();
+            updateAllocationButtonStates();
+        });
         statusFilters.setBorder(new EmptyBorder(6, 0, 0, 0));
         pnlToolbar.add(statusFilters, BorderLayout.SOUTH);
 
@@ -293,14 +298,19 @@ public final class ManHinhDuLieu extends JPanel {
         );
 
         if (page.equals("Phiếu cấp phát phụ tùng") || page.equals("Cấp phát phụ tùng")) {
-            JButton btnAllocate = GiaoDien.button(
+            btnAllocate = GiaoDien.button(
                     "Xác nhận cấp phát", GiaoDien.TEAL, Color.WHITE
             );
+            btnAllocate.setEnabled(false);
             btnAllocate.addActionListener(e -> allocate());
             pnlButtons.add(btnAllocate);
-            JButton btnReturn = GiaoDien.button("Ghi nhận trả kho", GiaoDien.CREAM, GiaoDien.NAV);
+            btnReturn = GiaoDien.button("Ghi nhận trả kho", GiaoDien.CREAM, GiaoDien.NAV);
+            btnReturn.setEnabled(false);
             btnReturn.addActionListener(e -> recordReturn());
             pnlButtons.add(btnReturn);
+        } else {
+            btnAllocate = null;
+            btnReturn = null;
         }
 
         final JButton btnThreshold;
@@ -340,6 +350,7 @@ public final class ManHinhDuLieu extends JPanel {
                 if (btnThreshold != null) {
                     btnThreshold.setEnabled(selected >= 0);
                 }
+                updateAllocationButtonStates();
                 if (selected < 0) {
                     btnEdit.setEnabled(false);
                 } else {
@@ -460,6 +471,7 @@ public final class ManHinhDuLieu extends JPanel {
         load();
         tblTable.clearSelection();
         tblTable.scrollRectToVisible(new Rectangle(0, 0, 1, 1));
+        updateAllocationButtonStates();
     }
 
     private void load() {
@@ -532,8 +544,10 @@ public final class ManHinhDuLieu extends JPanel {
             }
 
             statusFilters.refresh();
+            updateAllocationButtonStates();
         } catch (SQLException ex) {
             lblCount.setText("Lỗi kết nối SQL Server");
+            updateAllocationButtonStates();
             JOptionPane.showMessageDialog(
                     this, ex.getMessage(),
                     "Lỗi cơ sở dữ liệu", JOptionPane.ERROR_MESSAGE
@@ -550,6 +564,75 @@ public final class ManHinhDuLieu extends JPanel {
                 "Hiển thị: " + tblTable.getRowCount()
                 + " / " + model.getRowCount() + " bản ghi"
         );
+    }
+
+    private void updateAllocationButtonStates() {
+        if (btnAllocate == null || btnReturn == null) {
+            return;
+        }
+        int selected = tblTable.getSelectedRow();
+        if (selected < 0) {
+            btnAllocate.setEnabled(false);
+            btnReturn.setEnabled(false);
+            return;
+        }
+
+        int row = tblTable.convertRowIndexToModel(selected);
+        if (row < 0 || row >= model.getRowCount()) {
+            btnAllocate.setEnabled(false);
+            btnReturn.setEnabled(false);
+            return;
+        }
+
+        String part = getModelString(row, "maPhuTung");
+        String status = getModelString(row, "trangThaiHangMuc");
+        int soLuongPhuTung = getModelInt(row, "soLuongPhuTung", -1);
+        int soLuongCapPhat = getModelInt(row, "soLuongCapPhat", -1);
+        int soLuongSuDung = getModelInt(row, "soLuongSuDung", -1);
+        int soLuongHoanTra = getModelInt(row, "soLuongHoanTra", -1);
+
+        boolean canAllocate = "Chờ sửa chữa".equals(status)
+                && !part.isEmpty()
+                && !"PT000".equals(part)
+                && soLuongPhuTung > 0
+                && soLuongCapPhat == 0;
+
+        int remaining = soLuongCapPhat - soLuongSuDung - soLuongHoanTra;
+        boolean canReturn = "Đang sửa chữa".equals(status)
+                && !part.isEmpty()
+                && !"PT000".equals(part)
+                && soLuongCapPhat > 0
+                && soLuongSuDung >= 0
+                && soLuongHoanTra >= 0
+                && remaining > 0;
+
+        btnAllocate.setEnabled(canAllocate);
+        btnReturn.setEnabled(canReturn);
+    }
+
+    private Object getModelValue(int row, String fieldName) {
+        int col = Arrays.asList(displayFields).indexOf(fieldName);
+        if (col < 0 || col >= model.getColumnCount() || row < 0 || row >= model.getRowCount()) {
+            return null;
+        }
+        return model.getValueAt(row, col);
+    }
+
+    private String getModelString(int row, String fieldName) {
+        Object val = getModelValue(row, fieldName);
+        return val == null ? "" : val.toString().trim();
+    }
+
+    private int getModelInt(int row, String fieldName, int fallback) {
+        Object val = getModelValue(row, fieldName);
+        if (val == null) return fallback;
+        if (val instanceof Number n) return n.intValue();
+        try {
+            String s = val.toString().trim().replace(" ", "").replace(",", "");
+            return s.isEmpty() ? fallback : Integer.parseInt(s);
+        } catch (NumberFormatException ex) {
+            return fallback;
+        }
     }
 
     private void allocate() {
@@ -572,12 +655,15 @@ public final class ManHinhDuLieu extends JPanel {
             return;
         }
 
+        String repair = getModelString(row, "maPSC");
+        String service = getModelString(row, "maDichVu");
+        String part = getModelString(row, "maPhuTung");
+        if (repair.isEmpty()) repair = String.valueOf(model.getValueAt(row, 0));
+        if (service.isEmpty()) service = String.valueOf(model.getValueAt(row, 1));
+        if (part.isEmpty()) part = String.valueOf(model.getValueAt(row, 2));
+
         try {
-            ThuongMaiDAO.allocate(
-                    String.valueOf(model.getValueAt(row, 0)),
-                    String.valueOf(model.getValueAt(row, 1)),
-                    String.valueOf(model.getValueAt(row, 2)), employeeId
-            );
+            ThuongMaiDAO.allocate(repair, service, part, employeeId);
             load();
         } catch (SQLException ex) {
             JOptionPane.showMessageDialog(
@@ -588,27 +674,35 @@ public final class ManHinhDuLieu extends JPanel {
     }
 
     private void recordReturn() {
-        int selected=tblTable.getSelectedRow();
-        if(selected<0) { JOptionPane.showMessageDialog(this,"Vui lòng chọn hạng mục cần ghi nhận trả kho."); return; }
-        int row=tblTable.convertRowIndexToModel(selected);
+        int selected = tblTable.getSelectedRow();
+        if (selected < 0) {
+            JOptionPane.showMessageDialog(this, "Vui lòng chọn hạng mục cần ghi nhận trả kho.");
+            return;
+        }
+        int row = tblTable.convertRowIndexToModel(selected);
         try {
-            int issued=Integer.parseInt(String.valueOf(model.getValueAt(row,Arrays.asList(displayFields).indexOf("soLuongCapPhat"))));
-            int used=Integer.parseInt(String.valueOf(model.getValueAt(row,Arrays.asList(displayFields).indexOf("soLuongSuDung"))));
-            int returned=Integer.parseInt(String.valueOf(model.getValueAt(row,Arrays.asList(displayFields).indexOf("soLuongHoanTra"))));
-            int remaining=issued-used-returned;
-            if(remaining<=0) throw new SQLException("Hạng mục không còn số lượng phụ tùng có thể trả.");
-            String quantity=JOptionPane.showInputDialog(this,"Số phụ tùng thực tế nhận lại (còn có thể trả: "+remaining+"):",remaining);
-            if(quantity==null) return;
-            String employee=employeeId;
-            if(employee==null || employee.isBlank()) employee=ThaoTacNghiepVu.choose(this,"NhanVien","maNhanVien","Nhân viên kho xác nhận hàng trả");
-            if(employee==null) return;
+            int issued = getModelInt(row, "soLuongCapPhat", 0);
+            int used = getModelInt(row, "soLuongSuDung", 0);
+            int returned = getModelInt(row, "soLuongHoanTra", 0);
+            int remaining = issued - used - returned;
+            if (remaining <= 0) throw new SQLException("Hạng mục không còn số lượng phụ tùng có thể trả.");
+            String quantity = JOptionPane.showInputDialog(this, "Số phụ tùng thực tế nhận lại (còn có thể trả: " + remaining + "):", remaining);
+            if (quantity == null) return;
+            String employee = employeeId;
+            if (employee == null || employee.isBlank()) employee = ThaoTacNghiepVu.choose(this, "NhanVien", "maNhanVien", "Nhân viên kho xác nhận hàng trả");
+            if (employee == null) return;
+            String repair = getModelString(row, "maPSC");
+            String service = getModelString(row, "maDichVu");
+            String part = getModelString(row, "maPhuTung");
+            if (repair.isEmpty()) repair = String.valueOf(model.getValueAt(row, 0));
+            if (service.isEmpty()) service = String.valueOf(model.getValueAt(row, 1));
+            if (part.isEmpty()) part = String.valueOf(model.getValueAt(row, 2));
             QuyTrinhDAO.recordPartReturn(
-                    String.valueOf(model.getValueAt(row,0)),String.valueOf(model.getValueAt(row,1)),
-                    String.valueOf(model.getValueAt(row,2)),Integer.parseInt(quantity.trim()),employee
+                    repair, service, part, Integer.parseInt(quantity.trim()), employee
             );
             load();
-        } catch(Exception ex) {
-            JOptionPane.showMessageDialog(this,ex.getMessage(),"Không thể ghi nhận trả kho",JOptionPane.ERROR_MESSAGE);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Không thể ghi nhận trả kho", JOptionPane.ERROR_MESSAGE);
         }
     }
 
