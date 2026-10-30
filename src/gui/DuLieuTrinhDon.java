@@ -6,18 +6,18 @@ public final class DuLieuTrinhDon {
     private DuLieuTrinhDon() { }
 
     public static final String[] TECH = {
-        "Tổng quan", "Tìm kiếm", "Phiếu tiếp nhận", "Phiếu kiểm tra",
+        "Tổng quan", "Công cụ tìm kiếm", "Phiếu tiếp nhận", "Phiếu kiểm tra",
         "Phiếu báo giá", "Phiếu sửa chữa", "Bảo hành", "Lịch nhắc bảo dưỡng"
     };
     public static final String[] WARE = {
-        "Tổng quan", "Tìm kiếm", "Tồn kho", "Phiếu cấp phát phụ tùng",
-        "Phiếu yêu cầu nhập kho", "Phiếu nhập kho phụ tùng", "Lịch sử sửa chữa"
+        "Tổng quan", "Công cụ tìm kiếm", "Tồn kho", "Phiếu cấp phát phụ tùng",
+        "Phiếu yêu cầu nhập kho", "Phiếu nhập kho phụ tùng"
     };
     public static final String[] CASH = {
-        "Tổng quan", "Tìm kiếm", "Hóa đơn", "Lịch sử tích điểm", "Phụ tùng"
+        "Tổng quan", "Công cụ tìm kiếm", "Hóa đơn", "Lịch sử tích điểm", "Phụ tùng"
     };
     public static final String[] MANAGER = {
-        "Tổng quan", "Tìm kiếm", "Nhà cung cấp", "Nhân viên",
+        "Tổng quan", "Công cụ tìm kiếm", "Nhà cung cấp", "Nhân viên",
         "Khách hàng", "Phương tiện", "Danh mục dịch vụ", "Danh mục phụ tùng",
         "Tài khoản", "Khuyến mãi", "Danh sách yêu cầu nhập", "Thống kê"
     };

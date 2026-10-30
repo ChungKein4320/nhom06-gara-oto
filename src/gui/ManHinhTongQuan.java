@@ -46,7 +46,7 @@ public final class ManHinhTongQuan extends JPanel {
         pnlMain.add(pnlCards);
         GiaoDien.gap(pnlMain,25);
         JPanel pnlSection = GiaoDien.card(new BorderLayout(0, 17));
-        pnlSection.add(GiaoDien.label(role == VaiTro.ADMIN ? "Chức năng theo từng vai trò" :
+        pnlSection.add(GiaoDien.label(role == VaiTro.ADMIN ? "Danh sách đối tượng theo từng vai trò" :
                 "Truy cập nhanh theo nhóm đối tượng", 19, true, GiaoDien.NAV), BorderLayout.NORTH);
         if (role == VaiTro.ADMIN) {
             JPanel pnlColumns = new JPanel(new GridLayout(1, 4, 12, 0));

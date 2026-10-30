@@ -354,7 +354,6 @@ final class TrinhSuaPhieu {
             if (selected >= 0) { details.remove(tblDetails.convertRowIndexToModel(selected)); refresh.run(); }
         });
 
-        final Map<String, Object> finalHeader = header;
         btnSave.addActionListener(e -> {
             btnSave.setEnabled(false);
             try {

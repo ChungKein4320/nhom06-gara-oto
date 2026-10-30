@@ -31,7 +31,6 @@ public final class ManHinhDuLieu extends JPanel {
         ROUTES.put("Cấp phát phụ tùng", "ChiTietPhieuSuaChua");
         ROUTES.put("Phiếu nhập kho phụ tùng", "PhieuNhapKho");
         ROUTES.put("Nhập kho phụ tùng", "PhieuNhapKho");
-        ROUTES.put("Lịch sử sửa chữa", "PhieuSuaChua");
         ROUTES.put("Hóa đơn", "HoaDon");
         ROUTES.put("Lịch sử tích điểm", "LichSuTichDiem");
         ROUTES.put("Khuyến mãi/Tích điểm", "LichSuTichDiem");
