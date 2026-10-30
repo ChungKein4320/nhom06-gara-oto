@@ -10,6 +10,17 @@ public class KhachHang {
 
     public KhachHang() { }
 
+    public KhachHang(String maKhachHang, String hoTenKH, String soDienThoai, boolean gioiTinh, String email,
+			String diaChi) {
+		super();
+		this.maKhachHang = maKhachHang;
+		this.hoTenKH = hoTenKH;
+		this.soDienThoai = soDienThoai;
+		this.gioiTinh = gioiTinh;
+		this.email = email;
+		this.diaChi = diaChi;
+	}
+
     public boolean isGioiTinh() { return gioiTinh; }
     public boolean getGioiTinh() { return gioiTinh; }
     public void setGioiTinh(boolean value) { gioiTinh = value; }
@@ -27,7 +38,8 @@ public class KhachHang {
     }
 
     public void setHoTenKH(String value) {
-        this.hoTenKH = value;
+        if (value == null || value.isBlank()) throw new IllegalArgumentException("Họ tên khách hàng không được rỗng");
+        this.hoTenKH = value.trim();
     }
 
     public String getSoDienThoai() {
@@ -35,6 +47,8 @@ public class KhachHang {
     }
 
     public void setSoDienThoai(String value) {
+        if (value == null || !value.matches("0[35789][0-9]{8}"))
+            throw new IllegalArgumentException("Số điện thoại không hợp lệ");
         this.soDienThoai = value;
     }
 
@@ -43,7 +57,9 @@ public class KhachHang {
     }
 
     public void setEmail(String value) {
-        this.email = value;
+        if (value == null || !value.matches("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$"))
+            throw new IllegalArgumentException("Email không đúng định dạng");
+        this.email = value.trim();
     }
 
     public String getDiaChi() {
@@ -52,6 +68,16 @@ public class KhachHang {
 
     public void setDiaChi(String value) {
         this.diaChi = value;
+    }
+
+    @Override
+    public String toString() {
+        return "KhachHang [maKhachHang=" + maKhachHang
+                + ", hoTenKH=" + hoTenKH
+                + ", soDienThoai=" + soDienThoai
+                + ", gioiTinh=" + gioiTinh
+                + ", email=" + email
+                + ", diaChi=" + diaChi + "]";
     }
 
 }

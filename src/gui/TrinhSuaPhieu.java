@@ -75,7 +75,7 @@ final class TrinhSuaPhieu {
             model.addRow(Arrays.stream(columns).map(row::get).toArray());
         }
 
-        String title = "Xét duyệt yêu cầu nhập kho " + id + " [" + status + "]";
+        String title = (canDecide ? "Xét duyệt yêu cầu nhập kho " : "Chi tiết yêu cầu nhập kho ") + id + " [" + status + "]";
         JDialog winDialog = new JDialog(getWindowOwner(parent), title, Dialog.ModalityType.APPLICATION_MODAL);
         JPanel pnlContent = new JPanel(new BorderLayout(0, 10));
         pnlContent.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
@@ -686,5 +686,5 @@ final class TrinhSuaPhieu {
         }
         return null;
     }
-    private static void error(Component parent,SQLException ex) { JOptionPane.showMessageDialog(parent,ex.getMessage(),"Không thể lưu phiếu",JOptionPane.ERROR_MESSAGE); }
+    private static void error(Component parent,SQLException ex) { JOptionPane.showMessageDialog(parent,KiemTraBieuMau.userMessage(ex,""),"Không thể lưu phiếu",JOptionPane.ERROR_MESSAGE); }
 }

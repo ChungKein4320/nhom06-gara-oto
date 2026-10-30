@@ -35,7 +35,6 @@ public final class ManHinhDuLieu extends JPanel {
         ROUTES.put("Hóa đơn", "HoaDon");
         ROUTES.put("Lịch sử tích điểm", "LichSuTichDiem");
         ROUTES.put("Khuyến mãi/Tích điểm", "LichSuTichDiem");
-        ROUTES.put("Phụ tùng", "PhuTung");
         ROUTES.put("Nhà cung cấp", "NhaCungCap");
         ROUTES.put("Nhân viên", "NhanVien");
         ROUTES.put("Khách hàng", "KhachHang");
@@ -84,6 +83,10 @@ public final class ManHinhDuLieu extends JPanel {
 
     public ManHinhDuLieu(String page) {
         this(page, null, null);
+    }
+
+    public ManHinhDuLieu(String page, String employeeId) {
+        this(page, null, employeeId);
     }
 
     public ManHinhDuLieu(String page, VaiTro role, String employeeId) {
@@ -263,7 +266,7 @@ public final class ManHinhDuLieu extends JPanel {
         btnDelete.setEnabled(
                 !tableName.startsWith("ChiTiet")
                 && QuyTrinhDAO.detailTable(tableName) == null
-                && !tableName.equals("LichSuTichDiem")
+                && !Set.of("LichSuTichDiem").contains(tableName)
         );
 
         btnRefresh.addActionListener(e -> lamMoi());
@@ -295,6 +298,9 @@ public final class ManHinhDuLieu extends JPanel {
             );
             btnAllocate.addActionListener(e -> allocate());
             pnlButtons.add(btnAllocate);
+            JButton btnReturn = GiaoDien.button("Ghi nhận trả kho", GiaoDien.CREAM, GiaoDien.NAV);
+            btnReturn.addActionListener(e -> recordReturn());
+            pnlButtons.add(btnReturn);
         }
 
         if (!Set.of("TonKho", "HoaDon").contains(tableName) && !isManagerReview) {
@@ -418,7 +424,7 @@ public final class ManHinhDuLieu extends JPanel {
         String defaultState = switch (page) {
             case "Phiếu báo giá" -> "Còn hiệu lực";
             case "Phiếu sửa chữa" -> "Chờ sửa chữa";
-            case "Phiếu cấp phát phụ tùng", "Cấp phát phụ tùng" -> "Thiếu phụ tùng";
+            case "Phiếu cấp phát phụ tùng", "Cấp phát phụ tùng" -> "Chờ sửa chữa";
             case "Phiếu yêu cầu nhập kho", "Danh sách yêu cầu nhập", "Yêu cầu nhập kho" -> "Chờ duyệt";
             case "Phiếu nhập kho phụ tùng", "Nhập kho phụ tùng" -> "Chờ xác nhận nhập kho";
             default -> null;
@@ -441,6 +447,10 @@ public final class ManHinhDuLieu extends JPanel {
 
     private void load() {
         try {
+            if ("ChiTietPhieuSuaChua".equals(tableName)) {
+                QuyTrinhDAO.refreshRepairShortages();
+            }
+
             model.setRowCount(0);
             List<LinkedHashMap<String, Object>> rows = dao.getAll();
 
@@ -470,7 +480,7 @@ public final class ManHinhDuLieu extends JPanel {
                     row.put(
                             "tongThanhToan",
                             total.subtract(
-                                    (java.math.BigDecimal)
+                                     (java.math.BigDecimal)
                                             row.get("giamGia")
                             )
                     );
@@ -549,7 +559,7 @@ public final class ManHinhDuLieu extends JPanel {
             ThuongMaiDAO.allocate(
                     String.valueOf(model.getValueAt(row, 0)),
                     String.valueOf(model.getValueAt(row, 1)),
-                    String.valueOf(model.getValueAt(row, 2))
+                    String.valueOf(model.getValueAt(row, 2)), employeeId
             );
             load();
         } catch (SQLException ex) {
@@ -557,6 +567,31 @@ public final class ManHinhDuLieu extends JPanel {
                     this, ex.getMessage(),
                     "Không thể cấp phát", JOptionPane.ERROR_MESSAGE
             );
+        }
+    }
+
+    private void recordReturn() {
+        int selected=tblTable.getSelectedRow();
+        if(selected<0) { JOptionPane.showMessageDialog(this,"Vui lòng chọn hạng mục cần ghi nhận trả kho."); return; }
+        int row=tblTable.convertRowIndexToModel(selected);
+        try {
+            int issued=Integer.parseInt(String.valueOf(model.getValueAt(row,Arrays.asList(displayFields).indexOf("soLuongCapPhat"))));
+            int used=Integer.parseInt(String.valueOf(model.getValueAt(row,Arrays.asList(displayFields).indexOf("soLuongSuDung"))));
+            int returned=Integer.parseInt(String.valueOf(model.getValueAt(row,Arrays.asList(displayFields).indexOf("soLuongHoanTra"))));
+            int remaining=issued-used-returned;
+            if(remaining<=0) throw new SQLException("Hạng mục không còn số lượng phụ tùng có thể trả.");
+            String quantity=JOptionPane.showInputDialog(this,"Số phụ tùng thực tế nhận lại (còn có thể trả: "+remaining+"):",remaining);
+            if(quantity==null) return;
+            String employee=employeeId;
+            if(employee==null || employee.isBlank()) employee=ThaoTacNghiepVu.choose(this,"NhanVien","maNhanVien","Nhân viên kho xác nhận hàng trả");
+            if(employee==null) return;
+            QuyTrinhDAO.recordPartReturn(
+                    String.valueOf(model.getValueAt(row,0)),String.valueOf(model.getValueAt(row,1)),
+                    String.valueOf(model.getValueAt(row,2)),Integer.parseInt(quantity.trim()),employee
+            );
+            load();
+        } catch(Exception ex) {
+            JOptionPane.showMessageDialog(this,ex.getMessage(),"Không thể ghi nhận trả kho",JOptionPane.ERROR_MESSAGE);
         }
     }
 
@@ -724,7 +759,7 @@ public final class ManHinhDuLieu extends JPanel {
                 }
 
                 if (auto || (i == 0 && existing)) {
-                    txtInput.setBackground(new Color(0xE5F0EE));
+                DinhDangKeThua.lock(txtInput);
                 }
 
                 input = txtInput;
@@ -1058,56 +1093,28 @@ public final class ManHinhDuLieu extends JPanel {
             );
         }
     }
+
     public static List<String> filterOptionsFor(String table, String field) {
-
         if ("PhieuNhapKho".equals(table) && "trangThai".equals(field)) {
-
             return List.of("Chờ xác nhận nhập kho", "Đã nhập kho", "Đã hủy");
-
         }
-
         if ("YeuCauNhapKho".equals(table) && "trangThai".equals(field)) {
-
             return List.of("Chờ duyệt", "Đã duyệt", "Từ chối", "Đã xử lý");
-
         }
-
-        String[] opts = LuaChonBieuMau.getOptions(table, field);
-
-        if (opts != null && opts.length > 0) {
-
-            return Arrays.asList(opts);
-
-        }
-
         return Collections.emptyList();
-
     }
-
-
 
     public JComboBox<String> getStatusFilterCombo() {
-
         String statusField = (page.equals("Phiếu cấp phát phụ tùng") || page.equals("Cấp phát phụ tùng"))
-
                 ? "trangThaiHangMuc"
-
                 : "trangThai";
-
         int column = Arrays.asList(displayFields).indexOf(statusField);
-
         return column >= 0 ? statusFilters.getFilter(column) : null;
-
     }
-
-
 
     public BoLocTrangThai getStatusFilters() {
-
         return statusFilters;
-
     }
-
 
     public JTable getTable() {
         return tblTable;

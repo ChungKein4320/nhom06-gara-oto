@@ -5,6 +5,8 @@ import java.sql.Timestamp;
 public class LichBaoHanh {
     private String maLBH;
     private String maPSC;
+    private String maDichVu;
+    private String maPhuTung;
     private String maNhanVien;
     private String maKhachHang;
     private String VIN;
@@ -29,6 +31,11 @@ public class LichBaoHanh {
     public void setMaPSC(String value) {
         this.maPSC = value;
     }
+
+    public String getMaDichVu() { return maDichVu; }
+    public void setMaDichVu(String value) { this.maDichVu = value; }
+    public String getMaPhuTung() { return maPhuTung; }
+    public void setMaPhuTung(String value) { this.maPhuTung = value; }
 
     public String getMaNhanVien() {
         return maNhanVien;

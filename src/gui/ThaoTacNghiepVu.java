@@ -35,7 +35,15 @@ final class ThaoTacNghiepVu {
             default -> new String[0];
         };
         if (actions.length == 0) return;
-        boolean direct = Set.of("PhieuTiepNhan", "PhieuKiemTra", "PhieuBaoGia", "PhieuSuaChua", "PhieuNhapKho", "YeuCauNhapKho").contains(table);
+        boolean direct = Set.of(
+                "PhieuTiepNhan",
+                "PhieuKiemTra",
+                "PhieuBaoGia",
+                "PhieuSuaChua",
+                "PhieuNhapKho",
+                "YeuCauNhapKho",
+                "LichNhacBaoDuong"
+        ).contains(table);
         if (direct) {
             for (String action : actions) installButton(pnlButtons, table, selection, refresh, parent, action, null, role, employeeId, tblTable);
         } else {
@@ -137,7 +145,7 @@ final class ThaoTacNghiepVu {
             String message = action + " cho " + id + "?";
             if (action.equals("Nghiệm thu đạt")) message = "Xác nhận TẤT CẢ hạng mục đã hoàn thành và nghiệm thu Đạt cho " + id + "?";
             if (action.equals("Ghi nhận đã gửi")) message = "Bạn đã gửi thông báo cho khách và muốn ghi nhận lịch này là Đã gửi?";
-            if (action.equals("Hủy")) message = "Bạn đã thu hồi ĐẦY ĐỦ phụ tùng đã cấp về kho và muốn hủy " + id + "? Tồn kho sẽ được hoàn lại.";
+            if (action.equals("Hủy")) message = "Hủy phiếu chỉ sau khi đối soát phần đã cấp phát và phần trả kho thực tế. Tiếp tục?";
             if (action.equals("Duyệt yêu cầu")) message = "Phê duyệt yêu cầu nhập kho " + id + "? Yêu cầu sẽ chuyển sang trạng thái Đã duyệt để đặt hàng.";
             if (action.equals("Từ chối yêu cầu")) message = "Từ chối yêu cầu nhập kho " + id + "?";
             if (action.equals("Lập phiếu nhập kho")) message = "Tiếp nhận hàng thực tế và lập phiếu nhập kho cho yêu cầu " + id + "?";
@@ -146,6 +154,13 @@ final class ThaoTacNghiepVu {
             if (JOptionPane.showConfirmDialog(parent, message, "Xác nhận", JOptionPane.YES_NO_OPTION) != JOptionPane.YES_OPTION) return;
             btnApply.setEnabled(false);
             try {
+                String cancellationReason = null, manager = null;
+                if (action.equals("Hủy")) {
+                    CancellationDetails details = askCancellationDetails(parent, id);
+                    if (details == null) return;
+                    cancellationReason = details.reason();
+                    manager = details.approverId();
+                }
                 switch (action) {
                     case "Lập phiếu kiểm tra" -> {
                         String employee = choose(parent, "NhanVien", "maNhanVien", "Nhân viên kiểm tra");
@@ -318,7 +333,7 @@ final class ThaoTacNghiepVu {
                     }
                     case "Ghi nhận đã gửi" -> QuyTrinhDAO.markReminder(id);
                     case "Bàn giao" -> QuyTrinhDAO.handover(id);
-                    case "Hủy" -> QuyTrinhDAO.cancelRepair(id);
+                    case "Hủy" -> QuyTrinhDAO.cancelRepair(id, cancellationReason, manager);
                     default -> { }
                 }
                 refresh.run();
@@ -330,7 +345,57 @@ final class ThaoTacNghiepVu {
         });
     }
 
-    private static String choose(Component parent, String owner, String field, String title) {
+    private record CancellationDetails(String reason, String approverId) { }
+
+    private static CancellationDetails askCancellationDetails(Component parent, String repairId) throws SQLException {
+        JTextArea txtReason = new JTextArea(3, 28);
+        txtReason.setLineWrap(true);
+        txtReason.setWrapStyleWord(true);
+        OChonTimKiem<LuaChonDuLieu.Choice> cmbApprover = new OChonTimKiem<>();
+        cmbApprover.setEditable(false);
+        cmbApprover.setPreferredSize(new Dimension(360, 32));
+        LuaChonDuLieu.load(cmbApprover,
+                "SELECT maNhanVien,CONCAT(maNhanVien,N' — ',hoTenNV) FROM dbo.NhanVien "
+                        + "WHERE trangThai=N'Đang làm' AND vaiTro IN (N'Nhân viên quản lý',N'Quản trị viên') "
+                        + "ORDER BY maNhanVien");
+        if (cmbApprover.getItemCount() == 0) {
+            JOptionPane.showMessageDialog(parent,
+                    "Không có quản lý hoặc quản trị viên đang làm việc để chọn duyệt hủy.",
+                    "Không có người duyệt", JOptionPane.WARNING_MESSAGE);
+            return null;
+        }
+        cmbApprover.insertItemAt(new LuaChonDuLieu.Choice("", "— Chọn người duyệt hủy —"), 0);
+        cmbApprover.setSelectedIndex(0);
+
+        JPanel form = new JPanel(new GridBagLayout());
+        form.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+        GridBagConstraints c = new GridBagConstraints();
+        c.gridx = 0; c.weightx = 1; c.fill = GridBagConstraints.HORIZONTAL; c.anchor = GridBagConstraints.WEST;
+        c.insets = new Insets(4, 4, 4, 4);
+        c.gridy = 0; form.add(new JLabel("Lý do hủy phiếu:"), c);
+        c.gridy = 1; form.add(new JScrollPane(txtReason), c);
+        c.gridy = 2; form.add(new JLabel("Người duyệt hủy (quản lý/quản trị viên đang làm):"), c);
+        c.gridy = 3; form.add(cmbApprover, c);
+
+        while (true) {
+            int result = JOptionPane.showConfirmDialog(parent, form, "Hủy phiếu " + repairId,
+                    JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE);
+            if (result != JOptionPane.OK_OPTION) return null;
+            String reason = txtReason.getText().trim();
+            String approver = LuaChonDuLieu.id(cmbApprover);
+            if (reason.isBlank()) {
+                JOptionPane.showMessageDialog(parent, "Vui lòng nhập lý do hủy phiếu.", "Thiếu lý do hủy", JOptionPane.WARNING_MESSAGE);
+                continue;
+            }
+            if (approver == null || approver.isBlank()) {
+                JOptionPane.showMessageDialog(parent, "Vui lòng chọn người duyệt hủy.", "Chưa chọn người duyệt", JOptionPane.WARNING_MESSAGE);
+                continue;
+            }
+            return new CancellationDetails(reason, approver);
+        }
+    }
+
+    static String choose(Component parent, String owner, String field, String title) {
         String selected = chooseOptional(parent, owner, field, title);
         if (selected != null && selected.isBlank()) {
             JOptionPane.showMessageDialog(parent, "Vui lòng chọn " + NhanCot.forField(field).toLowerCase() + ".");
@@ -340,6 +405,7 @@ final class ThaoTacNghiepVu {
     }
 
     private static String chooseOptional(Component parent, String owner, String field, String title) {
+        // Với NhanVien, dùng một bảng khác để trường này được nhận diện là khóa ngoại.
         OChonThamChieu cmbValue = OChonThamChieu.create(owner.equals("NhanVien") ? "PhieuTiepNhan" : owner, field);
         if (cmbValue == null) return null;
         JDialog winChoose = new JDialog(SwingUtilities.getWindowAncestor(parent), title, Dialog.ModalityType.APPLICATION_MODAL);

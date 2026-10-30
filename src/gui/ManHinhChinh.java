@@ -128,7 +128,7 @@ public final class ManHinhChinh extends JFrame {
         return switch (s) {
             case "Phiếu tiếp nhận", "Phiếu kiểm tra", "Phiếu báo giá", "Phiếu sửa chữa", "Bảo hành", "Lịch nhắc bảo dưỡng" -> "NHÂN VIÊN KỸ THUẬT";
             case "Tồn kho", "Phiếu cấp phát phụ tùng", "Cấp phát phụ tùng", "Lịch sử sửa chữa" -> "NHÂN VIÊN KHO";
-            case "Hóa đơn", "Lịch sử tích điểm", "Khuyến mãi/Tích điểm", "Phụ tùng" -> "NHÂN VIÊN BÁN HÀNG";
+            case "Hóa đơn", "Lịch sử tích điểm", "Khuyến mãi/Tích điểm", "Bán phụ tùng", "Phụ tùng" -> "NHÂN VIÊN BÁN HÀNG";
             case "Nhà cung cấp", "Nhân viên", "Khách hàng", "Phương tiện", "Danh mục dịch vụ", "Danh mục phụ tùng", "Tài khoản", "Khuyến mãi", "Thống kê" -> "NHÂN VIÊN QUẢN LÝ";
             default -> null;
         };
@@ -137,18 +137,14 @@ public final class ManHinhChinh extends JFrame {
         addNavStrut(6);
         Color textColor = GiaoDien.MINT;
         Color expandedBg = new Color(0x1D3840);
-        JButton btnHeader = new JButton("  " + label) {
-            private static final long serialVersionUID = 1L;
-            @Override protected void paintComponent(Graphics g) {
-                Graphics2D q = (Graphics2D) g.create();
-                q.setColor((expanded || getModel().isRollover()) ? expandedBg : GiaoDien.NAV);
-                q.fillRect(0, 0, getWidth(), getHeight());
-                q.dispose();
-                super.paintComponent(g);
-            }
-        };
-        btnHeader.setLayout(new BorderLayout());
-        JLabel arrow = new JLabel(new Icon() {
+        JPanel row = new JPanel(new BorderLayout());
+        row.setOpaque(true);
+        row.setBackground(expanded ? expandedBg : GiaoDien.NAV);
+        row.setAlignmentX(Component.LEFT_ALIGNMENT);
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34));
+        row.setPreferredSize(new Dimension(232, 34));
+        JLabel title = GiaoDien.label("  " + label, 11, true, textColor);
+        JButton btnArrow = new JButton(new Icon() {
             public int getIconWidth(){ return 12; }
             public int getIconHeight(){ return 12; }
             public void paintIcon(Component c,Graphics g,int x,int y){
@@ -160,21 +156,16 @@ public final class ManHinhChinh extends JFrame {
                 q.dispose();
             }
         });
-        btnHeader.add(arrow, BorderLayout.EAST);
-        btnHeader.setHorizontalAlignment(SwingConstants.LEFT);
-        btnHeader.setAlignmentX(Component.LEFT_ALIGNMENT);
-        btnHeader.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34));
-        btnHeader.setPreferredSize(new Dimension(232, 34));
-        btnHeader.setFont(GiaoDien.font(11, true));
-        btnHeader.setFocusPainted(false);
-        btnHeader.setContentAreaFilled(false);
-        btnHeader.setBorder(new EmptyBorder(0, 8, 0, 14));
-        btnHeader.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        btnHeader.setBackground(expanded ? expandedBg : GiaoDien.NAV);
-        btnHeader.setForeground(textColor);
-        btnHeader.setOpaque(false);
-        btnHeader.setRolloverEnabled(true);
-        btnHeader.addActionListener(e -> {
+        btnArrow.setToolTipText((expanded ? "Thu gọn " : "Mở rộng ") + label);
+        btnArrow.getAccessibleContext().setAccessibleName((expanded ? "Thu gọn " : "Mở rộng ") + label);
+        btnArrow.setPreferredSize(new Dimension(30, 34));
+        btnArrow.setFocusPainted(false);
+        btnArrow.setContentAreaFilled(false);
+        btnArrow.setBorder(new EmptyBorder(0, 4, 0, 8));
+        btnArrow.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btnArrow.setBackground(row.getBackground());
+        btnArrow.setOpaque(false);
+        btnArrow.addActionListener(e -> {
             if (expandedSections.contains(label)) {
                 expandedSections.remove(label);
             } else {
@@ -182,7 +173,9 @@ public final class ManHinhChinh extends JFrame {
             }
             rebuildNavigation();
         });
-        pnlNav.add(btnHeader);
+        row.add(title, BorderLayout.CENTER);
+        row.add(btnArrow, BorderLayout.EAST);
+        pnlNav.add(row);
         addNavStrut(4);
     }
     private void duongPhanCach(){
@@ -304,7 +297,7 @@ public final class ManHinhChinh extends JFrame {
                 ? new ManHinhTongQuan(role, this, displayName)
                 : searchGroup!=null ? new ManHinhTimKiem(role,searchGroup)
                 : page.equals("Thống kê") ? new ManHinhThongKe()
-                : page.equals("Phụ tùng") ? new ManHinhBanPhuTung(employeeId)
+                : (page.equals("Bán phụ tùng") || page.equals("Phụ tùng")) ? new ManHinhBanPhuTung(employeeId)
                 : new ManHinhDuLieu(page, role, employeeId);
         if (view instanceof ManHinhBanPhuTung || view instanceof ManHinhDuLieu || view instanceof ManHinhTimKiem) {
             pnlBody.add(view,BorderLayout.CENTER);

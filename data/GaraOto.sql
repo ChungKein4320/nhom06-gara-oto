@@ -1,4 +1,5 @@
-
+﻿-- Tệp cài đặt tổng hợp: schema, dữ liệu mẫu và Migration_20261028_FixNghiepVu.sql đã gộp tại mục D.1.
+-- Với database mới, chỉ cần chạy một lần duy nhất file GaraOto.sql này.
 USE [master];
 GO
 IF DB_ID(N'GaraOto') IS NOT NULL
@@ -19,21 +20,21 @@ GO
 -- A. TẠO SCHEMA, RÀNG BUỘC VÀ SEQUENCE. Không có ON DELETE CASCADE.
 BEGIN TRY
     BEGIN TRANSACTION;
-CREATE SEQUENCE dbo.[Seq_NhanVien] AS int START WITH 5 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
+CREATE SEQUENCE dbo.[Seq_NhanVien] AS int START WITH 6 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
 CREATE SEQUENCE dbo.[Seq_KhachHang] AS int START WITH 61 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
 CREATE SEQUENCE dbo.[Seq_DichVu] AS int START WITH 21 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
-CREATE SEQUENCE dbo.[Seq_PhuTung] AS int START WITH 41 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
+CREATE SEQUENCE dbo.[Seq_PhuTung] AS int START WITH 51 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
 CREATE SEQUENCE dbo.[Seq_NhaCungCap] AS int START WITH 13 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
-CREATE SEQUENCE dbo.[Seq_PhuongThucThanhToan] AS int START WITH 3 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
-CREATE SEQUENCE dbo.[Seq_TaiKhoan] AS int START WITH 5 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
-CREATE SEQUENCE dbo.[Seq_TonKho] AS int START WITH 41 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
+CREATE SEQUENCE dbo.[Seq_PhuongThucThanhToan] AS int START WITH 5 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
+CREATE SEQUENCE dbo.[Seq_TaiKhoan] AS int START WITH 6 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
+CREATE SEQUENCE dbo.[Seq_TonKho] AS int START WITH 51 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
 CREATE SEQUENCE dbo.[Seq_MaGiamGia] AS int START WITH 37 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
 CREATE SEQUENCE dbo.[Seq_PhieuTiepNhan] AS int START WITH 101 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
 CREATE SEQUENCE dbo.[Seq_PhieuKiemTra] AS int START WITH 91 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
 CREATE SEQUENCE dbo.[Seq_PhieuBaoGia] AS int START WITH 81 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
 CREATE SEQUENCE dbo.[Seq_PhieuSuaChua] AS int START WITH 71 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
-CREATE SEQUENCE dbo.[Seq_YeuCauNhapKho] AS int START WITH 4 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
-CREATE SEQUENCE dbo.[Seq_PhieuNhapKho] AS int START WITH 37 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
+CREATE SEQUENCE dbo.[Seq_YeuCauNhapKho] AS int START WITH 6 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
+CREATE SEQUENCE dbo.[Seq_PhieuNhapKho] AS int START WITH 3 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
 CREATE SEQUENCE dbo.[Seq_HoaDon] AS int START WITH 31 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
 CREATE SEQUENCE dbo.[Seq_LichBaoHanh] AS int START WITH 21 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
 CREATE SEQUENCE dbo.[Seq_LichNhacBaoDuong] AS int START WITH 41 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
@@ -79,6 +80,7 @@ CREATE TABLE dbo.[KhachHang] (
 CREATE TABLE dbo.[PhuongTien] (
     [VIN] varchar(17) NOT NULL,
     [bienSo] varchar(8) NOT NULL,
+    [maKhachHangChuHienTai] varchar(5) NULL,
     [hangXe] nvarchar(100) NOT NULL,
     [dongXe] nvarchar(100) NOT NULL,
     [mauXe] nvarchar(50) NOT NULL,
@@ -118,12 +120,12 @@ CREATE TABLE dbo.[PhuTung] (
     [tenPhuTung] nvarchar(150) NOT NULL,
     [donGia] decimal(18,2) NOT NULL,
     [loaiPhuTung] nvarchar(100) NOT NULL,
+    [thoiHanBaoHanh] int NOT NULL CONSTRAINT [DF_PhuTung_ThoiHanBaoHanh] DEFAULT (0),
     CONSTRAINT [PK_PhuTung] PRIMARY KEY ([maPhuTung]),
     CONSTRAINT [CK_PhuTung_Ma] CHECK (DATALENGTH([maPhuTung]) = 5 AND [maPhuTung] COLLATE Latin1_General_100_BIN2 LIKE 'PT[0-9][0-9][0-9]'),
     CONSTRAINT [CK_PhuTung_Ten] CHECK (LEN(LTRIM(RTRIM([tenPhuTung]))) > 0),
     CONSTRAINT [CK_PhuTung_Gia] CHECK (donGia>=0),
-    CONSTRAINT [CK_PhuTung_Loai] CHECK (LEN(LTRIM(RTRIM([loaiPhuTung]))) > 0),
-    CONSTRAINT [CK_PhuTung_PT000] CHECK ([maPhuTung]<>'PT000' OR ([tenPhuTung]=N'Không sử dụng phụ tùng' AND [donGia]=0 AND [loaiPhuTung]=N'Hệ thống'))
+    CONSTRAINT [CK_PhuTung_Loai] CHECK (LEN(LTRIM(RTRIM([loaiPhuTung]))) > 0)
 );
 
 -- 06. NhaCungCap
@@ -187,6 +189,8 @@ CREATE TABLE dbo.[MaGiamGia] (
     [ngayTao] datetime2(0) NOT NULL,
     [ngayHetHan] datetime2(0) NOT NULL,
     [trangThai] nvarchar(50) NOT NULL,
+    [mocDiem] int NULL,
+    [ngayBatDauChuKy] datetime2(0) NULL,
     CONSTRAINT [PK_MaGiamGia] PRIMARY KEY ([maGiamGia]),
     CONSTRAINT [UQ_MaGiamGia_MaKhachHang] UNIQUE ([maGiamGia], [maKhachHang]),
     CONSTRAINT [CK_MaGiamGia_Ma] CHECK (DATALENGTH([maGiamGia]) = 6 AND [maGiamGia] COLLATE Latin1_General_100_BIN2 LIKE 'MGG[0-9][0-9][0-9]'),
@@ -277,7 +281,7 @@ CREATE TABLE dbo.[ChiTietPhieuBaoGia] (
     CONSTRAINT [CK_ChiTietPhieuBaoGia_SoLuong] CHECK (([maPhuTung]='PT000' AND soLuongPhuTung=0) OR ([maPhuTung]<>'PT000' AND soLuongPhuTung>0)),
     CONSTRAINT [CK_ChiTietPhieuBaoGia_DonGia] CHECK (donGiaPhuTung>=0 AND ([maPhuTung]<>'PT000' OR donGiaPhuTung=0)),
     CONSTRAINT [CK_ChiTietPhieuBaoGia_NhanCong] CHECK (chiPhiNhanCong>=0),
-    CONSTRAINT [CK_ChiTietPhieuBaoGia_TrangThai] CHECK ([trangThai] IN (N'Chờ xác nhận', N'Chờ sửa chữa', N'Thiếu phụ tùng + Chờ xác nhận'))
+    CONSTRAINT [CK_ChiTietPhieuBaoGia_TrangThai] CHECK ([trangThai] IN (N'Chờ xác nhận', N'Chờ sửa chữa', N'Thiếu phụ tùng', N'Thiếu phụ tùng + Chờ xác nhận'))
 );
 
 -- 17. PhieuSuaChua
@@ -287,9 +291,11 @@ CREATE TABLE dbo.[PhieuSuaChua] (
     [maKhachHang] varchar(5) NOT NULL,
     [VIN] varchar(17) NOT NULL,
     [maNhanVien] varchar(5) NOT NULL,
+    [maNguoiDuyetHuy] varchar(5) NULL,
     [ngayLap] datetime2(0) NOT NULL,
     [ngayHoanThanh] datetime2(0) NULL,
     [trangThai] nvarchar(50) NOT NULL,
+    [lyDoHuy] nvarchar(500) NULL,
     CONSTRAINT [PK_PhieuSuaChua] PRIMARY KEY ([maPSC]),
     CONSTRAINT [UQ_PhieuSuaChua_HoSo] UNIQUE ([maPSC], [maKhachHang], [VIN]),
     CONSTRAINT [CK_PhieuSuaChua_Ma] CHECK (DATALENGTH([maPSC]) = 6 AND [maPSC] COLLATE Latin1_General_100_BIN2 LIKE 'PSC[0-9][0-9][0-9]'),
@@ -304,13 +310,21 @@ CREATE TABLE dbo.[ChiTietPhieuSuaChua] (
     [maPhuTung] varchar(5) NOT NULL,
     [trangThaiHangMuc] nvarchar(50) NOT NULL,
     [soLuongPhuTung] int NOT NULL,
+    [soLuongCapPhat] int NOT NULL CONSTRAINT [DF_ChiTietPSC_CapPhat] DEFAULT (0),
+    [soLuongSuDung] int NOT NULL CONSTRAINT [DF_ChiTietPSC_SuDung] DEFAULT (0),
+    [soLuongHoanTra] int NOT NULL CONSTRAINT [DF_ChiTietPSC_HoanTra] DEFAULT (0),
+    [ngayCapPhat] datetime2(0) NULL,
+    [maNhanVienCapPhat] varchar(5) NULL,
+    [ngayHoanTra] datetime2(0) NULL,
+    [maNhanVienXacNhanHoanTra] varchar(5) NULL,
     [ketQuaNghiemThu] nvarchar(20) NOT NULL,
     [ngayBatDauBaoHanh] datetime2(0) NULL,
     [thoiHanBaoHanh] int NOT NULL,
     [ngayHetHanBaoHanh] datetime2(0) NULL,
     CONSTRAINT [PK_ChiTietPhieuSuaChua] PRIMARY KEY ([maPSC], [maDichVu], [maPhuTung]),
-    CONSTRAINT [CK_ChiTietPhieuSuaChua_TrangThai] CHECK ([trangThaiHangMuc] IN (N'Đang sửa chữa', N'Thiếu phụ tùng', N'Hoàn thành')),
+    CONSTRAINT [CK_ChiTietPhieuSuaChua_TrangThai] CHECK ([trangThaiHangMuc] IN (N'Chờ sửa chữa', N'Đang sửa chữa', N'Thiếu phụ tùng', N'Hoàn thành')),
     CONSTRAINT [CK_ChiTietPhieuSuaChua_SoLuong] CHECK (([maPhuTung]='PT000' AND soLuongPhuTung=0) OR ([maPhuTung]<>'PT000' AND soLuongPhuTung>0)),
+    CONSTRAINT [CK_ChiTietPSC_DoiSoat] CHECK (soLuongCapPhat>=0 AND soLuongSuDung>=0 AND soLuongHoanTra>=0 AND soLuongSuDung+soLuongHoanTra<=soLuongCapPhat AND soLuongCapPhat<=soLuongPhuTung AND (soLuongCapPhat=0 OR (ngayCapPhat IS NOT NULL AND maNhanVienCapPhat IS NOT NULL)) AND (soLuongHoanTra=0 OR (ngayHoanTra IS NOT NULL AND maNhanVienXacNhanHoanTra IS NOT NULL))),
     CONSTRAINT [CK_ChiTietPhieuSuaChua_KetQua] CHECK ([ketQuaNghiemThu] IN (N'Đạt', N'Không đạt')),
     CONSTRAINT [CK_ChiTietPhieuSuaChua_ThoiHan] CHECK (thoiHanBaoHanh>=0),
     CONSTRAINT [CK_ChiTietPhieuSuaChua_NgayBaoHanh] CHECK ((ngayBatDauBaoHanh IS NULL AND ngayHetHanBaoHanh IS NULL) OR (ngayBatDauBaoHanh IS NOT NULL AND ngayHetHanBaoHanh IS NOT NULL AND ngayHetHanBaoHanh>=ngayBatDauBaoHanh))
@@ -419,6 +433,8 @@ CREATE TABLE dbo.[ChiTietHoaDon] (
 CREATE TABLE dbo.[LichBaoHanh] (
     [maLBH] varchar(6) NOT NULL CONSTRAINT [DF_LichBaoHanh_Ma] DEFAULT ('LBH' + RIGHT('000' + CONVERT(varchar(3), NEXT VALUE FOR dbo.[Seq_LichBaoHanh]),3)),
     [maPSC] varchar(6) NOT NULL,
+    [maDichVu] varchar(5) NULL,
+    [maPhuTung] varchar(5) NULL,
     [maNhanVien] varchar(5) NOT NULL,
     [maKhachHang] varchar(5) NOT NULL,
     [VIN] varchar(17) NOT NULL,
@@ -428,6 +444,7 @@ CREATE TABLE dbo.[LichBaoHanh] (
     CONSTRAINT [PK_LichBaoHanh] PRIMARY KEY ([maLBH]),
     CONSTRAINT [CK_LichBaoHanh_Ma] CHECK (DATALENGTH([maLBH]) = 6 AND [maLBH] COLLATE Latin1_General_100_BIN2 LIKE 'LBH[0-9][0-9][0-9]'),
     CONSTRAINT [CK_LichBaoHanh_Ngay] CHECK (ngayXuLy<=SYSDATETIME()),
+    CONSTRAINT [CK_LichBaoHanh_HangMuc] CHECK ((maDichVu IS NULL AND maPhuTung IS NULL) OR (maDichVu IS NOT NULL AND maPhuTung IS NOT NULL)),
     CONSTRAINT [CK_LichBaoHanh_KetQua] CHECK (LEN(LTRIM(RTRIM([ketQuaXuLy]))) > 0)
 );
 
@@ -452,6 +469,7 @@ CREATE TABLE dbo.[LichSuTichDiem] (
     [maKhachHang] varchar(5) NOT NULL,
     [maHoaDon] varchar(5) NOT NULL,
     [ngayTichDiem] datetime2(0) NOT NULL,
+    [ngayHetHan] datetime2(0) NULL,
     [soDiem] int NOT NULL,
     [lyDo] nvarchar(255) NOT NULL,
     CONSTRAINT [PK_LichSuTichDiem] PRIMARY KEY ([maLichSuTD]),
@@ -460,8 +478,10 @@ CREATE TABLE dbo.[LichSuTichDiem] (
     CONSTRAINT [CK_LichSuTichDiem_Diem] CHECK (soDiem>=0),
     CONSTRAINT [CK_LichSuTichDiem_LyDo] CHECK (LEN(LTRIM(RTRIM([lyDo]))) > 0)
 );
+
 ALTER TABLE dbo.[TaiKhoan] WITH CHECK ADD CONSTRAINT [FK_TaiKhoan_NhanVien] FOREIGN KEY ([maNhanVien]) REFERENCES dbo.[NhanVien] ([maNhanVien]);
 ALTER TABLE dbo.[TonKho] WITH CHECK ADD CONSTRAINT [FK_TonKho_PhuTung] FOREIGN KEY ([maPhuTung]) REFERENCES dbo.[PhuTung] ([maPhuTung]);
+ALTER TABLE dbo.[PhuongTien] WITH CHECK ADD CONSTRAINT [FK_PhuongTien_ChuHienTai] FOREIGN KEY ([maKhachHangChuHienTai]) REFERENCES dbo.[KhachHang] ([maKhachHang]);
 ALTER TABLE dbo.[MaGiamGia] WITH CHECK ADD CONSTRAINT [FK_MaGiamGia_KhachHang] FOREIGN KEY ([maKhachHang]) REFERENCES dbo.[KhachHang] ([maKhachHang]);
 ALTER TABLE dbo.[PhieuTiepNhan] WITH CHECK ADD CONSTRAINT [FK_PhieuTiepNhan_KhachHang] FOREIGN KEY ([maKhachHang]) REFERENCES dbo.[KhachHang] ([maKhachHang]);
 ALTER TABLE dbo.[PhieuTiepNhan] WITH CHECK ADD CONSTRAINT [FK_PhieuTiepNhan_NhanVien] FOREIGN KEY ([maNhanVien]) REFERENCES dbo.[NhanVien] ([maNhanVien]);
@@ -481,9 +501,13 @@ ALTER TABLE dbo.[ChiTietPhieuBaoGia] WITH CHECK ADD CONSTRAINT [FK_ChiTietPhieuB
 ALTER TABLE dbo.[PhieuSuaChua] WITH CHECK ADD CONSTRAINT [FK_PhieuSuaChua_HoSoBaoGia] FOREIGN KEY ([maBaoGia], [maKhachHang], [VIN]) REFERENCES dbo.[PhieuBaoGia] ([maBaoGia], [maKhachHang], [VIN]);
 ALTER TABLE dbo.[PhieuSuaChua] WITH CHECK ADD CONSTRAINT [FK_PhieuSuaChua_KhachHang] FOREIGN KEY ([maKhachHang]) REFERENCES dbo.[KhachHang] ([maKhachHang]);
 ALTER TABLE dbo.[PhieuSuaChua] WITH CHECK ADD CONSTRAINT [FK_PhieuSuaChua_NhanVien] FOREIGN KEY ([maNhanVien]) REFERENCES dbo.[NhanVien] ([maNhanVien]);
+ALTER TABLE dbo.[PhieuSuaChua] WITH CHECK ADD CONSTRAINT [FK_PhieuSuaChua_NguoiDuyetHuy] FOREIGN KEY ([maNguoiDuyetHuy]) REFERENCES dbo.[NhanVien] ([maNhanVien]);
 ALTER TABLE dbo.[ChiTietPhieuSuaChua] WITH CHECK ADD CONSTRAINT [FK_ChiTietPhieuSuaChua_PhieuSuaChua] FOREIGN KEY ([maPSC]) REFERENCES dbo.[PhieuSuaChua] ([maPSC]);
 ALTER TABLE dbo.[ChiTietPhieuSuaChua] WITH CHECK ADD CONSTRAINT [FK_ChiTietPhieuSuaChua_DichVu] FOREIGN KEY ([maDichVu]) REFERENCES dbo.[DichVu] ([maDichVu]);
 ALTER TABLE dbo.[ChiTietPhieuSuaChua] WITH CHECK ADD CONSTRAINT [FK_ChiTietPhieuSuaChua_PhuTung] FOREIGN KEY ([maPhuTung]) REFERENCES dbo.[PhuTung] ([maPhuTung]);
+ALTER TABLE dbo.[ChiTietPhieuSuaChua] WITH CHECK ADD CONSTRAINT [FK_ChiTietPSC_NhanVienCapPhat] FOREIGN KEY ([maNhanVienCapPhat]) REFERENCES dbo.[NhanVien] ([maNhanVien]);
+ALTER TABLE dbo.[ChiTietPhieuSuaChua] WITH CHECK ADD CONSTRAINT [FK_ChiTietPSC_NhanVienHoanTra] FOREIGN KEY ([maNhanVienXacNhanHoanTra]) REFERENCES dbo.[NhanVien] ([maNhanVien]);
+ALTER TABLE dbo.[LichBaoHanh] WITH CHECK ADD CONSTRAINT [FK_LichBaoHanh_HangMuc] FOREIGN KEY ([maPSC],[maDichVu],[maPhuTung]) REFERENCES dbo.[ChiTietPhieuSuaChua] ([maPSC],[maDichVu],[maPhuTung]);
 ALTER TABLE dbo.[YeuCauNhapKho] WITH CHECK ADD CONSTRAINT [FK_YeuCauNhapKho_NhaCungCap] FOREIGN KEY ([maNCC]) REFERENCES dbo.[NhaCungCap] ([maNCC]);
 ALTER TABLE dbo.[YeuCauNhapKho] WITH CHECK ADD CONSTRAINT [FK_YeuCauNhapKho_NhanVien] FOREIGN KEY ([maNhanVien]) REFERENCES dbo.[NhanVien] ([maNhanVien]);
 ALTER TABLE dbo.[YeuCauNhapKho] WITH CHECK ADD CONSTRAINT [FK_YeuCauNhapKho_NhanVienDuyet] FOREIGN KEY ([maNhanVienDuyet]) REFERENCES dbo.[NhanVien] ([maNhanVien]);
@@ -522,6 +546,7 @@ CREATE INDEX IX_HoaDon_KhachHang_Ngay ON dbo.HoaDon(maKhachHang,ngayLap);
 CREATE INDEX IX_HoaDon_PhieuSuaChua ON dbo.HoaDon(maPSC);
 CREATE INDEX IX_LichNhac_Ngay_TrangThai ON dbo.LichNhacBaoDuong(ngayNhac,trangThai);
 CREATE INDEX IX_LichSuTichDiem_KhachHang ON dbo.LichSuTichDiem(maKhachHang,ngayTichDiem);
+CREATE UNIQUE INDEX UX_MaGiamGia_CoDiem ON dbo.MaGiamGia(maKhachHang,ngayBatDauChuKy,mocDiem) WHERE mocDiem IS NOT NULL AND ngayBatDauChuKy IS NOT NULL;
     COMMIT TRANSACTION;
 END TRY
 BEGIN CATCH
@@ -636,7 +661,7 @@ FROM dbo.HoaDon h;
 GO
 CREATE VIEW dbo.vw_KhachHangDiemTichLuy AS
 SELECT k.maKhachHang,k.hoTenKH,COALESCE(SUM(CONVERT(bigint,l.soDiem)),0) AS tongDiemTichLuy
-FROM dbo.KhachHang k LEFT JOIN dbo.LichSuTichDiem l ON l.maKhachHang=k.maKhachHang
+FROM dbo.KhachHang k LEFT JOIN dbo.LichSuTichDiem l ON l.maKhachHang=k.maKhachHang AND l.ngayHetHan>SYSDATETIME()
 GROUP BY k.maKhachHang,k.hoTenKH;
 GO
 CREATE VIEW dbo.vw_NhanVienHienThi AS
@@ -649,7 +674,7 @@ DECLARE @NgayMau datetime2(0)=CONVERT(date,SYSDATETIME());
 BEGIN TRY
     BEGIN TRANSACTION;
 
--- NhanVien: 4 thành viên
+-- NhanVien: 4 thành viên và 1 admin
 INSERT INTO dbo.NhanVien
     (maNhanVien, hoTenNV, ngaySinh, soDienThoai, email,
      diaChi, vaiTro, gioiTinh, trangThai)
@@ -676,66 +701,66 @@ VALUES
 -- KhachHang: 60 bản ghi
 INSERT INTO dbo.[KhachHang] ([maKhachHang], [hoTenKH], [soDienThoai], [gioiTinh], [email], [diaChi])
 VALUES
-    (N'KH001', N'Nguyễn Văn An', N'0522000001', 1, N'kh001@example.com', N'21 Lê Lợi, Long An'),
-    (N'KH002', N'Nguyễn Ngọc Mai', N'0722000002', 0, N'kh002@example.com', N'22 Lê Lợi, Cần Thơ'),
-    (N'KH003', N'Trần Minh Đức', N'0822000003', 1, N'kh003@example.com', N'23 Lê Lợi, Khánh Hòa'),
-    (N'KH004', N'Trần Thị Lan', N'0922000004', 0, N'kh004@example.com', N'24 Lê Lợi, TP. Hồ Chí Minh'),
-    (N'KH005', N'Lê Quốc Bảo', N'0322000005', 1, N'kh005@example.com', N'25 Lê Lợi, Long An'),
-    (N'KH006', N'Lê Thu Hà', N'0522000006', 0, N'kh006@example.com', N'26 Lê Lợi, Cần Thơ'),
-    (N'KH007', N'Phạm Gia Huy', N'0722000007', 1, N'kh007@example.com', N'27 Lê Lợi, Khánh Hòa'),
-    (N'KH008', N'Phạm Bảo Ngọc', N'0822000008', 0, N'kh008@example.com', N'28 Lê Lợi, TP. Hồ Chí Minh'),
-    (N'KH009', N'Hoàng Tuấn Kiệt', N'0922000009', 1, N'kh009@example.com', N'29 Lê Lợi, Long An'),
-    (N'KH010', N'Hoàng Minh Anh', N'0322000010', 0, N'kh010@example.com', NULL),
-    (N'KH011', N'Võ Thanh Tùng', N'0522000011', 1, N'kh011@example.com', N'31 Lê Lợi, Khánh Hòa'),
-    (N'KH012', N'Võ Thanh Thảo', N'0722000012', 0, N'kh012@example.com', N'32 Lê Lợi, TP. Hồ Chí Minh'),
-    (N'KH013', N'Đặng Hữu Phúc', N'0822000013', 1, N'kh013@example.com', N'33 Lê Lợi, Long An'),
-    (N'KH014', N'Đặng Kim Chi', N'0922000014', 0, N'kh014@example.com', N'34 Lê Lợi, Cần Thơ'),
-    (N'KH015', N'Bùi Trung Hiếu', N'0322000015', 1, N'kh015@example.com', N'35 Lê Lợi, Khánh Hòa'),
-    (N'KH016', N'Bùi Ngọc Hân', N'0522000016', 0, N'kh016@example.com', N'36 Lê Lợi, TP. Hồ Chí Minh'),
-    (N'KH017', N'Đỗ Quang Vinh', N'0722000017', 1, N'kh017@example.com', N'37 Lê Lợi, Long An'),
-    (N'KH018', N'Đỗ Phương Linh', N'0822000018', 0, N'kh018@example.com', N'38 Lê Lợi, Cần Thơ'),
-    (N'KH019', N'Hồ Nhật Nam', N'0922000019', 1, N'kh019@example.com', N'39 Lê Lợi, Khánh Hòa'),
-    (N'KH020', N'Hồ Thùy Dung', N'0322000020', 0, N'kh020@example.com', NULL),
-    (N'KH021', N'Dương Anh Khoa', N'0522000021', 1, N'kh021@example.com', N'41 Lê Lợi, Long An'),
-    (N'KH022', N'Dương Khánh Vy', N'0722000022', 0, N'kh022@example.com', N'42 Lê Lợi, Cần Thơ'),
-    (N'KH023', N'Mai Thành Đạt', N'0822000023', 1, N'kh023@example.com', N'43 Lê Lợi, Khánh Hòa'),
-    (N'KH024', N'Mai Diệu Nhi', N'0922000024', 0, N'kh024@example.com', N'44 Lê Lợi, TP. Hồ Chí Minh'),
-    (N'KH025', N'Nguyễn Văn An A', N'0322000025', 1, N'kh025@example.com', N'45 Lê Lợi, Long An'),
-    (N'KH026', N'Nguyễn Ngọc Mai A', N'0522000026', 0, N'kh026@example.com', N'46 Lê Lợi, Cần Thơ'),
-    (N'KH027', N'Trần Minh Đức A', N'0722000027', 1, N'kh027@example.com', N'47 Lê Lợi, Khánh Hòa'),
-    (N'KH028', N'Trần Thị Lan A', N'0822000028', 0, N'kh028@example.com', N'48 Lê Lợi, TP. Hồ Chí Minh'),
-    (N'KH029', N'Lê Quốc Bảo A', N'0922000029', 1, N'kh029@example.com', N'49 Lê Lợi, Long An'),
-    (N'KH030', N'Lê Thu Hà A', N'0322000030', 0, N'kh030@example.com', NULL),
-    (N'KH031', N'Phạm Gia Huy A', N'0522000031', 1, N'kh031@example.com', N'51 Lê Lợi, Khánh Hòa'),
-    (N'KH032', N'Phạm Bảo Ngọc A', N'0722000032', 0, N'kh032@example.com', N'52 Lê Lợi, TP. Hồ Chí Minh'),
-    (N'KH033', N'Hoàng Tuấn Kiệt A', N'0822000033', 1, N'kh033@example.com', N'53 Lê Lợi, Long An'),
-    (N'KH034', N'Hoàng Minh Anh A', N'0922000034', 0, N'kh034@example.com', N'54 Lê Lợi, Cần Thơ'),
-    (N'KH035', N'Võ Thanh Tùng A', N'0322000035', 1, N'kh035@example.com', N'55 Lê Lợi, Khánh Hòa'),
-    (N'KH036', N'Võ Thanh Thảo A', N'0522000036', 0, N'kh036@example.com', N'56 Lê Lợi, TP. Hồ Chí Minh'),
-    (N'KH037', N'Đặng Hữu Phúc A', N'0722000037', 1, N'kh037@example.com', N'57 Lê Lợi, Long An'),
-    (N'KH038', N'Đặng Kim Chi A', N'0822000038', 0, N'kh038@example.com', N'58 Lê Lợi, Cần Thơ'),
-    (N'KH039', N'Bùi Trung Hiếu A', N'0922000039', 1, N'kh039@example.com', N'59 Lê Lợi, Khánh Hòa'),
-    (N'KH040', N'Bùi Ngọc Hân A', N'0322000040', 0, N'kh040@example.com', NULL),
-    (N'KH041', N'Đỗ Quang Vinh A', N'0522000041', 1, N'kh041@example.com', N'61 Lê Lợi, Long An'),
-    (N'KH042', N'Đỗ Phương Linh A', N'0722000042', 0, N'kh042@example.com', N'62 Lê Lợi, Cần Thơ'),
-    (N'KH043', N'Hồ Nhật Nam A', N'0822000043', 1, N'kh043@example.com', N'63 Lê Lợi, Khánh Hòa'),
-    (N'KH044', N'Hồ Thùy Dung A', N'0922000044', 0, N'kh044@example.com', N'64 Lê Lợi, TP. Hồ Chí Minh'),
-    (N'KH045', N'Dương Anh Khoa A', N'0322000045', 1, N'kh045@example.com', N'65 Lê Lợi, Long An'),
-    (N'KH046', N'Dương Khánh Vy A', N'0522000046', 0, N'kh046@example.com', N'66 Lê Lợi, Cần Thơ'),
-    (N'KH047', N'Mai Thành Đạt A', N'0722000047', 1, N'kh047@example.com', N'67 Lê Lợi, Khánh Hòa'),
-    (N'KH048', N'Mai Diệu Nhi A', N'0822000048', 0, N'kh048@example.com', N'68 Lê Lợi, TP. Hồ Chí Minh'),
-    (N'KH049', N'Nguyễn Văn An B', N'0922000049', 1, N'kh049@example.com', N'69 Lê Lợi, Long An'),
-    (N'KH050', N'Nguyễn Ngọc Mai B', N'0322000050', 0, N'kh050@example.com', NULL),
-    (N'KH051', N'Trần Minh Đức B', N'0522000051', 1, N'kh051@example.com', N'71 Lê Lợi, Khánh Hòa'),
-    (N'KH052', N'Trần Thị Lan B', N'0722000052', 0, N'kh052@example.com', N'72 Lê Lợi, TP. Hồ Chí Minh'),
-    (N'KH053', N'Lê Quốc Bảo B', N'0822000053', 1, N'kh053@example.com', N'73 Lê Lợi, Long An'),
-    (N'KH054', N'Lê Thu Hà B', N'0922000054', 0, N'kh054@example.com', N'74 Lê Lợi, Cần Thơ'),
-    (N'KH055', N'Phạm Gia Huy B', N'0322000055', 1, N'kh055@example.com', N'75 Lê Lợi, Khánh Hòa'),
-    (N'KH056', N'Phạm Bảo Ngọc B', N'0522000056', 0, N'kh056@example.com', N'76 Lê Lợi, TP. Hồ Chí Minh'),
-    (N'KH057', N'Hoàng Tuấn Kiệt B', N'0722000057', 1, N'kh057@example.com', N'77 Lê Lợi, Long An'),
-    (N'KH058', N'Hoàng Minh Anh B', N'0822000058', 0, N'kh058@example.com', N'78 Lê Lợi, Cần Thơ'),
-    (N'KH059', N'Võ Thanh Tùng B', N'0922000059', 1, N'kh059@example.com', N'79 Lê Lợi, Khánh Hòa'),
-    (N'KH060', N'Võ Thanh Thảo B', N'0322000060', 0, N'kh060@example.com', NULL);
+    (N'KH001', N'Nguyễn Văn An', N'0522000001', 1, N'an.nguyen@gmail.com', N'21 Lê Lợi, Quận 1, TP. Hồ Chí Minh'),
+    (N'KH002', N'Nguyễn Ngọc Mai', N'0722000002', 0, N'mai.nguyen@gmail.com', N'15 Trần Phú, Ninh Kiều, Cần Thơ'),
+    (N'KH003', N'Trần Minh Đức', N'0822000003', 1, N'duc.tran@gmail.com', N'88 Quang Trung, Nha Trang, Khánh Hòa'),
+    (N'KH004', N'Trần Thị Lan', N'0922000004', 0, N'lan.tran@gmail.com', N'104 Nguyễn Trãi, Quận 5, TP. Hồ Chí Minh'),
+    (N'KH005', N'Lê Quốc Bảo', N'0322000005', 1, N'bao.le@gmail.com', N'52 Hùng Vương, Tân An, Long An'),
+    (N'KH006', N'Lê Thu Hà', N'0522000006', 0, N'ha.le@gmail.com', N'36 Đường 30 Tháng 4, Ninh Kiều, Cần Thơ'),
+    (N'KH007', N'Phạm Gia Huy', N'0722000007', 1, N'huy.pham@gmail.com', N'74 Thống Nhất, Nha Trang, Khánh Hòa'),
+    (N'KH008', N'Phạm Bảo Ngọc', N'0822000008', 0, N'ngoc.pham@gmail.com', N'28 Cách Mạng Tháng 8, Quận 3, TP. Hồ Chí Minh'),
+    (N'KH009', N'Hoàng Tuấn Kiệt', N'0922000009', 1, N'kiet.hoang@gmail.com', N'12 Nguyễn Huệ, Bến Lức, Long An'),
+    (N'KH010', N'Hoàng Minh Anh', N'0322000010', 0, N'anh.hoang@gmail.com', NULL),
+    (N'KH011', N'Võ Thanh Tùng', N'0522000011', 1, N'tung.vo@gmail.com', N'63 Lê Thánh Tôn, Nha Trang, Khánh Hòa'),
+    (N'KH012', N'Võ Thanh Thảo', N'0722000012', 0, N'thao.vo@gmail.com', N'145 Hoàng Diệu, Quận 4, TP. Hồ Chí Minh'),
+    (N'KH013', N'Đặng Hữu Phúc', N'0822000013', 1, N'phuc.dang@gmail.com', N'99 Trương Định, Tân An, Long An'),
+    (N'KH014', N'Đặng Kim Chi', N'0922000014', 0, N'chi.dang@gmail.com', N'42 Mậu Thân, Ninh Kiều, Cần Thơ'),
+    (N'KH015', N'Bùi Trung Hiếu', N'0322000015', 1, N'hieu.bui@gmail.com', N'27 Yersin, Nha Trang, Khánh Hòa'),
+    (N'KH016', N'Bùi Ngọc Hân', N'0522000016', 0, N'han.bui@gmail.com', N'83 Nguyễn Thị Minh Khai, Quận 1, TP. Hồ Chí Minh'),
+    (N'KH017', N'Đỗ Quang Vinh', N'0722000017', 1, N'vinh.do@gmail.com', N'17 Mai Thị Tốt, Tân An, Long An'),
+    (N'KH018', N'Đỗ Phương Linh', N'0822000018', 0, N'linh.do@gmail.com', N'58 Nguyễn Văn Cừ, Ninh Kiều, Cần Thơ'),
+    (N'KH019', N'Hồ Nhật Nam', N'0922000019', 1, N'nam.ho@gmail.com', N'110 Thái Nguyên, Nha Trang, Khánh Hòa'),
+    (N'KH020', N'Hồ Thùy Dung', N'0322000020', 0, N'dung.ho@gmail.com', NULL),
+    (N'KH021', N'Dương Anh Khoa', N'0522000021', 1, N'khoa.duong@gmail.com', N'64 Châu Thị Kim, Tân An, Long An'),
+    (N'KH022', N'Dương Khánh Vy', N'0722000022', 0, N'vy.duong@gmail.com', N'77 Hòa Bình, Ninh Kiều, Cần Thơ'),
+    (N'KH023', N'Mai Thành Đạt', N'0822000023', 1, N'dat.mai@gmail.com', N'39 Hoàng Hoa Thám, Nha Trang, Khánh Hòa'),
+    (N'KH024', N'Mai Diệu Nhi', N'0922000024', 0, N'nhi.mai@gmail.com', N'188 Nguyễn Văn Trỗi, Phú Nhuận, TP. Hồ Chí Minh'),
+    (N'KH025', N'Phan Trọng Tấn', N'0322000025', 1, N'tan.phan@gmail.com', N'128 Nguyễn Trãi, Quận 1, TP. Hồ Chí Minh'),
+    (N'KH026', N'Trịnh Thúy Nga', N'0522000026', 0, N'nga.trinh@gmail.com', N'45 Hai Bà Trưng, Quận 3, TP. Hồ Chí Minh'),
+    (N'KH027', N'Lương Thế Vinh', N'0722000027', 1, N'vinh.luong@gmail.com', N'89 Phan Xích Long, Phú Nhuận, TP. Hồ Chí Minh'),
+    (N'KH028', N'Cao Hồng Ngọc', N'0822000028', 0, N'ngoc.cao@gmail.com', N'67 Võ Văn Ngân, TP. Thủ Đức, TP. Hồ Chí Minh'),
+    (N'KH029', N'Tạ Quang Bửu', N'0922000029', 1, N'buu.ta@gmail.com', N'34 Hoàng Hoa Thám, Bình Thạnh, TP. Hồ Chí Minh'),
+    (N'KH030', N'Vũ Thu Thủy', N'0322000030', 0, N'thuy.vu@gmail.com', NULL),
+    (N'KH031', N'Đoàn Nhật Minh', N'0522000031', 1, N'minh.doan@gmail.com', N'15 Trần Hưng Đạo, Quận 5, TP. Hồ Chí Minh'),
+    (N'KH032', N'Huỳnh Mỹ Duyên', N'0722000032', 0, N'duyen.huynh@gmail.com', N'204 Cộng Hòa, Tân Bình, TP. Hồ Chí Minh'),
+    (N'KH033', N'Lâm Vĩnh Hưng', N'0822000033', 1, N'hung.lam@gmail.com', N'92 Lê Văn Sỹ, Quận 3, TP. Hồ Chí Minh'),
+    (N'KH034', N'Tôn Nữ Bích Ngọc', N'0922000034', 0, N'ngoc.tonnu@gmail.com', N'78 Nguyễn Thị Minh Khai, Quận 1, TP. Hồ Chí Minh'),
+    (N'KH035', N'Chu Đình Dũng', N'0322000035', 1, N'dung.chu@gmail.com', N'115 Đường 3 Tháng 2, Quận 10, TP. Hồ Chí Minh'),
+    (N'KH036', N'Quách Tuyết Mai', N'0522000036', 0, N'mai.quach@gmail.com', N'56 Hùng Vương, Ninh Kiều, Cần Thơ'),
+    (N'KH037', N'Đinh Tiến Đạt', N'0722000037', 1, N'dat.dinh@gmail.com', N'230 Quang Trung, Gò Vấp, TP. Hồ Chí Minh'),
+    (N'KH038', N'Nhan Cẩm Tú', N'0822000038', 0, N'tu.nhan@gmail.com', N'412 Cách Mạng Tháng 8, Quận 10, TP. Hồ Chí Minh'),
+    (N'KH039', N'Trương Hữu Long', N'0922000039', 1, N'long.truong@gmail.com', N'19 Pasteur, Quận 1, TP. Hồ Chí Minh'),
+    (N'KH040', N'Tiêu Thảo My', N'0322000040', 0, N'my.tieu@gmail.com', NULL),
+    (N'KH041', N'Diệp Kiến Thành', N'0522000041', 1, N'thanh.diep@gmail.com', N'88 Điện Biên Phủ, Bình Thạnh, TP. Hồ Chí Minh'),
+    (N'KH042', N'Tô Phương Uyên', N'0722000042', 0, N'uyen.to@gmail.com', N'103 Lý Thường Kiệt, Tân Bình, TP. Hồ Chí Minh'),
+    (N'KH043', N'Lại Văn Sâm', N'0822000043', 1, N'sam.lai@gmail.com', N'12 Bến Vân Đồn, Quận 4, TP. Hồ Chí Minh'),
+    (N'KH044', N'Mạch Diệu Huyền', N'0922000044', 0, N'huyen.mach@gmail.com', N'65 Nam Kỳ Khởi Nghĩa, Quận 1, TP. Hồ Chí Minh'),
+    (N'KH045', N'Hứa Vĩ Văn', N'0322000045', 1, N'van.hua@gmail.com', N'47 Nguyễn Huệ, Quận 1, TP. Hồ Chí Minh'),
+    (N'KH046', N'Thiều Bảo Trâm', N'0522000046', 0, N'tram.thieu@gmail.com', N'82 Trần Não, TP. Thủ Đức, TP. Hồ Chí Minh'),
+    (N'KH047', N'Tạ Đình Phong', N'0722000047', 1, N'phong.ta@gmail.com', N'195 Xô Viết Nghệ Tĩnh, Bình Thạnh, TP. Hồ Chí Minh'),
+    (N'KH048', N'Cổ Ngân Hà', N'0822000048', 0, N'ha.co@gmail.com', N'39 Thảo Điền, TP. Thủ Đức, TP. Hồ Chí Minh'),
+    (N'KH049', N'Khổng Minh Tuấn', N'0922000049', 1, N'tuan.khong@gmail.com', N'150 Nguyễn Đình Chiểu, Quận 3, TP. Hồ Chí Minh'),
+    (N'KH050', N'Ôn Bích Hà', N'0322000050', 0, N'ha.on@gmail.com', NULL),
+    (N'KH051', N'Sầm Quốc Cường', N'0522000051', 1, N'cuong.sam@gmail.com', N'90 Đồng Khởi, Quận 1, TP. Hồ Chí Minh'),
+    (N'KH052', N'Vi Thục Đoan', N'0722000052', 0, N'doan.vi@gmail.com', N'32 Lê Duẩn, Quận 1, TP. Hồ Chí Minh'),
+    (N'KH053', N'Chế Thanh Phong', N'0822000053', 1, N'phong.che@gmail.com', N'174 Trường Chinh, Tân Bình, TP. Hồ Chí Minh'),
+    (N'KH054', N'La Lan Anh', N'0922000054', 0, N'anh.la@gmail.com', N'220 Phạm Văn Đồng, TP. Thủ Đức, TP. Hồ Chí Minh'),
+    (N'KH055', N'Âu Dương Tuấn', N'0322000055', 1, N'tuan.auduong@gmail.com', N'58 Bạch Đằng, Tân Bình, TP. Hồ Chí Minh'),
+    (N'KH056', N'Hạ Ái Nhi', N'0522000056', 0, N'nhi.ha@gmail.com', N'14 Võ Văn Tần, Quận 3, TP. Hồ Chí Minh'),
+    (N'KH057', N'Thái Hòa Phát', N'0722000057', 1, N'phat.thai@gmail.com', N'71 Nguyễn Oanh, Gò Vấp, TP. Hồ Chí Minh'),
+    (N'KH058', N'Cù Thị Yến', N'0822000058', 0, N'yen.cu@gmail.com', N'163 Hoàng Văn Thụ, Phú Nhuận, TP. Hồ Chí Minh'),
+    (N'KH059', N'Quàng Văn Hải', N'0922000059', 1, N'hai.quang@gmail.com', N'84 Nguyễn Tất Thành, Quận 4, TP. Hồ Chí Minh'),
+    (N'KH060', N'Bào Thanh Trúc', N'0322000060', 0, N'truc.bao@gmail.com', NULL);
 
 -- PhuongTien: 72 bản ghi
 INSERT INTO dbo.[PhuongTien] ([VIN], [bienSo], [hangXe], [dongXe], [mauXe], [namSanXuat], [soMay], [soKM])
@@ -820,91 +845,103 @@ VALUES
     (N'DV002', N'Thay lọc dầu', N'Dịch vụ thay lọc dầu theo yêu cầu khách hàng.', 100000.00, N'Hoạt động'),
     (N'DV003', N'Kiểm tra phanh', N'Dịch vụ kiểm tra phanh theo yêu cầu khách hàng.', 250000.00, N'Hoạt động'),
     (N'DV004', N'Thay má phanh', N'Dịch vụ thay má phanh theo yêu cầu khách hàng.', 300000.00, N'Hoạt động'),
-    (N'DV005', N'Thay lọc gió điều hòa', NULL, 120000.00, N'Hoạt động'),
+    (N'DV005', N'Thay lọc gió điều hòa', N'Dịch vụ thay lọc gió điều hòa không khí khoang lái theo yêu cầu.', 120000.00, N'Hoạt động'),
     (N'DV006', N'Vệ sinh điều hòa', N'Dịch vụ vệ sinh điều hòa theo yêu cầu khách hàng.', 650000.00, N'Hoạt động'),
     (N'DV007', N'Thay ắc quy', N'Dịch vụ thay ắc quy theo yêu cầu khách hàng.', 200000.00, N'Hoạt động'),
     (N'DV008', N'Thay lốp xe', N'Dịch vụ thay lốp xe theo yêu cầu khách hàng.', 180000.00, N'Hoạt động'),
     (N'DV009', N'Cân bằng động bánh xe', N'Dịch vụ cân bằng động bánh xe theo yêu cầu khách hàng.', 250000.00, N'Hoạt động'),
-    (N'DV010', N'Thay bugi', NULL, 180000.00, N'Hoạt động'),
+    (N'DV010', N'Thay bugi', N'Dịch vụ kiểm tra và thay thế bộ bugi đánh lửa động cơ theo yêu cầu.', 180000.00, N'Hoạt động'),
     (N'DV011', N'Thay dây curoa', N'Dịch vụ thay dây curoa theo yêu cầu khách hàng.', 450000.00, N'Hoạt động'),
     (N'DV012', N'Thay nước làm mát', N'Dịch vụ thay nước làm mát theo yêu cầu khách hàng.', 150000.00, N'Hoạt động'),
     (N'DV013', N'Thay giảm xóc', N'Dịch vụ thay giảm xóc theo yêu cầu khách hàng.', 800000.00, N'Hoạt động'),
     (N'DV014', N'Sửa hệ thống điện', N'Dịch vụ sửa hệ thống điện theo yêu cầu khách hàng.', 1500000.00, N'Hoạt động'),
-    (N'DV015', N'Đại tu động cơ', NULL, 12000000.00, N'Hoạt động'),
+    (N'DV015', N'Đại tu động cơ', N'Dịch vụ đại tu, phục hồi và căn chỉnh buồng đốt động cơ.', 12000000.00, N'Hoạt động'),
     (N'DV016', N'Sửa hộp số', N'Dịch vụ sửa hộp số theo yêu cầu khách hàng.', 8500000.00, N'Hoạt động'),
     (N'DV017', N'Bảo dưỡng miễn phí', N'Dịch vụ bảo dưỡng miễn phí theo yêu cầu khách hàng.', 0.00, N'Hoạt động'),
     (N'DV018', N'Kiểm tra sau bảo hành', N'Dịch vụ kiểm tra sau bảo hành theo yêu cầu khách hàng.', 0.00, N'Ngừng hoạt động'),
     (N'DV019', N'Chăm sóc ngoại thất', N'Dịch vụ chăm sóc ngoại thất theo yêu cầu khách hàng.', 1200000.00, N'Ngừng hoạt động'),
-    (N'DV020', N'Kiểm tra kỹ thuật chuyên sâu', NULL, 2500000.00, N'Ngừng hoạt động');
+    (N'DV020', N'Kiểm tra kỹ thuật chuyên sâu', N'Dịch vụ kiểm tra, quét lỗi và chẩn đoán kỹ thuật chuyên sâu.', 2500000.00, N'Ngừng hoạt động');
 
--- PhuTung: 41 bản ghi (PT000 là mã hệ thống, không có tồn kho)
-INSERT INTO dbo.[PhuTung] ([maPhuTung], [tenPhuTung], [donGia], [loaiPhuTung])
+-- PhuTung: 51 bản ghi (PT000 là mã hệ thống, không có tồn kho)
+INSERT INTO dbo.[PhuTung] ([maPhuTung], [tenPhuTung], [donGia], [loaiPhuTung], [thoiHanBaoHanh])
 VALUES
-    (N'PT000', N'Không sử dụng phụ tùng', 0.00, N'Hệ thống'),
-    (N'PT001', N'Dầu động cơ 5W-30', 850000.00, N'Dầu nhớt'),
-    (N'PT002', N'Lọc dầu Toyota', 180000.00, N'Bộ lọc'),
-    (N'PT003', N'Má phanh trước', 950000.00, N'Hệ thống phanh'),
-    (N'PT004', N'Lọc gió điều hòa', 220000.00, N'Điều hòa'),
-    (N'PT005', N'Ắc quy 12V 60Ah', 1850000.00, N'Điện'),
-    (N'PT006', N'Bugi đánh lửa', 150000.00, N'Đánh lửa'),
-    (N'PT007', N'Dây curoa', 650000.00, N'Truyền động'),
-    (N'PT008', N'Nước làm mát', 250000.00, N'Làm mát'),
-    (N'PT009', N'Lốp 205/55R16', 2300000.00, N'Lốp'),
-    (N'PT010', N'Giảm xóc trước', 3500000.00, N'Hệ thống treo'),
-    (N'PT011', N'Cảm biến ABS', 1250000.00, N'Điện'),
-    (N'PT012', N'Bơm nhiên liệu', 2800000.00, N'Nhiên liệu'),
-    (N'PT013', N'Đĩa phanh', 1800000.00, N'Hệ thống phanh'),
-    (N'PT014', N'Lọc gió động cơ', 320000.00, N'Bộ lọc'),
-    (N'PT015', N'Bóng đèn pha', 480000.00, N'Điện'),
-    (N'PT016', N'Gạt mưa', 350000.00, N'Phụ kiện'),
-    (N'PT017', N'Cao su chân máy', 1450000.00, N'Động cơ'),
-    (N'PT018', N'Dầu hộp số', 950000.00, N'Dầu nhớt'),
-    (N'PT019', N'Bộ ly hợp', 6500000.00, N'Truyền động'),
-    (N'PT020', N'Van hằng nhiệt', 850000.00, N'Làm mát'),
-    (N'PT021', N'Động cơ thay thế', 40000000.00, N'Động cơ'),
-    (N'PT022', N'Hộp số tự động', 35000000.00, N'Truyền động'),
-    (N'PT023', N'Két nước', 3200000.00, N'Làm mát'),
-    (N'PT024', N'Máy phát điện', 4800000.00, N'Điện'),
-    (N'PT025', N'Máy khởi động', 3800000.00, N'Điện'),
-    (N'PT026', N'Thước lái', 8500000.00, N'Hệ thống lái'),
-    (N'PT027', N'Rotuyn lái', 750000.00, N'Hệ thống lái'),
-    (N'PT028', N'Bạc đạn bánh xe', 950000.00, N'Hệ thống treo'),
-    (N'PT029', N'Bơm nước', 1850000.00, N'Làm mát'),
-    (N'PT030', N'Bơm dầu', 2600000.00, N'Động cơ'),
-    (N'PT031', N'Ron nắp máy', 680000.00, N'Động cơ'),
-    (N'PT032', N'Cảm biến oxy', 1650000.00, N'Điện'),
-    (N'PT033', N'Kim phun', 3200000.00, N'Nhiên liệu'),
-    (N'PT034', N'Lọc nhiên liệu', 450000.00, N'Bộ lọc'),
-    (N'PT035', N'Dầu phanh', 180000.00, N'Dầu nhớt'),
-    (N'PT036', N'Dung dịch vệ sinh', 95000.00, N'Vật tư'),
-    (N'PT037', N'Cầu chì', 15000.00, N'Điện'),
-    (N'PT038', N'Ốc xả dầu', 25000.00, N'Vật tư'),
-    (N'PT039', N'Gioăng tặng kèm', 0.00, N'Vật tư'),
-    (N'PT040', N'Phụ tùng bảo hành miễn phí', 0.00, N'Bảo hành');
+    (N'PT000', N'Không sử dụng phụ tùng', 0.00, N'Hệ thống', 0),
+    (N'PT001', N'Dầu động cơ 5W-30', 850000.00, N'Dầu nhớt', 24),
+    (N'PT002', N'Lọc dầu Toyota', 180000.00, N'Bộ lọc', 24),
+    (N'PT003', N'Má phanh trước', 950000.00, N'Hệ thống phanh', 24),
+    (N'PT004', N'Lọc gió điều hòa', 220000.00, N'Điều hòa', 24),
+    (N'PT005', N'Ắc quy 12V 60Ah', 1850000.00, N'Điện', 24),
+    (N'PT006', N'Bugi đánh lửa', 150000.00, N'Đánh lửa', 24),
+    (N'PT007', N'Dây curoa', 650000.00, N'Truyền động', 24),
+    (N'PT008', N'Nước làm mát', 250000.00, N'Làm mát', 24),
+    (N'PT009', N'Lốp 205/55R16', 2300000.00, N'Lốp', 60),
+    (N'PT010', N'Giảm xóc trước', 3500000.00, N'Hệ thống treo', 24),
+    (N'PT011', N'Cảm biến ABS', 1250000.00, N'Điện', 24),
+    (N'PT012', N'Bơm nhiên liệu', 2800000.00, N'Nhiên liệu', 60),
+    (N'PT013', N'Đĩa phanh', 1800000.00, N'Hệ thống phanh', 60),
+    (N'PT014', N'Lọc gió động cơ', 320000.00, N'Bộ lọc', 24),
+    (N'PT015', N'Bóng đèn pha', 480000.00, N'Điện', 24),
+    (N'PT016', N'Gạt mưa', 350000.00, N'Phụ kiện', 24),
+    (N'PT017', N'Cao su chân máy', 1450000.00, N'Động cơ', 60),
+    (N'PT018', N'Dầu hộp số', 950000.00, N'Dầu nhớt', 24),
+    (N'PT019', N'Bộ ly hợp', 6500000.00, N'Truyền động', 60),
+    (N'PT020', N'Van hằng nhiệt', 850000.00, N'Làm mát', 24),
+    (N'PT021', N'Động cơ thay thế', 40000000.00, N'Động cơ', 120),
+    (N'PT022', N'Hộp số tự động', 35000000.00, N'Truyền động', 120),
+    (N'PT023', N'Két nước', 3200000.00, N'Làm mát', 60),
+    (N'PT024', N'Máy phát điện', 4800000.00, N'Điện', 60),
+    (N'PT025', N'Máy khởi động', 3800000.00, N'Điện', 60),
+    (N'PT026', N'Thước lái', 8500000.00, N'Hệ thống lái', 120),
+    (N'PT027', N'Rotuyn lái', 750000.00, N'Hệ thống lái', 60),
+    (N'PT028', N'Bạc đạn bánh xe', 950000.00, N'Hệ thống treo', 60),
+    (N'PT029', N'Bơm nước', 1850000.00, N'Làm mát', 60),
+    (N'PT030', N'Bơm dầu', 2600000.00, N'Động cơ', 60),
+    (N'PT031', N'Ron nắp máy', 680000.00, N'Động cơ', 24),
+    (N'PT032', N'Cảm biến oxy', 1650000.00, N'Điện', 60),
+    (N'PT033', N'Kim phun', 3200000.00, N'Nhiên liệu', 60),
+    (N'PT034', N'Lọc nhiên liệu', 450000.00, N'Bộ lọc', 24),
+    (N'PT035', N'Dầu phanh', 180000.00, N'Dầu nhớt', 24),
+    (N'PT036', N'Dung dịch vệ sinh', 95000.00, N'Vật tư', 24),
+    (N'PT037', N'Cầu chì', 15000.00, N'Điện', 24),
+    (N'PT038', N'Ốc xả dầu', 25000.00, N'Vật tư', 24),
+    (N'PT039', N'Gioăng tặng kèm', 0.00, N'Vật tư', 24),
+    (N'PT040', N'Phụ tùng bảo hành miễn phí', 0.00, N'Bảo hành', 24),
+    (N'PT041', N'Bugi Iridium Denso', 320000.00, N'Đánh lửa', 24),
+    (N'PT042', N'Dây curoa tổng Gates', 850000.00, N'Truyền động', 24),
+    (N'PT043', N'Má phanh sau Brembo', 1150000.00, N'Hệ thống phanh', 24),
+    (N'PT044', N'Giảm xóc sau KYB', 2900000.00, N'Hệ thống treo', 60),
+    (N'PT045', N'Càng chữ A dưới', 1750000.00, N'Hệ thống treo', 60),
+    (N'PT046', N'Lốc điều hòa Sanden', 7200000.00, N'Điều hòa', 60),
+    (N'PT047', N'Cảm biến áp suất lốp TPMS', 1450000.00, N'Điện', 24),
+    (N'PT048', N'Cụm bơm xăng Bosch', 3600000.00, N'Nhiên liệu', 60),
+    (N'PT049', N'Cụm thước lái trợ lực điện EPS', 14500000.00, N'Hệ thống lái', 120),
+    (N'PT050', N'Bộ vi sai cầu sau', 18500000.00, N'Truyền động', 120);
 
 -- NhaCungCap: 12 bản ghi
 INSERT INTO dbo.[NhaCungCap] ([maNCC], [tenNCC], [soDienThoai], [email], [diaChi])
 VALUES
-    (N'NCC001', N'Công ty Phụ tùng An Phát', N'0533000001', N'ncc001@example.com', N'31 Quốc lộ 1A, TP. Hồ Chí Minh'),
-    (N'NCC002', N'Công ty Dầu nhớt Minh Long', N'0733000002', N'ncc002@example.com', N'32 Quốc lộ 1A, Đồng Nai'),
-    (N'NCC003', N'Công ty Thiết bị Hưng Thịnh', N'0833000003', NULL, N'33 Quốc lộ 1A, Bình Dương'),
-    (N'NCC004', N'Đại lý Lốp Việt', N'0933000004', N'ncc004@example.com', NULL),
-    (N'NCC005', N'Công ty Điện ô tô Thành Công', N'0333000005', N'ncc005@example.com', N'35 Quốc lộ 1A, Tây Ninh'),
-    (N'NCC006', N'Công ty Vật tư Đông Nam', N'0533000006', NULL, N'36 Quốc lộ 1A, Bà Rịa Vũng Tàu'),
-    (N'NCC007', N'Công ty Phụ tùng Nhật Việt', N'0733000007', N'ncc007@example.com', N'37 Quốc lộ 1A, Cần Thơ'),
-    (N'NCC008', N'Công ty Phụ tùng Hàn Việt', N'0833000008', N'ncc008@example.com', NULL),
-    (N'NCC009', N'Công ty Cơ khí Bình Minh', N'0933000009', NULL, N'39 Quốc lộ 1A, Hà Nội'),
-    (N'NCC010', N'Công ty Phụ kiện Đại Phúc', N'0333000010', N'ncc010@example.com', N'40 Quốc lộ 1A, Khánh Hòa'),
-    (N'NCC011', N'Công ty Bảo dưỡng Toàn Cầu', N'0533000011', N'ncc011@example.com', N'41 Quốc lộ 1A, Lâm Đồng'),
+    (N'NCC001', N'Công ty Phụ tùng An Phát', N'0533000001', N'anphat.parts@gmail.com', N'120 Quốc lộ 1A, Bình Chánh, TP. Hồ Chí Minh'),
+    (N'NCC002', N'Công ty Dầu nhớt Minh Long', N'0733000002', N'minhlong.oil@gmail.com', N'45 Xa Lộ Hà Nội, Biên Hòa, Đồng Nai'),
+    (N'NCC003', N'Công ty Thiết bị Hưng Thịnh', N'0833000003', NULL, N'88 Đại Lộ Bình Dương, Thuận An, Bình Dương'),
+    (N'NCC004', N'Đại lý Lốp Ô tô Việt Phát', N'0933000004', N'vietphat.tires@gmail.com', NULL),
+    (N'NCC005', N'Công ty Điện ô tô Thành Công', N'0333000005', N'thanhcong.auto@gmail.com', N'35 Đường 30/4, TP. Tây Ninh'),
+    (N'NCC006', N'Công ty Vật tư Đông Nam', N'0533000006', NULL, N'16 Ba Cu, TP. Vũng Tàu'),
+    (N'NCC007', N'Công ty Phụ tùng Nhật Việt', N'0733000007', N'nhatviet.autoparts@gmail.com', N'72 Cách Mạng Tháng 8, Cần Thơ'),
+    (N'NCC008', N'Công ty Phụ tùng Hàn Việt', N'0833000008', N'hanviet.parts@gmail.com', NULL),
+    (N'NCC009', N'Công ty Cơ khí Ô tô Bình Minh', N'0933000009', NULL, N'250 Giải Phóng, Hoàng Mai, Hà Nội'),
+    (N'NCC010', N'Công ty Phụ kiện Đại Phúc', N'0333000010', N'daiphuc.auto@gmail.com', N'90 2 Tháng 4, Nha Trang, Khánh Hòa'),
+    (N'NCC011', N'Công ty Bảo dưỡng Toàn Cầu', N'0533000011', N'toancau.service@gmail.com', N'14 Trần Phú, TP. Đà Lạt, Lâm Đồng'),
     (N'NCC012', N'Công ty Vật tư Phú Gia', N'0733000012', NULL, NULL);
 
--- PhuongThucThanhToan: 2 bản ghi
+-- PhuongThucThanhToan: 4 bản ghi
 INSERT INTO dbo.[PhuongThucThanhToan] ([maPhuongThuc], [tenPhuongThuc])
 VALUES
     (N'TT001', N'Tiền mặt'),
-    (N'TT002', N'QR Code');
+    (N'TT002', N'Chuyển khoản QR Code'),
+    (N'TT003', N'Chuyển khoản ngân hàng (Internet Banking)'),
+    (N'TT004', N'Thẻ thanh toán POS (Visa/Mastercard/Napas)');
 
--- TaiKhoan: 4 tài khoản
+-- TaiKhoan: 4 thành viên và 1 admin
 INSERT INTO dbo.TaiKhoan
     (maTaiKhoan, maNhanVien, tenDangNhap, matKhau, trangThai, ngayTao)
 VALUES
@@ -914,14 +951,14 @@ VALUES
     ('TK004', 'NV004', 'khanh123', 'khanh123', N'Đang hoạt động', '20261012'),
     ('TK005', 'NV005', 'admin', 'admin', N'Đang hoạt động', '20261012');
 
--- TonKho: 40 bản ghi
+-- TonKho: 50 bản ghi
 INSERT INTO dbo.[TonKho] ([maTonKho], [maPhuTung], [soLuongHienTai], [soLuongToiThieu])
 VALUES
-    (N'TKH001', N'PT001', 6, 6),
-    (N'TKH002', N'PT002', 6, 7),
-    (N'TKH003', N'PT003', 9, 8),
-    (N'TKH004', N'PT004', 54, 9),
-    (N'TKH005', N'PT005', 0, 10),
+    (N'TKH001', N'PT001', 12, 6),
+    (N'TKH002', N'PT002', 7, 7),
+    (N'TKH003', N'PT003', 10, 8),
+    (N'TKH004', N'PT004', 14, 9),
+    (N'TKH005', N'PT005', 15, 10),
     (N'TKH006', N'PT006', 5, 5),
     (N'TKH007', N'PT007', 0, 0),
     (N'TKH008', N'PT008', 8, 7),
@@ -956,7 +993,17 @@ VALUES
     (N'TKH037', N'PT037', 5, 6),
     (N'TKH038', N'PT038', 8, 7),
     (N'TKH039', N'PT039', 89, 8),
-    (N'TKH040', N'PT040', 0, 9);
+    (N'TKH040', N'PT040', 0, 9),
+    (N'TKH041', N'PT041', 15, 5),
+    (N'TKH042', N'PT042', 12, 4),
+    (N'TKH043', N'PT043', 20, 6),
+    (N'TKH044', N'PT044', 8, 3),
+    (N'TKH045', N'PT045', 10, 4),
+    (N'TKH046', N'PT046', 5, 2),
+    (N'TKH047', N'PT047', 25, 8),
+    (N'TKH048', N'PT048', 6, 2),
+    (N'TKH049', N'PT049', 4, 1),
+    (N'TKH050', N'PT050', 3, 1);
 
 -- MaGiamGia: 36 bản ghi
 INSERT INTO dbo.[MaGiamGia] ([maGiamGia], [maKhachHang], [mucGiam], [ngayTao], [ngayHetHan], [trangThai])
@@ -1707,7 +1754,7 @@ VALUES
     (N'PBG015', N'DV016', N'PT022', 2, 35000000.00, 8500000.00, N'Chờ sửa chữa'),
     (N'PBG016', N'DV016', N'PT016', 2, 350000.00, 8500000.00, N'Chờ sửa chữa'),
     (N'PBG016', N'DV017', N'PT023', 3, 3200000.00, 0.00, N'Chờ sửa chữa'),
-    (N'PBG017', N'DV017', N'PT017', 3, 1450000.00, 0.00, N'Chờ sửa chữa'),
+    (N'PBG017', N'DV017', N'PT000', 0, 0.00, 0.00, N'Chờ sửa chữa'),
     (N'PBG017', N'DV001', N'PT024', 1, 4800000.00, 150000.00, N'Chờ sửa chữa'),
     (N'PBG018', N'DV001', N'PT018', 1, 950000.00, 150000.00, N'Chờ sửa chữa'),
     (N'PBG018', N'DV002', N'PT025', 2, 3800000.00, 100000.00, N'Chờ sửa chữa'),
@@ -1734,7 +1781,7 @@ VALUES
     (N'PBG028', N'DV011', N'PT028', 2, 950000.00, 450000.00, N'Chờ sửa chữa'),
     (N'PBG028', N'DV012', N'PT035', 3, 180000.00, 150000.00, N'Chờ sửa chữa'),
     (N'PBG029', N'DV012', N'PT029', 3, 1850000.00, 150000.00, N'Chờ sửa chữa'),
-    (N'PBG029', N'DV013', N'PT036', 1, 95000.00, 800000.00, N'Chờ sửa chữa'),
+    (N'PBG029', N'DV013', N'PT000', 0, 0.00, 800000.00, N'Chờ sửa chữa'),
     (N'PBG030', N'DV013', N'PT030', 1, 2600000.00, 800000.00, N'Chờ sửa chữa'),
     (N'PBG030', N'DV014', N'PT037', 2, 15000.00, 1500000.00, N'Chờ sửa chữa'),
     (N'PBG031', N'DV014', N'PT031', 2, 680000.00, 1500000.00, N'Chờ sửa chữa'),
@@ -1830,9 +1877,9 @@ VALUES
     (N'PBG073', N'DV006', N'PT004', 3, 220000.00, 650000.00, N'Chờ xác nhận'),
     (N'PBG074', N'DV006', N'PT036', 3, 95000.00, 650000.00, N'Chờ xác nhận'),
     (N'PBG074', N'DV007', N'PT005', 1, 1850000.00, 200000.00, N'Chờ xác nhận'),
-    (N'PBG075', N'DV007', N'PT037', 1, 15000.00, 200000.00, N'Chờ xác nhận'),
+    (N'PBG075', N'DV003', N'PT000', 0, 0.00, 250000.00, N'Chờ xác nhận'),
     (N'PBG075', N'DV008', N'PT006', 2, 150000.00, 180000.00, N'Chờ xác nhận'),
-    (N'PBG076', N'DV008', N'PT038', 2, 25000.00, 180000.00, N'Thiếu phụ tùng + Chờ xác nhận'),
+    (N'PBG076', N'DV006', N'PT000', 0, 0.00, 650000.00, N'Thiếu phụ tùng + Chờ xác nhận'),
     (N'PBG076', N'DV009', N'PT007', 3, 650000.00, 250000.00, N'Thiếu phụ tùng + Chờ xác nhận'),
     (N'PBG077', N'DV009', N'PT001', 3, 850000.00, 250000.00, N'Thiếu phụ tùng + Chờ xác nhận'),
     (N'PBG077', N'DV010', N'PT008', 1, 250000.00, 180000.00, N'Thiếu phụ tùng + Chờ xác nhận'),
@@ -1917,7 +1964,7 @@ VALUES
     (N'PSC069', N'PBG069', N'KH021', N'MNTCB4D27GA310069', N'NV003', DATEADD(minute,570,DATEADD(day,-267,@NgayMau)), NULL, N'Đã hủy'),
     (N'PSC070', N'PBG070', N'KH022', N'WDDWF4JBXGA310070', N'NV003', DATEADD(minute,570,DATEADD(day,-280,@NgayMau)), NULL, N'Đã hủy');
 
--- ChiTietPhieuSuaChua: 105 bản ghi
+-- ChiTietPhieuSuaChua: 105 bản ghi ban đầu
 INSERT INTO dbo.[ChiTietPhieuSuaChua] ([maPSC], [maDichVu], [maPhuTung], [trangThaiHangMuc], [soLuongPhuTung], [ketQuaNghiemThu], [ngayBatDauBaoHanh], [thoiHanBaoHanh], [ngayHetHanBaoHanh])
 VALUES
     (N'PSC011', N'DV011', N'PT011', N'Thiếu phụ tùng', 3, N'Không đạt', NULL, 0, NULL),
@@ -1932,7 +1979,7 @@ VALUES
     (N'PSC015', N'DV016', N'PT022', N'Đang sửa chữa', 2, N'Không đạt', NULL, 0, NULL),
     (N'PSC016', N'DV016', N'PT016', N'Đang sửa chữa', 2, N'Không đạt', NULL, 0, NULL),
     (N'PSC016', N'DV017', N'PT023', N'Thiếu phụ tùng', 3, N'Không đạt', NULL, 0, NULL),
-    (N'PSC017', N'DV017', N'PT017', N'Thiếu phụ tùng', 3, N'Không đạt', NULL, 0, NULL),
+    (N'PSC017', N'DV017', N'PT000', N'Đang sửa chữa', 0, N'Không đạt', NULL, 0, NULL),
     (N'PSC017', N'DV001', N'PT024', N'Đang sửa chữa', 1, N'Không đạt', NULL, 0, NULL),
     (N'PSC018', N'DV001', N'PT018', N'Đang sửa chữa', 1, N'Không đạt', NULL, 0, NULL),
     (N'PSC018', N'DV002', N'PT025', N'Thiếu phụ tùng', 2, N'Không đạt', NULL, 0, NULL),
@@ -1941,258 +1988,131 @@ VALUES
     (N'PSC019', N'DV003', N'PT026', N'Đang sửa chữa', 3, N'Không đạt', NULL, 0, NULL),
     (N'PSC020', N'DV003', N'PT020', N'Đang sửa chữa', 3, N'Không đạt', NULL, 0, NULL),
     (N'PSC020', N'DV004', N'PT027', N'Thiếu phụ tùng', 1, N'Không đạt', NULL, 0, NULL),
-    (N'PSC021', N'DV004', N'PT021', N'Hoàn thành', 1, N'Đạt', DATEADD(minute,720,DATEADD(day,-293,@NgayMau)), 30, DATEADD(minute,720,DATEADD(day,-263,@NgayMau))),
-    (N'PSC021', N'DV005', N'PT028', N'Hoàn thành', 2, N'Đạt', DATEADD(minute,720,DATEADD(day,-293,@NgayMau)), 90, DATEADD(minute,720,DATEADD(day,-203,@NgayMau))),
-    (N'PSC022', N'DV005', N'PT022', N'Hoàn thành', 2, N'Đạt', DATEADD(minute,720,DATEADD(day,-306,@NgayMau)), 90, DATEADD(minute,720,DATEADD(day,-216,@NgayMau))),
-    (N'PSC022', N'DV006', N'PT029', N'Hoàn thành', 3, N'Đạt', DATEADD(minute,720,DATEADD(day,-306,@NgayMau)), 180, DATEADD(minute,720,DATEADD(day,-126,@NgayMau))),
-    (N'PSC023', N'DV006', N'PT023', N'Hoàn thành', 3, N'Đạt', DATEADD(minute,720,DATEADD(day,-319,@NgayMau)), 180, DATEADD(minute,720,DATEADD(day,-139,@NgayMau))),
-    (N'PSC023', N'DV007', N'PT030', N'Hoàn thành', 1, N'Đạt', DATEADD(minute,720,DATEADD(day,-319,@NgayMau)), 365, DATEADD(minute,720,DATEADD(day,46,@NgayMau))),
-    (N'PSC024', N'DV007', N'PT024', N'Hoàn thành', 1, N'Đạt', DATEADD(minute,720,DATEADD(day,-332,@NgayMau)), 365, DATEADD(minute,720,DATEADD(day,33,@NgayMau))),
+    (N'PSC021', N'DV004', N'PT021', N'Hoàn thành', 1, N'Đạt', DATEADD(minute,720,DATEADD(day,-293,@NgayMau)), 24, DATEADD(month,24,DATEADD(minute,720,DATEADD(day,-293,@NgayMau)))),
+    (N'PSC021', N'DV005', N'PT028', N'Hoàn thành', 2, N'Đạt', DATEADD(minute,720,DATEADD(day,-293,@NgayMau)), 60, DATEADD(month,60,DATEADD(minute,720,DATEADD(day,-293,@NgayMau)))),
+    (N'PSC022', N'DV005', N'PT022', N'Hoàn thành', 2, N'Đạt', DATEADD(minute,720,DATEADD(day,-306,@NgayMau)), 60, DATEADD(month,60,DATEADD(minute,720,DATEADD(day,-306,@NgayMau)))),
+    (N'PSC022', N'DV006', N'PT029', N'Hoàn thành', 3, N'Đạt', DATEADD(minute,720,DATEADD(day,-306,@NgayMau)), 120, DATEADD(month,120,DATEADD(minute,720,DATEADD(day,-306,@NgayMau)))),
+    (N'PSC023', N'DV006', N'PT023', N'Hoàn thành', 3, N'Đạt', DATEADD(minute,720,DATEADD(day,-319,@NgayMau)), 120, DATEADD(month,120,DATEADD(minute,720,DATEADD(day,-319,@NgayMau)))),
+    (N'PSC023', N'DV007', N'PT030', N'Hoàn thành', 1, N'Đạt', DATEADD(minute,720,DATEADD(day,-319,@NgayMau)), 120, DATEADD(month,120,DATEADD(minute,720,DATEADD(day,-319,@NgayMau)))),
+    (N'PSC024', N'DV007', N'PT024', N'Hoàn thành', 1, N'Đạt', DATEADD(minute,720,DATEADD(day,-332,@NgayMau)), 120, DATEADD(month,120,DATEADD(minute,720,DATEADD(day,-332,@NgayMau)))),
     (N'PSC024', N'DV008', N'PT031', N'Hoàn thành', 2, N'Đạt', NULL, 0, NULL),
     (N'PSC025', N'DV008', N'PT025', N'Hoàn thành', 2, N'Đạt', NULL, 0, NULL),
-    (N'PSC025', N'DV009', N'PT032', N'Hoàn thành', 3, N'Đạt', DATEADD(minute,720,DATEADD(day,-345,@NgayMau)), 30, DATEADD(minute,720,DATEADD(day,-315,@NgayMau))),
-    (N'PSC026', N'DV009', N'PT026', N'Hoàn thành', 3, N'Đạt', DATEADD(minute,720,DATEADD(day,-358,@NgayMau)), 30, DATEADD(minute,720,DATEADD(day,-328,@NgayMau))),
-    (N'PSC026', N'DV010', N'PT033', N'Hoàn thành', 1, N'Đạt', DATEADD(minute,720,DATEADD(day,-358,@NgayMau)), 90, DATEADD(minute,720,DATEADD(day,-268,@NgayMau))),
-    (N'PSC027', N'DV010', N'PT027', N'Hoàn thành', 1, N'Đạt', DATEADD(minute,720,DATEADD(day,-371,@NgayMau)), 90, DATEADD(minute,720,DATEADD(day,-281,@NgayMau))),
-    (N'PSC027', N'DV011', N'PT034', N'Hoàn thành', 2, N'Đạt', DATEADD(minute,720,DATEADD(day,-371,@NgayMau)), 180, DATEADD(minute,720,DATEADD(day,-191,@NgayMau))),
-    (N'PSC027', N'DV010', N'PT038', N'Hoàn thành', 1, N'Đạt', DATEADD(minute,720,DATEADD(day,-371,@NgayMau)), 365, DATEADD(minute,720,DATEADD(day,-6,@NgayMau))),
-    (N'PSC028', N'DV011', N'PT028', N'Hoàn thành', 2, N'Đạt', DATEADD(minute,720,DATEADD(day,-384,@NgayMau)), 180, DATEADD(minute,720,DATEADD(day,-204,@NgayMau))),
-    (N'PSC028', N'DV012', N'PT035', N'Hoàn thành', 3, N'Đạt', DATEADD(minute,720,DATEADD(day,-384,@NgayMau)), 365, DATEADD(minute,720,DATEADD(day,-19,@NgayMau))),
-    (N'PSC029', N'DV012', N'PT029', N'Hoàn thành', 3, N'Đạt', DATEADD(minute,720,DATEADD(day,-397,@NgayMau)), 365, DATEADD(minute,720,DATEADD(day,-32,@NgayMau))),
-    (N'PSC029', N'DV013', N'PT036', N'Hoàn thành', 1, N'Đạt', NULL, 0, NULL),
+    (N'PSC025', N'DV009', N'PT032', N'Hoàn thành', 3, N'Đạt', DATEADD(minute,720,DATEADD(day,-345,@NgayMau)), 24, DATEADD(month,24,DATEADD(minute,720,DATEADD(day,-345,@NgayMau)))),
+    (N'PSC026', N'DV009', N'PT026', N'Hoàn thành', 3, N'Đạt', DATEADD(minute,720,DATEADD(day,-358,@NgayMau)), 24, DATEADD(month,24,DATEADD(minute,720,DATEADD(day,-358,@NgayMau)))),
+    (N'PSC026', N'DV010', N'PT033', N'Hoàn thành', 1, N'Đạt', DATEADD(minute,720,DATEADD(day,-358,@NgayMau)), 60, DATEADD(month,60,DATEADD(minute,720,DATEADD(day,-358,@NgayMau)))),
+    (N'PSC027', N'DV010', N'PT027', N'Hoàn thành', 1, N'Đạt', DATEADD(minute,720,DATEADD(day,-371,@NgayMau)), 60, DATEADD(month,60,DATEADD(minute,720,DATEADD(day,-371,@NgayMau)))),
+    (N'PSC027', N'DV011', N'PT034', N'Hoàn thành', 2, N'Đạt', DATEADD(minute,720,DATEADD(day,-371,@NgayMau)), 120, DATEADD(month,120,DATEADD(minute,720,DATEADD(day,-371,@NgayMau)))),
+    (N'PSC027', N'DV010', N'PT038', N'Hoàn thành', 1, N'Đạt', DATEADD(minute,720,DATEADD(day,-371,@NgayMau)), 120, DATEADD(month,120,DATEADD(minute,720,DATEADD(day,-371,@NgayMau)))),
+    (N'PSC028', N'DV011', N'PT028', N'Hoàn thành', 2, N'Đạt', DATEADD(minute,720,DATEADD(day,-384,@NgayMau)), 120, DATEADD(month,120,DATEADD(minute,720,DATEADD(day,-384,@NgayMau)))),
+    (N'PSC028', N'DV012', N'PT035', N'Hoàn thành', 3, N'Đạt', DATEADD(minute,720,DATEADD(day,-384,@NgayMau)), 120, DATEADD(month,120,DATEADD(minute,720,DATEADD(day,-384,@NgayMau)))),
+    (N'PSC029', N'DV012', N'PT029', N'Hoàn thành', 3, N'Đạt', DATEADD(minute,720,DATEADD(day,-397,@NgayMau)), 120, DATEADD(month,120,DATEADD(minute,720,DATEADD(day,-397,@NgayMau)))),
+    (N'PSC029', N'DV013', N'PT000', N'Hoàn thành', 0, N'Đạt', NULL, 0, NULL),
     (N'PSC030', N'DV013', N'PT030', N'Hoàn thành', 1, N'Đạt', NULL, 0, NULL),
-    (N'PSC030', N'DV014', N'PT037', N'Hoàn thành', 2, N'Đạt', DATEADD(minute,720,DATEADD(day,-410,@NgayMau)), 30, DATEADD(minute,720,DATEADD(day,-380,@NgayMau))),
-    (N'PSC031', N'DV014', N'PT031', N'Hoàn thành', 2, N'Đạt', DATEADD(minute,720,DATEADD(day,-423,@NgayMau)), 30, DATEADD(minute,720,DATEADD(day,-393,@NgayMau))),
-    (N'PSC031', N'DV015', N'PT038', N'Hoàn thành', 3, N'Đạt', DATEADD(minute,720,DATEADD(day,-423,@NgayMau)), 90, DATEADD(minute,720,DATEADD(day,-333,@NgayMau))),
-    (N'PSC032', N'DV015', N'PT032', N'Hoàn thành', 3, N'Đạt', DATEADD(minute,720,DATEADD(day,-436,@NgayMau)), 90, DATEADD(minute,720,DATEADD(day,-346,@NgayMau))),
-    (N'PSC032', N'DV016', N'PT001', N'Hoàn thành', 1, N'Đạt', DATEADD(minute,720,DATEADD(day,-436,@NgayMau)), 180, DATEADD(minute,720,DATEADD(day,-256,@NgayMau))),
-    (N'PSC033', N'DV016', N'PT033', N'Hoàn thành', 1, N'Đạt', DATEADD(minute,720,DATEADD(day,-449,@NgayMau)), 180, DATEADD(minute,720,DATEADD(day,-269,@NgayMau))),
-    (N'PSC033', N'DV017', N'PT002', N'Hoàn thành', 2, N'Đạt', DATEADD(minute,720,DATEADD(day,-449,@NgayMau)), 365, DATEADD(minute,720,DATEADD(day,-84,@NgayMau))),
-    (N'PSC034', N'DV017', N'PT034', N'Hoàn thành', 2, N'Đạt', DATEADD(minute,720,DATEADD(day,-462,@NgayMau)), 365, DATEADD(minute,720,DATEADD(day,-97,@NgayMau))),
+    (N'PSC030', N'DV014', N'PT037', N'Hoàn thành', 2, N'Đạt', DATEADD(minute,720,DATEADD(day,-410,@NgayMau)), 24, DATEADD(month,24,DATEADD(minute,720,DATEADD(day,-410,@NgayMau)))),
+    (N'PSC031', N'DV014', N'PT031', N'Hoàn thành', 2, N'Đạt', DATEADD(minute,720,DATEADD(day,-423,@NgayMau)), 24, DATEADD(month,24,DATEADD(minute,720,DATEADD(day,-423,@NgayMau)))),
+    (N'PSC031', N'DV015', N'PT038', N'Hoàn thành', 3, N'Đạt', DATEADD(minute,720,DATEADD(day,-423,@NgayMau)), 60, DATEADD(month,60,DATEADD(minute,720,DATEADD(day,-423,@NgayMau)))),
+    (N'PSC032', N'DV015', N'PT032', N'Hoàn thành', 3, N'Đạt', DATEADD(minute,720,DATEADD(day,-436,@NgayMau)), 60, DATEADD(month,60,DATEADD(minute,720,DATEADD(day,-436,@NgayMau)))),
+    (N'PSC032', N'DV016', N'PT001', N'Hoàn thành', 1, N'Đạt', DATEADD(minute,720,DATEADD(day,-436,@NgayMau)), 120, DATEADD(month,120,DATEADD(minute,720,DATEADD(day,-436,@NgayMau)))),
+    (N'PSC033', N'DV016', N'PT033', N'Hoàn thành', 1, N'Đạt', DATEADD(minute,720,DATEADD(day,-449,@NgayMau)), 120, DATEADD(month,120,DATEADD(minute,720,DATEADD(day,-449,@NgayMau)))),
+    (N'PSC033', N'DV017', N'PT002', N'Hoàn thành', 2, N'Đạt', DATEADD(minute,720,DATEADD(day,-449,@NgayMau)), 120, DATEADD(month,120,DATEADD(minute,720,DATEADD(day,-449,@NgayMau)))),
+    (N'PSC034', N'DV017', N'PT034', N'Hoàn thành', 2, N'Đạt', DATEADD(minute,720,DATEADD(day,-462,@NgayMau)), 120, DATEADD(month,120,DATEADD(minute,720,DATEADD(day,-462,@NgayMau)))),
     (N'PSC034', N'DV001', N'PT003', N'Hoàn thành', 3, N'Đạt', NULL, 0, NULL),
     (N'PSC035', N'DV001', N'PT035', N'Hoàn thành', 3, N'Đạt', NULL, 0, NULL),
-    (N'PSC035', N'DV002', N'PT004', N'Hoàn thành', 1, N'Đạt', DATEADD(minute,720,DATEADD(day,-475,@NgayMau)), 30, DATEADD(minute,720,DATEADD(day,-445,@NgayMau))),
-    (N'PSC036', N'DV002', N'PT036', N'Hoàn thành', 1, N'Đạt', DATEADD(minute,720,DATEADD(day,-488,@NgayMau)), 30, DATEADD(minute,720,DATEADD(day,-458,@NgayMau))),
-    (N'PSC036', N'DV003', N'PT005', N'Hoàn thành', 2, N'Đạt', DATEADD(minute,720,DATEADD(day,-488,@NgayMau)), 90, DATEADD(minute,720,DATEADD(day,-398,@NgayMau))),
-    (N'PSC036', N'DV002', N'PT038', N'Hoàn thành', 1, N'Đạt', DATEADD(minute,720,DATEADD(day,-488,@NgayMau)), 180, DATEADD(minute,720,DATEADD(day,-308,@NgayMau))),
-    (N'PSC037', N'DV003', N'PT037', N'Hoàn thành', 2, N'Đạt', DATEADD(minute,720,DATEADD(day,-501,@NgayMau)), 90, DATEADD(minute,720,DATEADD(day,-411,@NgayMau))),
-    (N'PSC037', N'DV004', N'PT006', N'Hoàn thành', 3, N'Đạt', DATEADD(minute,720,DATEADD(day,-501,@NgayMau)), 180, DATEADD(minute,720,DATEADD(day,-321,@NgayMau))),
-    (N'PSC038', N'DV004', N'PT038', N'Hoàn thành', 3, N'Đạt', DATEADD(minute,720,DATEADD(day,-514,@NgayMau)), 180, DATEADD(minute,720,DATEADD(day,-334,@NgayMau))),
-    (N'PSC038', N'DV005', N'PT007', N'Hoàn thành', 1, N'Đạt', DATEADD(minute,720,DATEADD(day,-514,@NgayMau)), 365, DATEADD(minute,720,DATEADD(day,-149,@NgayMau))),
-    (N'PSC039', N'DV005', N'PT001', N'Hoàn thành', 1, N'Đạt', DATEADD(minute,720,DATEADD(day,-527,@NgayMau)), 365, DATEADD(minute,720,DATEADD(day,-162,@NgayMau))),
+    (N'PSC035', N'DV002', N'PT004', N'Hoàn thành', 1, N'Đạt', DATEADD(minute,720,DATEADD(day,-475,@NgayMau)), 24, DATEADD(month,24,DATEADD(minute,720,DATEADD(day,-475,@NgayMau)))),
+    (N'PSC036', N'DV002', N'PT036', N'Hoàn thành', 1, N'Đạt', DATEADD(minute,720,DATEADD(day,-488,@NgayMau)), 24, DATEADD(month,24,DATEADD(minute,720,DATEADD(day,-488,@NgayMau)))),
+    (N'PSC036', N'DV003', N'PT005', N'Hoàn thành', 2, N'Đạt', DATEADD(minute,720,DATEADD(day,-488,@NgayMau)), 60, DATEADD(month,60,DATEADD(minute,720,DATEADD(day,-488,@NgayMau)))),
+    (N'PSC036', N'DV002', N'PT038', N'Hoàn thành', 1, N'Đạt', DATEADD(minute,720,DATEADD(day,-488,@NgayMau)), 120, DATEADD(month,120,DATEADD(minute,720,DATEADD(day,-488,@NgayMau)))),
+    (N'PSC037', N'DV003', N'PT037', N'Hoàn thành', 2, N'Đạt', DATEADD(minute,720,DATEADD(day,-501,@NgayMau)), 60, DATEADD(month,60,DATEADD(minute,720,DATEADD(day,-501,@NgayMau)))),
+    (N'PSC037', N'DV004', N'PT006', N'Hoàn thành', 3, N'Đạt', DATEADD(minute,720,DATEADD(day,-501,@NgayMau)), 120, DATEADD(month,120,DATEADD(minute,720,DATEADD(day,-501,@NgayMau)))),
+    (N'PSC038', N'DV004', N'PT038', N'Hoàn thành', 3, N'Đạt', DATEADD(minute,720,DATEADD(day,-514,@NgayMau)), 120, DATEADD(month,120,DATEADD(minute,720,DATEADD(day,-514,@NgayMau)))),
+    (N'PSC038', N'DV005', N'PT007', N'Hoàn thành', 1, N'Đạt', DATEADD(minute,720,DATEADD(day,-514,@NgayMau)), 120, DATEADD(month,120,DATEADD(minute,720,DATEADD(day,-514,@NgayMau)))),
+    (N'PSC039', N'DV005', N'PT001', N'Hoàn thành', 1, N'Đạt', DATEADD(minute,720,DATEADD(day,-527,@NgayMau)), 120, DATEADD(month,120,DATEADD(minute,720,DATEADD(day,-527,@NgayMau)))),
     (N'PSC039', N'DV006', N'PT008', N'Hoàn thành', 2, N'Đạt', NULL, 0, NULL),
     (N'PSC040', N'DV006', N'PT002', N'Hoàn thành', 2, N'Đạt', NULL, 0, NULL),
-    (N'PSC040', N'DV007', N'PT009', N'Hoàn thành', 3, N'Đạt', DATEADD(minute,720,DATEADD(day,-540,@NgayMau)), 30, DATEADD(minute,720,DATEADD(day,-510,@NgayMau))),
-    (N'PSC041', N'DV007', N'PT003', N'Hoàn thành', 3, N'Đạt', DATEADD(minute,720,DATEADD(day,-553,@NgayMau)), 30, DATEADD(minute,720,DATEADD(day,-523,@NgayMau))),
-    (N'PSC041', N'DV008', N'PT010', N'Hoàn thành', 1, N'Đạt', DATEADD(minute,720,DATEADD(day,-553,@NgayMau)), 90, DATEADD(minute,720,DATEADD(day,-463,@NgayMau))),
-    (N'PSC042', N'DV008', N'PT004', N'Hoàn thành', 1, N'Đạt', DATEADD(minute,720,DATEADD(day,-566,@NgayMau)), 90, DATEADD(minute,720,DATEADD(day,-476,@NgayMau))),
-    (N'PSC042', N'DV009', N'PT011', N'Hoàn thành', 2, N'Đạt', DATEADD(minute,720,DATEADD(day,-566,@NgayMau)), 180, DATEADD(minute,720,DATEADD(day,-386,@NgayMau))),
-    (N'PSC043', N'DV009', N'PT005', N'Hoàn thành', 2, N'Đạt', DATEADD(minute,720,DATEADD(day,-579,@NgayMau)), 180, DATEADD(minute,720,DATEADD(day,-399,@NgayMau))),
-    (N'PSC043', N'DV010', N'PT012', N'Hoàn thành', 3, N'Đạt', DATEADD(minute,720,DATEADD(day,-579,@NgayMau)), 365, DATEADD(minute,720,DATEADD(day,-214,@NgayMau))),
-    (N'PSC044', N'DV010', N'PT006', N'Hoàn thành', 3, N'Đạt', DATEADD(minute,720,DATEADD(day,-592,@NgayMau)), 365, DATEADD(minute,720,DATEADD(day,-227,@NgayMau))),
+    (N'PSC040', N'DV007', N'PT009', N'Hoàn thành', 3, N'Đạt', DATEADD(minute,720,DATEADD(day,-540,@NgayMau)), 24, DATEADD(month,24,DATEADD(minute,720,DATEADD(day,-540,@NgayMau)))),
+    (N'PSC041', N'DV007', N'PT003', N'Hoàn thành', 3, N'Đạt', DATEADD(minute,720,DATEADD(day,-553,@NgayMau)), 24, DATEADD(month,24,DATEADD(minute,720,DATEADD(day,-553,@NgayMau)))),
+    (N'PSC041', N'DV008', N'PT010', N'Hoàn thành', 1, N'Đạt', DATEADD(minute,720,DATEADD(day,-553,@NgayMau)), 60, DATEADD(month,60,DATEADD(minute,720,DATEADD(day,-553,@NgayMau)))),
+    (N'PSC042', N'DV008', N'PT004', N'Hoàn thành', 1, N'Đạt', DATEADD(minute,720,DATEADD(day,-566,@NgayMau)), 60, DATEADD(month,60,DATEADD(minute,720,DATEADD(day,-566,@NgayMau)))),
+    (N'PSC042', N'DV009', N'PT011', N'Hoàn thành', 2, N'Đạt', DATEADD(minute,720,DATEADD(day,-566,@NgayMau)), 120, DATEADD(month,120,DATEADD(minute,720,DATEADD(day,-566,@NgayMau)))),
+    (N'PSC043', N'DV009', N'PT005', N'Hoàn thành', 2, N'Đạt', DATEADD(minute,720,DATEADD(day,-579,@NgayMau)), 120, DATEADD(month,120,DATEADD(minute,720,DATEADD(day,-579,@NgayMau)))),
+    (N'PSC043', N'DV010', N'PT012', N'Hoàn thành', 3, N'Đạt', DATEADD(minute,720,DATEADD(day,-579,@NgayMau)), 120, DATEADD(month,120,DATEADD(minute,720,DATEADD(day,-579,@NgayMau)))),
+    (N'PSC044', N'DV010', N'PT006', N'Hoàn thành', 3, N'Đạt', DATEADD(minute,720,DATEADD(day,-592,@NgayMau)), 120, DATEADD(month,120,DATEADD(minute,720,DATEADD(day,-592,@NgayMau)))),
     (N'PSC044', N'DV011', N'PT013', N'Hoàn thành', 1, N'Đạt', NULL, 0, NULL),
     (N'PSC045', N'DV011', N'PT007', N'Hoàn thành', 1, N'Đạt', NULL, 0, NULL),
-    (N'PSC045', N'DV012', N'PT014', N'Hoàn thành', 2, N'Đạt', DATEADD(minute,720,DATEADD(day,-605,@NgayMau)), 30, DATEADD(minute,720,DATEADD(day,-575,@NgayMau))),
-    (N'PSC045', N'DV011', N'PT038', N'Hoàn thành', 1, N'Đạt', DATEADD(minute,720,DATEADD(day,-605,@NgayMau)), 90, DATEADD(minute,720,DATEADD(day,-515,@NgayMau))),
-    (N'PSC046', N'DV012', N'PT008', N'Hoàn thành', 2, N'Đạt', DATEADD(minute,720,DATEADD(day,-618,@NgayMau)), 30, DATEADD(minute,720,DATEADD(day,-588,@NgayMau))),
-    (N'PSC046', N'DV013', N'PT015', N'Hoàn thành', 3, N'Đạt', DATEADD(minute,720,DATEADD(day,-618,@NgayMau)), 90, DATEADD(minute,720,DATEADD(day,-528,@NgayMau))),
-    (N'PSC047', N'DV013', N'PT009', N'Hoàn thành', 3, N'Đạt', DATEADD(minute,720,DATEADD(day,-631,@NgayMau)), 90, DATEADD(minute,720,DATEADD(day,-541,@NgayMau))),
-    (N'PSC047', N'DV014', N'PT016', N'Hoàn thành', 1, N'Đạt', DATEADD(minute,720,DATEADD(day,-631,@NgayMau)), 180, DATEADD(minute,720,DATEADD(day,-451,@NgayMau))),
-    (N'PSC048', N'DV014', N'PT010', N'Hoàn thành', 1, N'Đạt', DATEADD(minute,720,DATEADD(day,-644,@NgayMau)), 180, DATEADD(minute,720,DATEADD(day,-464,@NgayMau))),
-    (N'PSC048', N'DV015', N'PT017', N'Hoàn thành', 2, N'Đạt', DATEADD(minute,720,DATEADD(day,-644,@NgayMau)), 365, DATEADD(minute,720,DATEADD(day,-279,@NgayMau))),
-    (N'PSC049', N'DV015', N'PT011', N'Hoàn thành', 2, N'Đạt', DATEADD(minute,720,DATEADD(day,-657,@NgayMau)), 365, DATEADD(minute,720,DATEADD(day,-292,@NgayMau))),
+    (N'PSC045', N'DV012', N'PT014', N'Hoàn thành', 2, N'Đạt', DATEADD(minute,720,DATEADD(day,-605,@NgayMau)), 24, DATEADD(month,24,DATEADD(minute,720,DATEADD(day,-605,@NgayMau)))),
+    (N'PSC045', N'DV011', N'PT038', N'Hoàn thành', 1, N'Đạt', DATEADD(minute,720,DATEADD(day,-605,@NgayMau)), 60, DATEADD(month,60,DATEADD(minute,720,DATEADD(day,-605,@NgayMau)))),
+    (N'PSC046', N'DV012', N'PT008', N'Hoàn thành', 2, N'Đạt', DATEADD(minute,720,DATEADD(day,-618,@NgayMau)), 24, DATEADD(month,24,DATEADD(minute,720,DATEADD(day,-618,@NgayMau)))),
+    (N'PSC046', N'DV013', N'PT015', N'Hoàn thành', 3, N'Đạt', DATEADD(minute,720,DATEADD(day,-618,@NgayMau)), 60, DATEADD(month,60,DATEADD(minute,720,DATEADD(day,-618,@NgayMau)))),
+    (N'PSC047', N'DV013', N'PT009', N'Hoàn thành', 3, N'Đạt', DATEADD(minute,720,DATEADD(day,-631,@NgayMau)), 60, DATEADD(month,60,DATEADD(minute,720,DATEADD(day,-631,@NgayMau)))),
+    (N'PSC047', N'DV014', N'PT016', N'Hoàn thành', 1, N'Đạt', DATEADD(minute,720,DATEADD(day,-631,@NgayMau)), 120, DATEADD(month,120,DATEADD(minute,720,DATEADD(day,-631,@NgayMau)))),
+    (N'PSC048', N'DV014', N'PT010', N'Hoàn thành', 1, N'Đạt', DATEADD(minute,720,DATEADD(day,-644,@NgayMau)), 120, DATEADD(month,120,DATEADD(minute,720,DATEADD(day,-644,@NgayMau)))),
+    (N'PSC048', N'DV015', N'PT017', N'Hoàn thành', 2, N'Đạt', DATEADD(minute,720,DATEADD(day,-644,@NgayMau)), 120, DATEADD(month,120,DATEADD(minute,720,DATEADD(day,-644,@NgayMau)))),
+    (N'PSC049', N'DV015', N'PT011', N'Hoàn thành', 2, N'Đạt', DATEADD(minute,720,DATEADD(day,-657,@NgayMau)), 120, DATEADD(month,120,DATEADD(minute,720,DATEADD(day,-657,@NgayMau)))),
     (N'PSC049', N'DV016', N'PT018', N'Hoàn thành', 3, N'Đạt', NULL, 0, NULL),
     (N'PSC050', N'DV016', N'PT012', N'Hoàn thành', 3, N'Đạt', NULL, 0, NULL),
-    (N'PSC050', N'DV017', N'PT019', N'Hoàn thành', 1, N'Đạt', DATEADD(minute,720,DATEADD(day,-20,@NgayMau)), 30, DATEADD(minute,720,DATEADD(day,10,@NgayMau))),
-    (N'PSC051', N'DV017', N'PT039', N'Hoàn thành', 1, N'Đạt', DATEADD(minute,720,DATEADD(day,-33,@NgayMau)), 30, DATEADD(minute,720,DATEADD(day,-3,@NgayMau))),
-    (N'PSC051', N'DV018', N'PT039', N'Hoàn thành', 1, N'Đạt', DATEADD(minute,720,DATEADD(day,-33,@NgayMau)), 90, DATEADD(minute,720,DATEADD(day,57,@NgayMau))),
-    (N'PSC052', N'DV017', N'PT040', N'Hoàn thành', 1, N'Đạt', DATEADD(minute,720,DATEADD(day,-46,@NgayMau)), 90, DATEADD(minute,720,DATEADD(day,44,@NgayMau))),
-    (N'PSC052', N'DV018', N'PT040', N'Hoàn thành', 1, N'Đạt', DATEADD(minute,720,DATEADD(day,-46,@NgayMau)), 180, DATEADD(minute,720,DATEADD(day,134,@NgayMau))),
-    (N'PSC053', N'DV002', N'PT015', N'Hoàn thành', 3, N'Đạt', DATEADD(minute,720,DATEADD(day,-59,@NgayMau)), 180, DATEADD(minute,720,DATEADD(day,121,@NgayMau))),
-    (N'PSC053', N'DV003', N'PT022', N'Hoàn thành', 1, N'Đạt', DATEADD(minute,720,DATEADD(day,-59,@NgayMau)), 365, DATEADD(minute,720,DATEADD(day,306,@NgayMau))),
-    (N'PSC054', N'DV003', N'PT016', N'Hoàn thành', 1, N'Đạt', DATEADD(minute,720,DATEADD(day,-72,@NgayMau)), 365, DATEADD(minute,720,DATEADD(day,293,@NgayMau))),
+    (N'PSC050', N'DV017', N'PT019', N'Hoàn thành', 1, N'Đạt', DATEADD(minute,720,DATEADD(day,-20,@NgayMau)), 24, DATEADD(month,24,DATEADD(minute,720,DATEADD(day,-20,@NgayMau)))),
+    (N'PSC051', N'DV017', N'PT039', N'Hoàn thành', 1, N'Đạt', DATEADD(minute,720,DATEADD(day,-33,@NgayMau)), 24, DATEADD(month,24,DATEADD(minute,720,DATEADD(day,-33,@NgayMau)))),
+    (N'PSC051', N'DV018', N'PT039', N'Hoàn thành', 1, N'Đạt', DATEADD(minute,720,DATEADD(day,-33,@NgayMau)), 60, DATEADD(month,60,DATEADD(minute,720,DATEADD(day,-33,@NgayMau)))),
+    (N'PSC052', N'DV017', N'PT040', N'Hoàn thành', 1, N'Đạt', DATEADD(minute,720,DATEADD(day,-46,@NgayMau)), 60, DATEADD(month,60,DATEADD(minute,720,DATEADD(day,-46,@NgayMau)))),
+    (N'PSC052', N'DV018', N'PT040', N'Hoàn thành', 1, N'Đạt', DATEADD(minute,720,DATEADD(day,-46,@NgayMau)), 120, DATEADD(month,120,DATEADD(minute,720,DATEADD(day,-46,@NgayMau)))),
+    (N'PSC053', N'DV002', N'PT015', N'Hoàn thành', 3, N'Đạt', DATEADD(minute,720,DATEADD(day,-59,@NgayMau)), 120, DATEADD(month,120,DATEADD(minute,720,DATEADD(day,-59,@NgayMau)))),
+    (N'PSC053', N'DV003', N'PT022', N'Hoàn thành', 1, N'Đạt', DATEADD(minute,720,DATEADD(day,-59,@NgayMau)), 120, DATEADD(month,120,DATEADD(minute,720,DATEADD(day,-59,@NgayMau)))),
+    (N'PSC054', N'DV003', N'PT016', N'Hoàn thành', 1, N'Đạt', DATEADD(minute,720,DATEADD(day,-72,@NgayMau)), 120, DATEADD(month,120,DATEADD(minute,720,DATEADD(day,-72,@NgayMau)))),
     (N'PSC054', N'DV004', N'PT023', N'Hoàn thành', 2, N'Đạt', NULL, 0, NULL),
-    (N'PSC054', N'DV003', N'PT038', N'Hoàn thành', 1, N'Đạt', DATEADD(minute,720,DATEADD(day,-72,@NgayMau)), 30, DATEADD(minute,720,DATEADD(day,-42,@NgayMau))),
+    (N'PSC054', N'DV003', N'PT038', N'Hoàn thành', 1, N'Đạt', DATEADD(minute,720,DATEADD(day,-72,@NgayMau)), 24, DATEADD(month,24,DATEADD(minute,720,DATEADD(day,-72,@NgayMau)))),
     (N'PSC055', N'DV004', N'PT017', N'Hoàn thành', 2, N'Đạt', NULL, 0, NULL),
-    (N'PSC055', N'DV005', N'PT024', N'Hoàn thành', 3, N'Đạt', DATEADD(minute,720,DATEADD(day,-85,@NgayMau)), 30, DATEADD(minute,720,DATEADD(day,-55,@NgayMau))),
-    (N'PSC056', N'DV005', N'PT018', N'Hoàn thành', 3, N'Đạt', DATEADD(minute,720,DATEADD(day,-98,@NgayMau)), 30, DATEADD(minute,720,DATEADD(day,-68,@NgayMau))),
-    (N'PSC056', N'DV006', N'PT025', N'Hoàn thành', 1, N'Đạt', DATEADD(minute,720,DATEADD(day,-98,@NgayMau)), 90, DATEADD(minute,720,DATEADD(day,-8,@NgayMau))),
-    (N'PSC057', N'DV006', N'PT019', N'Hoàn thành', 1, N'Đạt', DATEADD(minute,720,DATEADD(day,-111,@NgayMau)), 90, DATEADD(minute,720,DATEADD(day,-21,@NgayMau))),
-    (N'PSC057', N'DV007', N'PT026', N'Hoàn thành', 2, N'Đạt', DATEADD(minute,720,DATEADD(day,-111,@NgayMau)), 180, DATEADD(minute,720,DATEADD(day,69,@NgayMau))),
-    (N'PSC058', N'DV007', N'PT020', N'Hoàn thành', 2, N'Đạt', DATEADD(minute,720,DATEADD(day,-124,@NgayMau)), 180, DATEADD(minute,720,DATEADD(day,56,@NgayMau))),
-    (N'PSC058', N'DV008', N'PT027', N'Hoàn thành', 3, N'Đạt', DATEADD(minute,720,DATEADD(day,-124,@NgayMau)), 365, DATEADD(minute,720,DATEADD(day,241,@NgayMau))),
-    (N'PSC059', N'DV008', N'PT021', N'Hoàn thành', 3, N'Đạt', DATEADD(minute,720,DATEADD(day,-137,@NgayMau)), 365, DATEADD(minute,720,DATEADD(day,228,@NgayMau))),
+    (N'PSC055', N'DV005', N'PT024', N'Hoàn thành', 3, N'Đạt', DATEADD(minute,720,DATEADD(day,-85,@NgayMau)), 24, DATEADD(month,24,DATEADD(minute,720,DATEADD(day,-85,@NgayMau)))),
+    (N'PSC056', N'DV005', N'PT018', N'Hoàn thành', 3, N'Đạt', DATEADD(minute,720,DATEADD(day,-98,@NgayMau)), 24, DATEADD(month,24,DATEADD(minute,720,DATEADD(day,-98,@NgayMau)))),
+    (N'PSC056', N'DV006', N'PT025', N'Hoàn thành', 1, N'Đạt', DATEADD(minute,720,DATEADD(day,-98,@NgayMau)), 60, DATEADD(month,60,DATEADD(minute,720,DATEADD(day,-98,@NgayMau)))),
+    (N'PSC057', N'DV006', N'PT019', N'Hoàn thành', 1, N'Đạt', DATEADD(minute,720,DATEADD(day,-111,@NgayMau)), 60, DATEADD(month,60,DATEADD(minute,720,DATEADD(day,-111,@NgayMau)))),
+    (N'PSC057', N'DV007', N'PT026', N'Hoàn thành', 2, N'Đạt', DATEADD(minute,720,DATEADD(day,-111,@NgayMau)), 120, DATEADD(month,120,DATEADD(minute,720,DATEADD(day,-111,@NgayMau)))),
+    (N'PSC058', N'DV007', N'PT020', N'Hoàn thành', 2, N'Đạt', DATEADD(minute,720,DATEADD(day,-124,@NgayMau)), 120, DATEADD(month,120,DATEADD(minute,720,DATEADD(day,-124,@NgayMau)))),
+    (N'PSC058', N'DV008', N'PT027', N'Hoàn thành', 3, N'Đạt', DATEADD(minute,720,DATEADD(day,-124,@NgayMau)), 120, DATEADD(month,120,DATEADD(minute,720,DATEADD(day,-124,@NgayMau)))),
+    (N'PSC059', N'DV008', N'PT021', N'Hoàn thành', 3, N'Đạt', DATEADD(minute,720,DATEADD(day,-137,@NgayMau)), 120, DATEADD(month,120,DATEADD(minute,720,DATEADD(day,-137,@NgayMau)))),
     (N'PSC059', N'DV009', N'PT028', N'Hoàn thành', 1, N'Đạt', NULL, 0, NULL),
     (N'PSC060', N'DV009', N'PT022', N'Hoàn thành', 1, N'Đạt', NULL, 0, NULL),
-    (N'PSC060', N'DV010', N'PT029', N'Hoàn thành', 2, N'Đạt', DATEADD(minute,720,DATEADD(day,-150,@NgayMau)), 30, DATEADD(minute,720,DATEADD(day,-120,@NgayMau)));
+    (N'PSC060', N'DV010', N'PT029', N'Hoàn thành', 2, N'Đạt', DATEADD(minute,720,DATEADD(day,-150,@NgayMau)), 24, DATEADD(month,24,DATEADD(minute,720,DATEADD(day,-150,@NgayMau))));
 
--- YeuCauNhapKho: 3 bản ghi mẫu (UC009)
+INSERT INTO dbo.ChiTietPhieuSuaChua(maPSC,maDichVu,maPhuTung,trangThaiHangMuc,soLuongPhuTung,ketQuaNghiemThu,ngayBatDauBaoHanh,thoiHanBaoHanh,ngayHetHanBaoHanh)
+SELECT p.maPSC,c.maDichVu,c.maPhuTung,
+       CASE WHEN c.maPhuTung='PT000' THEN N'Đang sửa chữa' ELSE N'Thiếu phụ tùng' END,
+       c.soLuongPhuTung,N'Không đạt',NULL,0,NULL
+FROM dbo.PhieuSuaChua p JOIN dbo.ChiTietPhieuBaoGia c ON c.maBaoGia=p.maBaoGia
+WHERE p.trangThai=N'Chờ sửa chữa'
+  AND NOT EXISTS(SELECT 1 FROM dbo.ChiTietPhieuSuaChua d WHERE d.maPSC=p.maPSC);
+
+-- YeuCauNhapKho: 5 bản ghi mẫu chuẩn hóa theo quy trình UC009
 INSERT INTO dbo.[YeuCauNhapKho] ([maYCNK], [maNCC], [maNhanVien], [ngayTao], [trangThai], [maNhanVienDuyet], [ngayDuyet], [ghiChu])
 VALUES
-    (N'YCN001', N'NCC001', N'NV002', DATEADD(minute,480,DATEADD(day,-10,@NgayMau)), N'Đã duyệt', N'NV001', DATEADD(minute,540,DATEADD(day,-9,@NgayMau)), N'Đơn nhập định kỳ tháng'),
-    (N'YCN002', N'NCC002', N'NV002', DATEADD(minute,500,DATEADD(day,-2,@NgayMau)), N'Chờ duyệt', NULL, NULL, N'Bổ sung phụ tùng khẩn cấp'),
-    (N'YCN003', N'NCC003', N'NV002', DATEADD(minute,520,DATEADD(day,-1,@NgayMau)), N'Chờ duyệt', NULL, NULL, N'Má phanh và gạt mưa');
+    (N'YCN001', N'NCC001', N'NV002', DATEADD(minute,480,DATEADD(day,-1,@NgayMau)), N'Chờ duyệt', NULL, NULL, N'Yêu cầu nhập bổ sung dầu động cơ và lọc nhớt quý 4'),
+    (N'YCN002', N'NCC002', N'NV002', DATEADD(minute,500,DATEADD(day,-2,@NgayMau)), N'Đã duyệt', N'NV004', DATEADD(minute,540,DATEADD(day,-1,@NgayMau)), N'Yêu cầu nhập má phanh phục vụ bảo dưỡng định kỳ'),
+    (N'YCN003', N'NCC001', N'NV002', DATEADD(minute,520,DATEADD(day,-3,@NgayMau)), N'Đã duyệt', N'NV004', DATEADD(minute,560,DATEADD(day,-2,@NgayMau)), N'Yêu cầu nhập phụ tùng lọc gió điều hòa và bugi'),
+    (N'YCN004', N'NCC003', N'NV002', DATEADD(minute,480,DATEADD(day,-5,@NgayMau)), N'Đã xử lý', N'NV004', DATEADD(minute,520,DATEADD(day,-4,@NgayMau)), N'Nhập phụ tùng dầu động cơ đầu tháng'),
+    (N'YCN005', N'NCC002', N'NV002', DATEADD(minute,500,DATEADD(day,-6,@NgayMau)), N'Từ chối', N'NV004', DATEADD(minute,540,DATEADD(day,-5,@NgayMau)), N'Yêu cầu nhập má phanh ngoài danh mục tiêu chuẩn (bị từ chối)');
 
--- ChiTietYeuCauNhapKho: 5 bản ghi mẫu
+-- ChiTietYeuCauNhapKho: 7 bản ghi mẫu
 INSERT INTO dbo.[ChiTietYeuCauNhapKho] ([maYCNK], [maPhuTung], [soLuongYeuCau], [donGiaDuKien])
 VALUES
-    (N'YCN001', N'PT001', 20, 150000.00),
-    (N'YCN001', N'PT002', 15, 320000.00),
-    (N'YCN002', N'PT003', 10, 680000.00),
-    (N'YCN002', N'PT004', 25, 160000.00),
-    (N'YCN003', N'PT005', 30, 1300000.00);
+    (N'YCN001', N'PT001', 20, 120000.00),
+    (N'YCN001', N'PT002', 15, 85000.00),
+    (N'YCN002', N'PT003', 10, 350000.00),
+    (N'YCN003', N'PT004', 25, 110000.00),
+    (N'YCN003', N'PT005', 30, 95000.00),
+    (N'YCN004', N'PT001', 10, 120000.00),
+    (N'YCN005', N'PT003', 50, 350000.00);
 
--- PhieuNhapKho: 36 bản ghi
-INSERT INTO dbo.[PhieuNhapKho] ([maPNK], [maNCC], [maNhanVien], [ngayNhap], [trangThai])
+-- PhieuNhapKho: 2 bản ghi mẫu chuẩn hóa theo quy trình UC009 (gắn 1:1 với YeuCauNhapKho)
+INSERT INTO dbo.[PhieuNhapKho] ([maPNK], [maNCC], [maNhanVien], [ngayNhap], [trangThai], [maYCNK])
 VALUES
-    (N'PNK001', N'NCC001', N'NV002', DATEADD(minute,600,DATEADD(day,-176,@NgayMau)), N'Chờ duyệt'),
-    (N'PNK002', N'NCC002', N'NV002', DATEADD(minute,600,DATEADD(day,-172,@NgayMau)), N'Đã duyệt'),
-    (N'PNK003', N'NCC003', N'NV002', DATEADD(minute,600,DATEADD(day,-168,@NgayMau)), N'Không duyệt'),
-    (N'PNK004', N'NCC004', N'NV002', DATEADD(minute,600,DATEADD(day,-164,@NgayMau)), N'Chờ duyệt'),
-    (N'PNK005', N'NCC005', N'NV002', DATEADD(minute,600,DATEADD(day,-160,@NgayMau)), N'Đã duyệt'),
-    (N'PNK006', N'NCC006', N'NV002', DATEADD(minute,600,DATEADD(day,-156,@NgayMau)), N'Không duyệt'),
-    (N'PNK007', N'NCC007', N'NV002', DATEADD(minute,600,DATEADD(day,-152,@NgayMau)), N'Chờ duyệt'),
-    (N'PNK008', N'NCC008', N'NV002', DATEADD(minute,600,DATEADD(day,-148,@NgayMau)), N'Đã duyệt'),
-    (N'PNK009', N'NCC009', N'NV002', DATEADD(minute,600,DATEADD(day,-144,@NgayMau)), N'Không duyệt'),
-    (N'PNK010', N'NCC010', N'NV002', DATEADD(minute,600,DATEADD(day,-140,@NgayMau)), N'Chờ duyệt'),
-    (N'PNK011', N'NCC011', N'NV002', DATEADD(minute,600,DATEADD(day,-136,@NgayMau)), N'Đã duyệt'),
-    (N'PNK012', N'NCC012', N'NV002', DATEADD(minute,600,DATEADD(day,-132,@NgayMau)), N'Không duyệt'),
-    (N'PNK013', N'NCC001', N'NV002', DATEADD(minute,600,DATEADD(day,-128,@NgayMau)), N'Chờ duyệt'),
-    (N'PNK014', N'NCC002', N'NV002', DATEADD(minute,600,DATEADD(day,-124,@NgayMau)), N'Đã duyệt'),
-    (N'PNK015', N'NCC003', N'NV002', DATEADD(minute,600,DATEADD(day,-120,@NgayMau)), N'Không duyệt'),
-    (N'PNK016', N'NCC004', N'NV002', DATEADD(minute,600,DATEADD(day,-116,@NgayMau)), N'Chờ duyệt'),
-    (N'PNK017', N'NCC005', N'NV002', DATEADD(minute,600,DATEADD(day,-112,@NgayMau)), N'Đã duyệt'),
-    (N'PNK018', N'NCC006', N'NV002', DATEADD(minute,600,DATEADD(day,-108,@NgayMau)), N'Không duyệt'),
-    (N'PNK019', N'NCC007', N'NV002', DATEADD(minute,600,DATEADD(day,-104,@NgayMau)), N'Chờ duyệt'),
-    (N'PNK020', N'NCC008', N'NV002', DATEADD(minute,600,DATEADD(day,-100,@NgayMau)), N'Đã duyệt'),
-    (N'PNK021', N'NCC009', N'NV002', DATEADD(minute,600,DATEADD(day,-96,@NgayMau)), N'Không duyệt'),
-    (N'PNK022', N'NCC010', N'NV002', DATEADD(minute,600,DATEADD(day,-92,@NgayMau)), N'Chờ duyệt'),
-    (N'PNK023', N'NCC011', N'NV002', DATEADD(minute,600,DATEADD(day,-88,@NgayMau)), N'Đã duyệt'),
-    (N'PNK024', N'NCC012', N'NV002', DATEADD(minute,600,DATEADD(day,-84,@NgayMau)), N'Không duyệt'),
-    (N'PNK025', N'NCC001', N'NV002', DATEADD(minute,600,DATEADD(day,-80,@NgayMau)), N'Chờ duyệt'),
-    (N'PNK026', N'NCC002', N'NV002', DATEADD(minute,600,DATEADD(day,-76,@NgayMau)), N'Đã duyệt'),
-    (N'PNK027', N'NCC003', N'NV002', DATEADD(minute,600,DATEADD(day,-72,@NgayMau)), N'Không duyệt'),
-    (N'PNK028', N'NCC004', N'NV002', DATEADD(minute,600,DATEADD(day,-68,@NgayMau)), N'Chờ duyệt'),
-    (N'PNK029', N'NCC005', N'NV002', DATEADD(minute,600,DATEADD(day,-64,@NgayMau)), N'Đã duyệt'),
-    (N'PNK030', N'NCC006', N'NV002', DATEADD(minute,600,DATEADD(day,-60,@NgayMau)), N'Không duyệt'),
-    (N'PNK031', N'NCC007', N'NV002', DATEADD(minute,600,DATEADD(day,-56,@NgayMau)), N'Chờ duyệt'),
-    (N'PNK032', N'NCC008', N'NV002', DATEADD(minute,600,DATEADD(day,-52,@NgayMau)), N'Đã duyệt'),
-    (N'PNK033', N'NCC009', N'NV002', DATEADD(minute,600,DATEADD(day,-48,@NgayMau)), N'Không duyệt'),
-    (N'PNK034', N'NCC010', N'NV002', DATEADD(minute,600,DATEADD(day,-44,@NgayMau)), N'Chờ duyệt'),
-    (N'PNK035', N'NCC011', N'NV002', DATEADD(minute,600,DATEADD(day,-40,@NgayMau)), N'Đã duyệt'),
-    (N'PNK036', N'NCC012', N'NV002', DATEADD(minute,600,DATEADD(day,-36,@NgayMau)), N'Không duyệt');
+    (N'PNK001', N'NCC001', N'NV002', DATEADD(minute,600,DATEADD(day,-1,@NgayMau)), N'Chờ xác nhận nhập kho', N'YCN003'),
+    (N'PNK002', N'NCC003', N'NV002', DATEADD(minute,600,DATEADD(day,-4,@NgayMau)), N'Đã nhập kho', N'YCN004');
 
--- ChiTietPhieuNhapKho: 108 bản ghi
-INSERT INTO dbo.[ChiTietPhieuNhapKho] ([maPNK], [maPhuTung], [soLuongNhap], [donGiaNhap])
+-- ChiTietPhieuNhapKho: 3 bản ghi mẫu chuẩn hóa theo quy trình UC009 (0 <= soLuongNhap <= soLuongThucNhan <= soLuongYeuCau)
+INSERT INTO dbo.[ChiTietPhieuNhapKho] ([maPNK], [maPhuTung], [soLuongYeuCau], [soLuongThucNhan], [soLuongNhap], [donGiaNhap])
 VALUES
-    (N'PNK001', N'PT003', 8, 684000.00),
-    (N'PNK001', N'PT004', 9, 158400.00),
-    (N'PNK001', N'PT005', 10, 1332000.00),
-    (N'PNK002', N'PT006', 8, 108000.00),
-    (N'PNK002', N'PT007', 10, 468000.00),
-    (N'PNK002', N'PT008', 12, 180000.00),
-    (N'PNK003', N'PT009', 8, 1656000.00),
-    (N'PNK003', N'PT010', 11, 2520000.00),
-    (N'PNK003', N'PT011', 14, 900000.00),
-    (N'PNK004', N'PT012', 8, 2016000.00),
-    (N'PNK004', N'PT013', 12, 1296000.00),
-    (N'PNK004', N'PT014', 16, 230400.00),
-    (N'PNK005', N'PT015', 8, 345600.00),
-    (N'PNK005', N'PT016', 13, 252000.00),
-    (N'PNK005', N'PT017', 18, 1044000.00),
-    (N'PNK006', N'PT018', 8, 684000.00),
-    (N'PNK006', N'PT019', 14, 4680000.00),
-    (N'PNK006', N'PT020', 20, 612000.00),
-    (N'PNK007', N'PT021', 8, 28800000.00),
-    (N'PNK007', N'PT022', 15, 25200000.00),
-    (N'PNK007', N'PT023', 22, 2304000.00),
-    (N'PNK008', N'PT024', 8, 3456000.00),
-    (N'PNK008', N'PT025', 16, 2736000.00),
-    (N'PNK008', N'PT026', 24, 6120000.00),
-    (N'PNK009', N'PT027', 8, 540000.00),
-    (N'PNK009', N'PT028', 17, 684000.00),
-    (N'PNK009', N'PT029', 26, 1332000.00),
-    (N'PNK010', N'PT030', 8, 1872000.00),
-    (N'PNK010', N'PT031', 18, 489600.00),
-    (N'PNK010', N'PT032', 28, 1188000.00),
-    (N'PNK011', N'PT033', 8, 2304000.00),
-    (N'PNK011', N'PT034', 19, 324000.00),
-    (N'PNK011', N'PT035', 30, 129600.00),
-    (N'PNK012', N'PT036', 8, 68400.00),
-    (N'PNK012', N'PT037', 20, 10800.00),
-    (N'PNK012', N'PT038', 32, 18000.00),
-    (N'PNK013', N'PT039', 8, 0.00),
-    (N'PNK013', N'PT040', 21, 0.00),
-    (N'PNK013', N'PT001', 34, 612000.00),
-    (N'PNK014', N'PT002', 8, 129600.00),
-    (N'PNK014', N'PT003', 22, 684000.00),
-    (N'PNK014', N'PT004', 36, 158400.00),
-    (N'PNK015', N'PT005', 8, 1332000.00),
-    (N'PNK015', N'PT006', 23, 108000.00),
-    (N'PNK015', N'PT007', 38, 468000.00),
-    (N'PNK016', N'PT008', 8, 180000.00),
-    (N'PNK016', N'PT009', 24, 1656000.00),
-    (N'PNK016', N'PT010', 40, 2520000.00),
-    (N'PNK017', N'PT011', 8, 900000.00),
-    (N'PNK017', N'PT012', 25, 2016000.00),
-    (N'PNK017', N'PT013', 42, 1296000.00),
-    (N'PNK018', N'PT014', 8, 230400.00),
-    (N'PNK018', N'PT015', 26, 345600.00),
-    (N'PNK018', N'PT016', 44, 252000.00),
-    (N'PNK019', N'PT017', 8, 1044000.00),
-    (N'PNK019', N'PT018', 27, 684000.00),
-    (N'PNK019', N'PT019', 46, 4680000.00),
-    (N'PNK020', N'PT020', 8, 612000.00),
-    (N'PNK020', N'PT021', 28, 28800000.00),
-    (N'PNK020', N'PT022', 48, 25200000.00),
-    (N'PNK021', N'PT023', 8, 2304000.00),
-    (N'PNK021', N'PT024', 29, 3456000.00),
-    (N'PNK021', N'PT025', 50, 2736000.00),
-    (N'PNK022', N'PT026', 8, 6120000.00),
-    (N'PNK022', N'PT027', 30, 540000.00),
-    (N'PNK022', N'PT028', 52, 684000.00),
-    (N'PNK023', N'PT029', 8, 1332000.00),
-    (N'PNK023', N'PT030', 31, 1872000.00),
-    (N'PNK023', N'PT031', 54, 489600.00),
-    (N'PNK024', N'PT032', 8, 1188000.00),
-    (N'PNK024', N'PT033', 32, 2304000.00),
-    (N'PNK024', N'PT034', 56, 324000.00),
-    (N'PNK025', N'PT035', 8, 129600.00),
-    (N'PNK025', N'PT036', 33, 68400.00),
-    (N'PNK025', N'PT037', 58, 10800.00),
-    (N'PNK026', N'PT038', 8, 18000.00),
-    (N'PNK026', N'PT039', 34, 0.00),
-    (N'PNK026', N'PT040', 60, 0.00),
-    (N'PNK027', N'PT001', 8, 612000.00),
-    (N'PNK027', N'PT002', 35, 129600.00),
-    (N'PNK027', N'PT003', 62, 684000.00),
-    (N'PNK028', N'PT004', 8, 158400.00),
-    (N'PNK028', N'PT005', 36, 1332000.00),
-    (N'PNK028', N'PT006', 64, 108000.00),
-    (N'PNK029', N'PT007', 8, 468000.00),
-    (N'PNK029', N'PT008', 37, 180000.00),
-    (N'PNK029', N'PT009', 66, 1656000.00),
-    (N'PNK030', N'PT010', 8, 2520000.00),
-    (N'PNK030', N'PT011', 38, 900000.00),
-    (N'PNK030', N'PT012', 68, 2016000.00),
-    (N'PNK031', N'PT013', 8, 1296000.00),
-    (N'PNK031', N'PT014', 39, 230400.00),
-    (N'PNK031', N'PT015', 70, 345600.00),
-    (N'PNK032', N'PT016', 8, 252000.00),
-    (N'PNK032', N'PT017', 40, 1044000.00),
-    (N'PNK032', N'PT018', 72, 684000.00),
-    (N'PNK033', N'PT019', 8, 4680000.00),
-    (N'PNK033', N'PT020', 41, 612000.00),
-    (N'PNK033', N'PT021', 74, 28800000.00),
-    (N'PNK034', N'PT022', 8, 25200000.00),
-    (N'PNK034', N'PT023', 42, 2304000.00),
-    (N'PNK034', N'PT024', 76, 3456000.00),
-    (N'PNK035', N'PT025', 8, 2736000.00),
-    (N'PNK035', N'PT026', 43, 6120000.00),
-    (N'PNK035', N'PT027', 78, 540000.00),
-    (N'PNK036', N'PT028', 8, 684000.00),
-    (N'PNK036', N'PT029', 44, 1332000.00),
-    (N'PNK036', N'PT030', 80, 1872000.00);
+    (N'PNK001', N'PT004', 25, 25, 23, 110000.00),
+    (N'PNK001', N'PT005', 30, 28, 28, 95000.00),
+    (N'PNK002', N'PT001', 10, 10, 10, 120000.00);
 
 -- HoaDon dịch vụ: 30 bản ghi; thêm 12 hóa đơn bán hàng ở phần nâng cấp cuối file.
 INSERT INTO dbo.[HoaDon] ([maHoaDon], [maGiamGia], [maKhachHang], [maNhanVien], [maPSC], [VIN], [ngayLap], [tienPhuTung], [tienCong], [dichVuKhac], [thueVAT], [giamGia], [trangThaiThanhToan], [maPhuongThuc])
@@ -2202,11 +2122,11 @@ VALUES
     (N'HD003', N'MGG015', N'KH033', N'NV001', N'PSC033', N'MNTCB4D29JA310033', DATEADD(minute,735,DATEADD(day,-449,@NgayMau)), 3560000.00, 8500000.00, 100000.00, 972800.00, 850000.00, N'Chờ thanh toán', N'TT002'),
     (N'HD004', N'MGG016', N'KH034', N'NV001', N'PSC034', N'WDDWF4JB4HA310034', DATEADD(minute,735,DATEADD(day,-462,@NgayMau)), 3750000.00, 150000.00, 0.00, 312000.00, 22500.00, N'Chờ thanh toán', N'TT001'),
     (N'HD005', N'MGG017', N'KH035', N'NV001', N'PSC035', N'WBA5R1104MA310035', DATEADD(minute,735,DATEADD(day,-475,@NgayMau)), 760000.00, 250000.00, 0.00, 80800.00, 50000.00, N'Chờ thanh toán', N'TT002'),
-    (N'HD006', NULL, N'KH036', N'NV001', N'PSC036', N'RLLV1AFA8SA310036', DATEADD(minute,735,DATEADD(day,-488,@NgayMau)), 3820000.00, 350000.00, 100000.00, 341600.00, 0.00, N'Thanh toán thất bại', N'TT001'),
-    (N'HD007', NULL, N'KH037', N'NV001', N'PSC037', N'MR0BT9F35MA310037', DATEADD(minute,735,DATEADD(day,-501,@NgayMau)), 480000.00, 550000.00, 0.00, 82400.00, 0.00, N'Thanh toán thất bại', N'TT002'),
-    (N'HD008', NULL, N'KH038', N'NV001', N'PSC038', N'MRHGM6625JA310038', DATEADD(minute,735,DATEADD(day,-514,@NgayMau)), 725000.00, 420000.00, 0.00, 91600.00, 0.00, N'Thanh toán thất bại', N'TT001'),
-    (N'HD009', NULL, N'KH039', N'NV001', N'PSC039', N'KMHCT41B9MA310039', DATEADD(minute,735,DATEADD(day,-527,@NgayMau)), 1350000.00, 770000.00, 100000.00, 177600.00, 0.00, N'Thanh toán thất bại', N'TT002'),
-    (N'HD010', NULL, N'KH040', N'NV001', N'PSC040', N'KNDEP81AXPA310040', DATEADD(minute,735,DATEADD(day,-540,@NgayMau)), 7260000.00, 850000.00, 0.00, 648800.00, 0.00, N'Thanh toán thất bại', N'TT001'),
+    (N'HD006', NULL, N'KH036', N'NV001', N'PSC036', N'RLLV1AFA8SA310036', DATEADD(minute,735,DATEADD(day,-488,@NgayMau)), 3820000.00, 350000.00, 100000.00, 341600.00, 0.00, N'Chờ thanh toán', N'TT001'),
+    (N'HD007', NULL, N'KH037', N'NV001', N'PSC037', N'MR0BT9F35MA310037', DATEADD(minute,735,DATEADD(day,-501,@NgayMau)), 480000.00, 550000.00, 0.00, 82400.00, 0.00, N'Chờ thanh toán', N'TT002'),
+    (N'HD008', NULL, N'KH038', N'NV001', N'PSC038', N'MRHGM6625JA310038', DATEADD(minute,735,DATEADD(day,-514,@NgayMau)), 725000.00, 420000.00, 0.00, 91600.00, 0.00, N'Chờ thanh toán', N'TT001'),
+    (N'HD009', NULL, N'KH039', N'NV001', N'PSC039', N'KMHCT41B9MA310039', DATEADD(minute,735,DATEADD(day,-527,@NgayMau)), 1350000.00, 770000.00, 100000.00, 177600.00, 0.00, N'Chờ thanh toán', N'TT002'),
+    (N'HD010', NULL, N'KH040', N'NV001', N'PSC040', N'KNDEP81AXPA310040', DATEADD(minute,735,DATEADD(day,-540,@NgayMau)), 7260000.00, 850000.00, 0.00, 648800.00, 0.00, N'Chờ thanh toán', N'TT001'),
     (N'HD011', N'MGG001', N'KH041', N'NV001', N'PSC041', N'JM3KF2W7XLA310041', DATEADD(minute,735,DATEADD(day,-553,@NgayMau)), 6350000.00, 380000.00, 0.00, 538400.00, 0.00, N'Đã thanh toán', N'TT002'),
     (N'HD012', N'MGG002', N'KH042', N'NV001', N'PSC042', N'MNCUMFF58JA310042', DATEADD(minute,735,DATEADD(day,-566,@NgayMau)), 2720000.00, 430000.00, 100000.00, 260000.00, 21500.00, N'Đã thanh toán', N'TT001'),
     (N'HD013', N'MGG003', N'KH043', N'NV001', N'PSC043', N'MK2NC1W46NA310043', DATEADD(minute,735,DATEADD(day,-579,@NgayMau)), 12100000.00, 430000.00, 0.00, 1002400.00, 43000.00, N'Đã thanh toán', N'TT002'),
@@ -2376,6 +2296,17 @@ VALUES
     (N'LBH019', N'PSC059', N'NV003', N'KH011', N'WBA5R1101PA310059', DATEADD(minute,600,DATEADD(day,-135,@NgayMau)), N'Đã hướng dẫn khách sử dụng và theo dõi thêm.', NULL),
     (N'LBH020', N'PSC060', N'NV003', N'KH012', N'RLLV1AFA2RA310060', DATEADD(minute,600,DATEADD(day,-148,@NgayMau)), N'Kiểm tra lại, hệ thống hoạt động ổn định.', N'Khách đã nhận thông tin kết quả xử lý.');
 
+-- Gắn dữ liệu bảo hành mẫu vào một hạng mục cụ thể còn hạn trên cùng phiếu.
+;WITH HangMucHopLe AS (
+    SELECT l.maLBH,c.maDichVu,c.maPhuTung,
+           ROW_NUMBER() OVER(PARTITION BY l.maLBH ORDER BY c.maDichVu,c.maPhuTung) AS rn
+    FROM dbo.LichBaoHanh l
+    JOIN dbo.ChiTietPhieuSuaChua c ON c.maPSC=l.maPSC
+    WHERE c.ketQuaNghiemThu=N'Đạt' AND c.ngayBatDauBaoHanh<=l.ngayXuLy AND c.ngayHetHanBaoHanh>=l.ngayXuLy
+)
+UPDATE l SET maDichVu=h.maDichVu,maPhuTung=h.maPhuTung
+FROM dbo.LichBaoHanh l JOIN HangMucHopLe h ON h.maLBH=l.maLBH AND h.rn=1;
+
 -- LichNhacBaoDuong: 40 bản ghi
 INSERT INTO dbo.[LichNhacBaoDuong] ([maLichNhac], [maKhachHang], [maPSC], [VIN], [ngayNhac], [noiDung], [trangThai])
 VALUES
@@ -2444,11 +2375,117 @@ VALUES
     (N'LS019', N'KH011', N'HD029', DATEADD(minute,735,DATEADD(day,-137,@NgayMau)), 1310, N'Tích điểm từ hóa đơn HD029; giá trị mẫu trước giảm, làm tròn xuống. Đây là quy ước dữ liệu mẫu.'),
     (N'LS020', N'KH012', N'HD030', DATEADD(minute,735,DATEADD(day,-150,@NgayMau)), 423, N'Tích điểm từ hóa đơn HD030; giá trị mẫu trước giảm, làm tròn xuống. Đây là quy ước dữ liệu mẫu.');
 
+UPDATE historyRow
+SET ngayHetHan=DATEADD(year,1,cycleStart.firstEarn)
+FROM dbo.LichSuTichDiem historyRow
+CROSS APPLY(SELECT MIN(ngayTichDiem) AS firstEarn FROM dbo.LichSuTichDiem WHERE maKhachHang=historyRow.maKhachHang) cycleStart
+WHERE historyRow.ngayHetHan IS NULL;
+
+-- Khởi tạo chủ xe hiện tại từ lần tiếp nhận mới nhất có dữ liệu khách hàng.
+UPDATE v SET maKhachHangChuHienTai=r.maKhachHang
+FROM dbo.PhuongTien v
+CROSS APPLY (SELECT TOP (1) p.maKhachHang FROM dbo.PhieuTiepNhan p WHERE p.VIN=v.VIN ORDER BY p.ngayTiepNhan DESC,p.maPTN DESC) r;
+
     COMMIT TRANSACTION;
     PRINT N'Đã nạp đầy đủ dữ liệu mẫu cho 25 bảng.';
 END TRY
 BEGIN CATCH
     IF XACT_STATE()<>0 ROLLBACK TRANSACTION;
+    THROW;
+END CATCH;
+GO
+
+-- D.1. MIGRATION NGHIỆP VỤ ĐÃ ĐƯỢC GỘP TỪ Migration_20261028_FixNghiepVu.sql
+-- Chạy sau khi schema và dữ liệu mẫu nền đã được tạo; chỉ cần chạy file GaraOto.sql một lần.
+/*
+    Migration bổ sung nghiệp vụ đã đối chiếu theo N06_2 QAs.
+    Chỉ chạy trên bản sao/DB đã sao lưu sau khi kiểm tra đúng database.
+    Script không xóa dữ liệu nghiệp vụ; các cột lịch sử cũ được backfill có điều kiện.
+*/
+IF DB_ID(N'GaraOto') IS NULL
+BEGIN
+    THROW 51200, N'Không tìm thấy database GaraOto trên instance hiện tại.', 1;
+END;
+GO
+USE [GaraOto];
+GO
+IF OBJECT_ID(N'dbo.PhuongTien',N'U') IS NULL
+   OR OBJECT_ID(N'dbo.KhachHang',N'U') IS NULL
+   OR OBJECT_ID(N'dbo.NhanVien',N'U') IS NULL
+   OR OBJECT_ID(N'dbo.HoaDon',N'U') IS NULL
+   OR OBJECT_ID(N'dbo.PhieuSuaChua',N'U') IS NULL
+BEGIN
+    THROW 51201, N'Database GaraOto chưa có schema nền cần cho migration; không có thay đổi nào được áp dụng.', 1;
+END;
+GO
+
+SET XACT_ABORT ON;
+BEGIN TRY
+    BEGIN TRANSACTION;
+
+
+    IF COL_LENGTH(N'dbo.PhuongTien',N'maKhachHangChuHienTai') IS NULL
+        ALTER TABLE dbo.PhuongTien ADD maKhachHangChuHienTai varchar(5) NULL;
+    IF COL_LENGTH(N'dbo.MaGiamGia',N'mocDiem') IS NULL ALTER TABLE dbo.MaGiamGia ADD mocDiem int NULL;
+    IF COL_LENGTH(N'dbo.MaGiamGia',N'ngayBatDauChuKy') IS NULL ALTER TABLE dbo.MaGiamGia ADD ngayBatDauChuKy datetime2(0) NULL;
+    IF COL_LENGTH(N'dbo.ChiTietPhieuSuaChua',N'soLuongCapPhat') IS NULL ALTER TABLE dbo.ChiTietPhieuSuaChua ADD soLuongCapPhat int NOT NULL CONSTRAINT DF_Mig_ChiTietPSC_CapPhat DEFAULT(0) WITH VALUES;
+    IF COL_LENGTH(N'dbo.ChiTietPhieuSuaChua',N'soLuongSuDung') IS NULL ALTER TABLE dbo.ChiTietPhieuSuaChua ADD soLuongSuDung int NOT NULL CONSTRAINT DF_Mig_ChiTietPSC_SuDung DEFAULT(0) WITH VALUES;
+    IF COL_LENGTH(N'dbo.ChiTietPhieuSuaChua',N'soLuongHoanTra') IS NULL ALTER TABLE dbo.ChiTietPhieuSuaChua ADD soLuongHoanTra int NOT NULL CONSTRAINT DF_Mig_ChiTietPSC_HoanTra DEFAULT(0) WITH VALUES;
+    IF COL_LENGTH(N'dbo.ChiTietPhieuSuaChua',N'ngayCapPhat') IS NULL ALTER TABLE dbo.ChiTietPhieuSuaChua ADD ngayCapPhat datetime2(0) NULL;
+    IF COL_LENGTH(N'dbo.ChiTietPhieuSuaChua',N'maNhanVienCapPhat') IS NULL ALTER TABLE dbo.ChiTietPhieuSuaChua ADD maNhanVienCapPhat varchar(5) NULL;
+    IF COL_LENGTH(N'dbo.ChiTietPhieuSuaChua',N'ngayHoanTra') IS NULL ALTER TABLE dbo.ChiTietPhieuSuaChua ADD ngayHoanTra datetime2(0) NULL;
+    IF COL_LENGTH(N'dbo.ChiTietPhieuSuaChua',N'maNhanVienXacNhanHoanTra') IS NULL ALTER TABLE dbo.ChiTietPhieuSuaChua ADD maNhanVienXacNhanHoanTra varchar(5) NULL;
+    IF COL_LENGTH(N'dbo.PhieuSuaChua',N'maNguoiDuyetHuy') IS NULL ALTER TABLE dbo.PhieuSuaChua ADD maNguoiDuyetHuy varchar(5) NULL;
+    IF COL_LENGTH(N'dbo.PhieuSuaChua',N'lyDoHuy') IS NULL ALTER TABLE dbo.PhieuSuaChua ADD lyDoHuy nvarchar(500) NULL;
+    IF COL_LENGTH(N'dbo.LichBaoHanh',N'maDichVu') IS NULL ALTER TABLE dbo.LichBaoHanh ADD maDichVu varchar(5) NULL;
+    IF COL_LENGTH(N'dbo.LichBaoHanh',N'maPhuTung') IS NULL ALTER TABLE dbo.LichBaoHanh ADD maPhuTung varchar(5) NULL;
+    IF COL_LENGTH(N'dbo.LichSuTichDiem',N'ngayHetHan') IS NULL ALTER TABLE dbo.LichSuTichDiem ADD ngayHetHan datetime2(0) NULL;
+
+    IF NOT EXISTS(SELECT 1 FROM sys.foreign_keys WHERE name=N'FK_PhuongTien_ChuHienTai')
+        ALTER TABLE dbo.PhuongTien WITH CHECK ADD CONSTRAINT FK_PhuongTien_ChuHienTai FOREIGN KEY(maKhachHangChuHienTai) REFERENCES dbo.KhachHang(maKhachHang);
+    IF NOT EXISTS(SELECT 1 FROM sys.foreign_keys WHERE name=N'FK_PhieuSuaChua_NguoiDuyetHuy')
+        ALTER TABLE dbo.PhieuSuaChua WITH CHECK ADD CONSTRAINT FK_PhieuSuaChua_NguoiDuyetHuy FOREIGN KEY(maNguoiDuyetHuy) REFERENCES dbo.NhanVien(maNhanVien);
+    IF NOT EXISTS(SELECT 1 FROM sys.foreign_keys WHERE name=N'FK_ChiTietPSC_NhanVienCapPhat')
+        ALTER TABLE dbo.ChiTietPhieuSuaChua WITH CHECK ADD CONSTRAINT FK_ChiTietPSC_NhanVienCapPhat FOREIGN KEY(maNhanVienCapPhat) REFERENCES dbo.NhanVien(maNhanVien);
+    IF NOT EXISTS(SELECT 1 FROM sys.foreign_keys WHERE name=N'FK_ChiTietPSC_NhanVienHoanTra')
+        ALTER TABLE dbo.ChiTietPhieuSuaChua WITH CHECK ADD CONSTRAINT FK_ChiTietPSC_NhanVienHoanTra FOREIGN KEY(maNhanVienXacNhanHoanTra) REFERENCES dbo.NhanVien(maNhanVien);
+    IF NOT EXISTS(SELECT 1 FROM sys.foreign_keys WHERE name=N'FK_LichBaoHanh_HangMuc')
+        ALTER TABLE dbo.LichBaoHanh WITH CHECK ADD CONSTRAINT FK_LichBaoHanh_HangMuc FOREIGN KEY(maPSC,maDichVu,maPhuTung) REFERENCES dbo.ChiTietPhieuSuaChua(maPSC,maDichVu,maPhuTung);
+
+    IF NOT EXISTS(SELECT 1 FROM sys.check_constraints WHERE name=N'CK_ChiTietPSC_DoiSoat')
+        ALTER TABLE dbo.ChiTietPhieuSuaChua WITH CHECK ADD CONSTRAINT CK_ChiTietPSC_DoiSoat CHECK(soLuongCapPhat>=0 AND soLuongSuDung>=0 AND soLuongHoanTra>=0 AND soLuongSuDung+soLuongHoanTra<=soLuongCapPhat AND soLuongCapPhat<=soLuongPhuTung AND (soLuongCapPhat=0 OR (ngayCapPhat IS NOT NULL AND maNhanVienCapPhat IS NOT NULL)) AND (soLuongHoanTra=0 OR (ngayHoanTra IS NOT NULL AND maNhanVienXacNhanHoanTra IS NOT NULL)));
+    IF NOT EXISTS(SELECT 1 FROM sys.check_constraints WHERE name=N'CK_LichBaoHanh_HangMuc')
+        ALTER TABLE dbo.LichBaoHanh WITH CHECK ADD CONSTRAINT CK_LichBaoHanh_HangMuc CHECK((maDichVu IS NULL AND maPhuTung IS NULL) OR (maDichVu IS NOT NULL AND maPhuTung IS NOT NULL));
+
+    ;WITH WarrantyCandidates AS (
+        SELECT l.maLBH, MIN(d.maDichVu) AS maDichVu, MIN(d.maPhuTung) AS maPhuTung, COUNT_BIG(*) AS candidateCount
+        FROM dbo.LichBaoHanh l JOIN dbo.ChiTietPhieuSuaChua d ON d.maPSC=l.maPSC
+        WHERE d.ketQuaNghiemThu=N'Đạt' AND d.ngayBatDauBaoHanh<=l.ngayXuLy AND d.ngayHetHanBaoHanh>=l.ngayXuLy
+        GROUP BY l.maLBH
+    )
+    UPDATE l SET maDichVu=c.maDichVu,maPhuTung=c.maPhuTung
+    FROM dbo.LichBaoHanh l JOIN WarrantyCandidates c ON c.maLBH=l.maLBH
+    WHERE l.maDichVu IS NULL AND l.maPhuTung IS NULL AND c.candidateCount=1;
+
+    UPDATE historyRow SET ngayHetHan=DATEADD(year,1,cycleStart.firstEarn)
+    FROM dbo.LichSuTichDiem historyRow
+    CROSS APPLY(SELECT MIN(ngayTichDiem) AS firstEarn FROM dbo.LichSuTichDiem WHERE maKhachHang=historyRow.maKhachHang) cycleStart
+    WHERE historyRow.ngayHetHan IS NULL;
+    UPDATE v SET maKhachHangChuHienTai=r.maKhachHang
+    FROM dbo.PhuongTien v CROSS APPLY(SELECT TOP(1) p.maKhachHang FROM dbo.PhieuTiepNhan p WHERE p.VIN=v.VIN ORDER BY p.ngayTiepNhan DESC,p.maPTN DESC) r
+    WHERE v.maKhachHangChuHienTai IS NULL;
+    IF NOT EXISTS(SELECT 1 FROM sys.indexes WHERE object_id=OBJECT_ID(N'dbo.MaGiamGia') AND name=N'UX_MaGiamGia_CoDiem')
+        CREATE UNIQUE INDEX UX_MaGiamGia_CoDiem ON dbo.MaGiamGia(maKhachHang,ngayBatDauChuKy,mocDiem) WHERE mocDiem IS NOT NULL AND ngayBatDauChuKy IS NOT NULL;
+    EXEC(N'CREATE OR ALTER VIEW dbo.vw_KhachHangDiemTichLuy AS
+        SELECT k.maKhachHang,k.hoTenKH,COALESCE(SUM(CASE WHEN l.ngayHetHan IS NULL OR l.ngayHetHan>=SYSDATETIME() THEN l.soDiem ELSE 0 END),0) AS tongDiemTichLuy
+        FROM dbo.KhachHang k LEFT JOIN dbo.LichSuTichDiem l ON l.maKhachHang=k.maKhachHang
+        GROUP BY k.maKhachHang,k.hoTenKH;');
+
+    COMMIT TRANSACTION;
+    PRINT N'Migration nghiệp vụ đã hoàn tất.';
+END TRY
+BEGIN CATCH
+    IF @@TRANCOUNT>0 ROLLBACK TRANSACTION;
     THROW;
 END CATCH;
 GO
@@ -2506,6 +2543,8 @@ SELECT N'ChiTietPhieuSuaChua.trangThaiHangMuc' AS Truong, [trangThaiHangMuc] AS 
 GO
 SELECT N'ChiTietPhieuSuaChua.ketQuaNghiemThu' AS Truong, [ketQuaNghiemThu] AS GiaTri,COUNT_BIG(*) AS SoBanGhi FROM dbo.[ChiTietPhieuSuaChua] GROUP BY [ketQuaNghiemThu];
 GO
+SELECT N'YeuCauNhapKho.trangThai' AS Truong, [trangThai] AS GiaTri,COUNT_BIG(*) AS SoBanGhi FROM dbo.[YeuCauNhapKho] GROUP BY [trangThai];
+GO
 SELECT N'PhieuNhapKho.trangThai' AS Truong, [trangThai] AS GiaTri,COUNT_BIG(*) AS SoBanGhi FROM dbo.[PhieuNhapKho] GROUP BY [trangThai];
 GO
 SELECT N'MaGiamGia.trangThai' AS Truong, [trangThai] AS GiaTri,COUNT_BIG(*) AS SoBanGhi FROM dbo.[MaGiamGia] GROUP BY [trangThai];
@@ -2515,6 +2554,7 @@ GO
 SELECT N'HoaDon.trangThaiThanhToan' AS Truong, [trangThaiThanhToan] AS GiaTri,COUNT_BIG(*) AS SoBanGhi FROM dbo.[HoaDon] GROUP BY [trangThaiThanhToan];
 GO
 SELECT N'LichNhacBaoDuong.trangThai' AS Truong, [trangThai] AS GiaTri,COUNT_BIG(*) AS SoBanGhi FROM dbo.[LichNhacBaoDuong] GROUP BY [trangThai];
+SELECT N'PhuTung.thoiHanBaoHanh' AS Truong, CONVERT(nvarchar(10), [thoiHanBaoHanh]) AS GiaTri, COUNT_BIG(*) AS SoBanGhi FROM dbo.[PhuTung] GROUP BY [thoiHanBaoHanh];
 GO
 
 -- Biên/NULL/mối liên hệ: kết quả phải có đủ các tình huống mẫu.

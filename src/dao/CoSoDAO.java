@@ -71,8 +71,8 @@ public class CoSoDAO {
     private int nextAvailableNumber(Connection conn) throws SQLException {
         String lockHint=" WITH (TABLOCKX,HOLDLOCK)";
         String sql=";WITH Numbers(n) AS (SELECT CONVERT(int,1) UNION ALL SELECT n+1 FROM Numbers WHERE n<999) "+
-                "SELECT MIN(n) FROM Numbers WHERE NOT EXISTS (SELECT 1 FROM dbo.["+table+"]"+lockHint+
-                " AS currentRows WHERE currentRows.["+primary+"]=?+RIGHT('000'+CONVERT(varchar(3),Numbers.n),3)) OPTION (MAXRECURSION 1000)";
+                "SELECT MIN(n) FROM Numbers WHERE NOT EXISTS (SELECT 1 FROM dbo.["+table+"] AS currentRows"+lockHint+
+                " WHERE currentRows.["+primary+"]=?+RIGHT('000'+CONVERT(varchar(3),Numbers.n),3)) OPTION (MAXRECURSION 1000)";
         try(PreparedStatement ps=conn.prepareStatement(sql)) {
             ps.setString(1,prefix());
             try(ResultSet rs=ps.executeQuery()) {

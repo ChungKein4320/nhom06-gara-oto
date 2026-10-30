@@ -29,6 +29,7 @@ public final class ThuongMaiDAO {
             BigDecimal subtotal=amount(row,"tienPhuTung").add(amount(row,"tienCong")).add(amount(row,"dichVuKhac"));
             BigDecimal discount=amount(row,"giamGia"); Object coupon=row.get("maGiamGia");
             if(coupon!=null) {
+                QuyTrinhDAO.require(repair!=null,"Mã giảm giá điểm chỉ áp dụng cho hóa đơn sửa chữa/dịch vụ.");
                 discount=QuyTrinhDAO.couponDiscount(conn,coupon.toString(),row.get("maKhachHang"),subtotal);
                 QuyTrinhDAO.execute(conn,"UPDATE dbo.MaGiamGia SET trangThai=N'Đã sử dụng' WHERE maGiamGia=?",coupon);
             }
@@ -38,10 +39,20 @@ public final class ThuongMaiDAO {
             QuyTrinhDAO.execute(conn,"UPDATE dbo.HoaDon SET trangThaiThanhToan=N'Đã thanh toán',maPhuongThuc=?,giamGia=? WHERE maHoaDon=?",method,discount,invoice);
             if(repair!=null) QuyTrinhDAO.execute(conn,"UPDATE dbo.PhieuSuaChua SET trangThai=N'Đã thanh toán' WHERE maPSC=?",row.get("maPSC"));
             // Một hóa đơn chỉ sinh một lịch sử điểm, kể cả người dùng bấm lại.
-            if(scannedCustomer!=null && !QuyTrinhDAO.exists(conn,"SELECT 1 FROM dbo.LichSuTichDiem WITH (UPDLOCK,HOLDLOCK) WHERE maHoaDon=?",invoice)) {
+            if (repair != null && scannedCustomer != null && !QuyTrinhDAO.exists(
+                        conn,"SELECT 1 FROM dbo.LichSuTichDiem "
+                                + "WITH (UPDLOCK,HOLDLOCK) WHERE maHoaDon=?",invoice)) {
+                Timestamp earnedAt=QuyTrinhDAO.now(conn);
+                BigDecimal eligible=amount(row,"tienPhuTung").add(amount(row,"tienCong")).add(amount(row,"dichVuKhac")).add(amount(row,"thueVAT"));
+                int points=InvoiceMath.points(eligible);
+                Timestamp cycleStart=(Timestamp)QuyTrinhDAO.one(conn,"SELECT MIN(ngayTichDiem) AS firstEarn FROM dbo.LichSuTichDiem WHERE maKhachHang=? AND ngayHetHan>=?",row.get("maKhachHang"),earnedAt).get("firstEarn");
+                if(cycleStart==null) cycleStart=earnedAt;
+                Timestamp expiration=Timestamp.valueOf(cycleStart.toLocalDateTime().plusYears(1));
                 new CoSoDAO("LichSuTichDiem").insert(conn,Map.of("maKhachHang",row.get("maKhachHang"),"maHoaDon",invoice,
-                    "ngayTichDiem",QuyTrinhDAO.now(conn),"soDiem",InvoiceMath.points(paid),"lyDo","Tích điểm trên tiền thực trả: 100.000đ = 1 điểm, làm tròn xuống."));
+                    "ngayTichDiem",earnedAt,"ngayHetHan",expiration,"soDiem",points,"lyDo","Tích điểm trên tổng sau VAT, trước giảm giá; 100.000đ = 1 điểm, làm tròn xuống."));
+                issueThresholdCoupons(conn,String.valueOf(row.get("maKhachHang")),cycleStart,expiration,earnedAt);
             }
+            if(repair==null) fulfillPartsInvoice(conn,invoice);
             return null;
         });
     }
@@ -54,6 +65,7 @@ public final class ThuongMaiDAO {
             QuyTrinhDAO.require(Set.of("Chưa thanh toán","Chờ thanh toán").contains(String.valueOf(row.get("trangThaiThanhToan"))),"Chỉ đổi mã giảm giá trước thanh toán.");
             BigDecimal subtotal=amount(row,"tienPhuTung").add(amount(row,"tienCong")).add(amount(row,"dichVuKhac"));
             boolean empty=coupon==null || coupon.isBlank();
+            QuyTrinhDAO.require(empty || initial.get("maPSC")!=null,"Mã giảm giá điểm chỉ áp dụng cho hóa đơn sửa chữa/dịch vụ.");
             BigDecimal discount=empty ? BigDecimal.ZERO : QuyTrinhDAO.couponDiscount(conn,coupon,row.get("maKhachHang"),subtotal);
             QuyTrinhDAO.execute(conn,"UPDATE dbo.HoaDon SET maGiamGia=?,giamGia=? WHERE maHoaDon=?",empty ? null : coupon,discount,invoice); return null;
         });
@@ -62,9 +74,17 @@ public final class ThuongMaiDAO {
         sellBasket(invoice,service,List.of(new SaleItem(part,quantity,expectedPrice)));
     }
     public record SaleItem(String part,int quantity,BigDecimal expectedPrice) {}
-    /** Bán lẻ độc lập, không tạo phiếu sửa chữa hoặc xe giả. */
+    /** Bán lẻ độc lập: hóa đơn và ChiTietHoaDon là chứng từ bán hàng duy nhất. */
     public static String createPartsInvoice(String customer,String employee,List<SaleItem> items) throws SQLException {
-        QuyTrinhDAO.require(customer!=null && !customer.isBlank() && employee!=null && !employee.isBlank(),"Vui lòng chọn khách hàng và nhân viên bán hàng.");
+        return createPartsInvoice(customer,null,employee,items);
+    }
+    /** Lập hóa đơn bán lẻ cho khách hàng mới; khách mới và hóa đơn được lưu cùng giao dịch. */
+    public static String createPartsInvoice(Map<String,Object> newCustomer,String employee,List<SaleItem> items) throws SQLException {
+        return createPartsInvoice(null,newCustomer,employee,items);
+    }
+    private static String createPartsInvoice(String customer,Map<String,Object> newCustomer,String employee,List<SaleItem> items) throws SQLException {
+        boolean existingCustomer=customer!=null && !customer.isBlank();
+        QuyTrinhDAO.require((existingCustomer || newCustomer!=null) && employee!=null && !employee.isBlank(),"Vui lòng nhập thông tin khách hàng và nhân viên bán hàng.");
         QuyTrinhDAO.require(items!=null && !items.isEmpty(),"Giỏ hàng đang trống.");
         List<SaleItem> basket=List.copyOf(items);
         Set<String> codes=new HashSet<>();
@@ -74,18 +94,25 @@ public final class ThuongMaiDAO {
             QuyTrinhDAO.require(codes.add(item.part()),"Giỏ hàng có mã phụ tùng trùng.");
         }
         return QuyTrinhDAO.transaction(conn -> {
-            QuyTrinhDAO.lock(conn,"KhachHang",customer);
             QuyTrinhDAO.require(QuyTrinhDAO.exists(conn,"SELECT 1 FROM dbo.NhanVien WHERE maNhanVien=? AND trangThai=N'Đang làm'",employee),"Nhân viên bán hàng không hợp lệ.");
+            String resolvedCustomer;
+            if(existingCustomer) {
+                QuyTrinhDAO.lock(conn,"KhachHang",customer);
+                resolvedCustomer=customer;
+            } else {
+                resolvedCustomer=new CoSoDAO("KhachHang").insert(conn,newCustomer);
+            }
             BigDecimal subtotal=BigDecimal.ZERO;
             for(SaleItem item:basket.stream().sorted(Comparator.comparing(SaleItem::part)).toList()) {
                 BigDecimal price=(BigDecimal)QuyTrinhDAO.one(conn,"SELECT donGia FROM dbo.PhuTung WITH (HOLDLOCK) WHERE maPhuTung=?",item.part()).get("donGia");
                 QuyTrinhDAO.require(price.compareTo(item.expectedPrice())==0,"Đơn giá đã thay đổi. Vui lòng tải lại.");
-                QuyTrinhDAO.require(QuyTrinhDAO.execute(conn,"UPDATE dbo.TonKho SET soLuongHienTai=soLuongHienTai-? WHERE maPhuTung=? AND soLuongHienTai>=?",item.quantity(),item.part(),item.quantity())==1,"Không đủ tồn kho cho "+item.part()+".");
+                Number available=(Number)QuyTrinhDAO.one(conn,"SELECT soLuongHienTai FROM dbo.TonKho WITH (UPDLOCK,HOLDLOCK) WHERE maPhuTung=?",item.part()).get("soLuongHienTai");
+                QuyTrinhDAO.require(available.intValue()>=item.quantity(),"Không đủ tồn kho cho phụ tùng "+item.part()+".");
                 subtotal=subtotal.add(price.multiply(BigDecimal.valueOf(item.quantity())));
             }
             Object method=QuyTrinhDAO.one(conn,"SELECT TOP (1) maPhuongThuc FROM dbo.PhuongThucThanhToan ORDER BY CASE WHEN tenPhuongThuc=N'Tiền mặt' THEN 0 ELSE 1 END,maPhuongThuc").get("maPhuongThuc");
             Map<String,Object> header=new LinkedHashMap<>();
-            header.put("maKhachHang",customer); header.put("maNhanVien",employee);
+            header.put("maKhachHang",resolvedCustomer); header.put("maNhanVien",employee);
             header.put("maPSC",null); header.put("VIN",null); header.put("ngayLap",QuyTrinhDAO.now(conn));
             header.put("tienPhuTung",subtotal); header.put("tienCong",BigDecimal.ZERO); header.put("dichVuKhac",BigDecimal.ZERO);
             header.put("thueVAT",InvoiceMath.vat(subtotal)); header.put("giamGia",BigDecimal.ZERO);
@@ -131,15 +158,46 @@ public final class ThuongMaiDAO {
         });
     }
     public static void allocate(String repair,String service,String part) throws SQLException {
+        allocate(repair,service,part,null);
+    }
+    public static void allocate(String repair,String service,String part,String employee) throws SQLException {
         QuyTrinhDAO.require(!"PT000".equals(part),"PT000 không phải phụ tùng cần cấp phát.");
         QuyTrinhDAO.transaction(conn -> {
             Map<String,Object> header=QuyTrinhDAO.lock(conn,"PhieuSuaChua",repair);
             QuyTrinhDAO.require(Set.of("Chờ sửa chữa","Đang sửa chữa").contains(String.valueOf(header.get("trangThai"))),"Không thể cấp phát cho phiếu đã hoàn thành/hủy.");
+            String actor=employee==null ? String.valueOf(header.get("maNhanVien")) : employee;
+            QuyTrinhDAO.require(QuyTrinhDAO.exists(conn,"SELECT 1 FROM dbo.NhanVien WHERE maNhanVien=? AND trangThai=N'Đang làm' AND vaiTro IN (N'Nhân viên kho',N'Nhân viên quản lý',N'Quản trị viên')",actor),"Chỉ nhân viên kho/quản lý đang làm mới được cấp phát phụ tùng.");
             Map<String,Object> line=QuyTrinhDAO.one(conn,"SELECT * FROM dbo.ChiTietPhieuSuaChua WITH (UPDLOCK,HOLDLOCK) WHERE maPSC=? AND maDichVu=? AND maPhuTung=?",repair,service,part);
-            QuyTrinhDAO.require("Thiếu phụ tùng".equals(line.get("trangThaiHangMuc")),"Hạng mục đã cấp phát hoặc không thiếu phụ tùng.");
+            QuyTrinhDAO.require("Chờ sửa chữa".equals(line.get("trangThaiHangMuc")),"Hạng mục chưa đủ tồn để cấp phát hoặc đã cấp phát.");
             int quantity=((Number)line.get("soLuongPhuTung")).intValue();
-            QuyTrinhDAO.require(quantity>0 && QuyTrinhDAO.execute(conn,"UPDATE dbo.TonKho SET soLuongHienTai=soLuongHienTai-? WHERE maPhuTung=? AND soLuongHienTai>=?",quantity,part,quantity)==1,"Không đủ tồn kho để cấp phát.");
-            QuyTrinhDAO.execute(conn,"UPDATE dbo.ChiTietPhieuSuaChua SET trangThaiHangMuc=N'Đang sửa chữa' WHERE maPSC=? AND maDichVu=? AND maPhuTung=?",repair,service,part); return null;
+            QuyTrinhDAO.require(quantity>0 && ((Number)line.get("soLuongCapPhat")).intValue()==0,"Số lượng đã cấp phát không hợp lệ.");
+            QuyTrinhDAO.execute(conn,"UPDATE dbo.ChiTietPhieuSuaChua SET trangThaiHangMuc=N'Đang sửa chữa',soLuongCapPhat=?,ngayCapPhat=?,maNhanVienCapPhat=? WHERE maPSC=? AND maDichVu=? AND maPhuTung=?",quantity,QuyTrinhDAO.now(conn),actor,repair,service,part);
+            return null;
         });
+    }
+
+    private static void issueThresholdCoupons(Connection conn,String customer,Timestamp cycleStart,Timestamp expiration,Timestamp now) throws SQLException {
+        int earned=((Number)QuyTrinhDAO.one(conn,"SELECT COALESCE(SUM(soDiem),0) AS points FROM dbo.LichSuTichDiem WHERE maKhachHang=? AND ngayTichDiem>=? AND ngayHetHan>=?",customer,cycleStart,now).get("points")).intValue();
+        int[][] thresholds={{50,5},{100,10},{200,15},{500,30}};
+        for(int[] threshold:thresholds) if(earned>=threshold[0] && !QuyTrinhDAO.exists(conn,"SELECT 1 FROM dbo.MaGiamGia WHERE maKhachHang=? AND mocDiem=? AND ngayBatDauChuKy=?",customer,threshold[0],cycleStart)) {
+            Map<String,Object> coupon=new LinkedHashMap<>(); coupon.put("maKhachHang",customer); coupon.put("mucGiam",BigDecimal.valueOf(threshold[1])); coupon.put("ngayTao",now); coupon.put("ngayHetHan",expiration); coupon.put("trangThai","Đang hiệu lực"); coupon.put("mocDiem",threshold[0]); coupon.put("ngayBatDauChuKy",cycleStart);
+            new CoSoDAO("MaGiamGia").insert(conn,coupon);
+        }
+    }
+
+    private static void fulfillPartsInvoice(Connection conn,String invoiceId) throws SQLException {
+        List<Map<String,Object>> items=new ArrayList<>();
+        String sql="SELECT maPhuTung,SUM(soLuong) AS soLuong FROM dbo.ChiTietHoaDon WHERE maHoaDon=? AND maPhuTung IS NOT NULL GROUP BY maPhuTung ORDER BY maPhuTung";
+        try(PreparedStatement ps=conn.prepareStatement(sql)) {
+            CoSoDAO.bind(ps,List.of(invoiceId));
+            try(ResultSet rs=ps.executeQuery()) {
+                while(rs.next()) { Map<String,Object> item=new LinkedHashMap<>(); item.put("maPhuTung",rs.getString("maPhuTung")); item.put("soLuong",rs.getInt("soLuong")); items.add(item); }
+            }
+        }
+        QuyTrinhDAO.require(!items.isEmpty(),"Hóa đơn bán phụ tùng chưa có dòng phụ tùng.");
+        for(Map<String,Object> item:items) {
+            String part=String.valueOf(item.get("maPhuTung")); int quantity=((Number)item.get("soLuong")).intValue();
+            QuyTrinhDAO.require(QuyTrinhDAO.execute(conn,"UPDATE dbo.TonKho SET soLuongHienTai=soLuongHienTai-? WHERE maPhuTung=? AND soLuongHienTai>=?",quantity,part,quantity)==1,"Không đủ tồn kho khi thanh toán hóa đơn cho phụ tùng "+part+".");
+        }
     }
 }

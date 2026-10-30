@@ -88,6 +88,8 @@ class OChonTimKiem<T> extends JComboBox<T> {
 
     @Override public void updateUI() {
         setUI(new FlatComboBoxUI());
+        setBackground(
+        isEnabled() ? Color.WHITE : DinhDangKeThua.BACKGROUND);
         if (txtEditor != null) {
             configureEditorComponent();
         }
@@ -96,11 +98,19 @@ class OChonTimKiem<T> extends JComboBox<T> {
 
     private void configureEditorComponent() {
         if (txtEditor == null) return;
-        txtEditor.setFont(GiaoDien.font(12, false));
-        txtEditor.setForeground(GiaoDien.TEXT);
+
+        boolean locked = !isEnabled();
+
+        txtEditor.setFont(GiaoDien.font(12, locked));
+        txtEditor.setForeground(
+                locked ? DinhDangKeThua.TEXT : GiaoDien.TEXT
+        );
+        txtEditor.setDisabledTextColor(DinhDangKeThua.TEXT);
         txtEditor.setCaretColor(GiaoDien.TEXT);
         txtEditor.setBorder(new EmptyBorder(0, 10, 0, 4));
-        txtEditor.setBackground(isEnabled() ? Color.WHITE : new Color(0xF0F4F3));
+        txtEditor.setBackground(
+                locked ? DinhDangKeThua.BACKGROUND : Color.WHITE
+        );
         txtEditor.setOpaque(true);
     }
 
@@ -206,13 +216,22 @@ class OChonTimKiem<T> extends JComboBox<T> {
         installArrowButtonHandler();
     }
 
-    @Override public void setEnabled(boolean enabled) {
+    @Override
+    public void setEnabled(boolean enabled) {
         super.setEnabled(enabled);
-        if(txtEditor != null) {
+
+        setBackground(
+                enabled ? Color.WHITE : DinhDangKeThua.BACKGROUND
+        );
+        setForeground(
+                enabled ? GiaoDien.TEXT : DinhDangKeThua.TEXT
+        );
+
+        if (txtEditor != null) {
             txtEditor.setEnabled(enabled);
-            txtEditor.setBackground(enabled ? Color.WHITE : new Color(0xF0F4F3));
+            configureEditorComponent();
         }
-        setBackground(enabled ? Color.WHITE : new Color(0xF0F4F3));
+
         repaint();
     }
 

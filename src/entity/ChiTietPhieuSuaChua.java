@@ -8,6 +8,13 @@ public class ChiTietPhieuSuaChua {
     private String maPhuTung;
     private String trangThaiHangMuc;
     private Integer soLuongPhuTung;
+    private Integer soLuongCapPhat;
+    private Integer soLuongSuDung;
+    private Integer soLuongHoanTra;
+    private Timestamp ngayCapPhat;
+    private String maNhanVienCapPhat;
+    private Timestamp ngayHoanTra;
+    private String maNhanVienXacNhanHoanTra;
     private String ketQuaNghiemThu;
     private Timestamp ngayBatDauBaoHanh;
     private Integer thoiHanBaoHanh;
@@ -54,6 +61,21 @@ public class ChiTietPhieuSuaChua {
     public void setSoLuongPhuTung(Integer value) {
         this.soLuongPhuTung = value;
     }
+
+    public Integer getSoLuongCapPhat() { return soLuongCapPhat; }
+    public void setSoLuongCapPhat(Integer value) { this.soLuongCapPhat = value; }
+    public Integer getSoLuongSuDung() { return soLuongSuDung; }
+    public void setSoLuongSuDung(Integer value) { this.soLuongSuDung = value; }
+    public Integer getSoLuongHoanTra() { return soLuongHoanTra; }
+    public void setSoLuongHoanTra(Integer value) { this.soLuongHoanTra = value; }
+    public Timestamp getNgayCapPhat() { return ngayCapPhat; }
+    public void setNgayCapPhat(Timestamp value) { this.ngayCapPhat = value; }
+    public String getMaNhanVienCapPhat() { return maNhanVienCapPhat; }
+    public void setMaNhanVienCapPhat(String value) { this.maNhanVienCapPhat = value; }
+    public Timestamp getNgayHoanTra() { return ngayHoanTra; }
+    public void setNgayHoanTra(Timestamp value) { this.ngayHoanTra = value; }
+    public String getMaNhanVienXacNhanHoanTra() { return maNhanVienXacNhanHoanTra; }
+    public void setMaNhanVienXacNhanHoanTra(String value) { this.maNhanVienXacNhanHoanTra = value; }
 
     public String getKetQuaNghiemThu() {
         return ketQuaNghiemThu;

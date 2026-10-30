@@ -5,8 +5,8 @@ import javax.swing.border.*;
 public final class DangNhap extends JFrame {
     @java.io.Serial
     private static final long serialVersionUID = 1L;
-    private JTextField txtUsername;
-    private JPasswordField txtPassword;
+    private final JTextField txtUsername;
+    private final JPasswordField txtPassword;
     public DangNhap(){
         GiaoDien.init();
         setTitle("Thinking Auto • Đăng nhập");

@@ -119,7 +119,11 @@ public final class QuyTrinhDAO {
             if(ownerId==null && key!=null) ownerId=key.get(fk);
             Map<String,Object> header=lock(conn,owner,ownerId); editable(conn,owner,header);
             if(table.equals("ChiTietPhieuSuaChua")) {
-                require("Thiếu phụ tùng".equals(row.get("trangThaiHangMuc")) && "Không đạt".equals(row.get("ketQuaNghiemThu")),"Cấp phát và nghiệm thu phải qua nút nghiệp vụ.");
+                require(key==null,"Không sửa trực tiếp hạng mục sửa chữa; dùng nghiệp vụ cấp phát/tiến độ.");
+                String initialState=String.valueOf(row.get("trangThaiHangMuc"));
+                boolean noPart="PT000".equals(row.get("maPhuTung"));
+                require((noPart && "Đang sửa chữa".equals(initialState)) || (!noPart && Set.of("Chờ sửa chữa","Thiếu phụ tùng").contains(initialState)),"Trạng thái hạng mục ban đầu không hợp lệ.");
+                require("Không đạt".equals(row.get("ketQuaNghiemThu")),"Nghiệm thu phải qua nghiệp vụ xác nhận.");
                 require(row.get("ngayBatDauBaoHanh")==null && row.get("ngayHetHanBaoHanh")==null,"Ngày bảo hành được tính khi nghiệm thu.");
             }
             return;
@@ -130,7 +134,17 @@ public final class QuyTrinhDAO {
             if(table.equals("PhieuNhapKho")) require("Chờ xác nhận nhập kho".equals(row.get("trangThai")),"Phiếu nhập mới phải ở trạng thái Chờ xác nhận nhập kho.");
             if(table.equals("PhieuSuaChua")) require("Chờ sửa chữa".equals(row.get("trangThai")) && row.get("ngayHoanThanh")==null,"Phiếu sửa mới phải chờ sửa chữa.");
         }
-        if(row.get("maNhanVien")!=null) require(exists(conn,"SELECT 1 FROM dbo.NhanVien WHERE maNhanVien=? AND trangThai=N'Đang làm'",row.get("maNhanVien")),"Nhân viên không còn đang làm.");
+        
+        if (!table.equals("NhanVien") && row.get("maNhanVien") != null) {
+            require(
+                exists(conn,
+                    "SELECT 1 FROM dbo.NhanVien "
+                    + "WHERE maNhanVien=? AND trangThai=N'Đang làm'",
+                    row.get("maNhanVien")),
+                "Nhân viên không còn đang làm."
+            );
+        }
+
         switch(table) {
             case "PhieuKiemTra" -> {
                 Map<String,Object> receipt=lock(conn,"PhieuTiepNhan",row.get("maPTN"));
@@ -158,20 +172,21 @@ public final class QuyTrinhDAO {
                     require(Set.of("Đã sửa xong","Chờ thanh toán","Đã thanh toán","Hoàn tất").contains(String.valueOf(repair.get("trangThai"))),"Chỉ lập lịch bảo dưỡng sau khi sửa xong.");
                     chronological(row,"ngayNhac",repair,"ngayHoanThanh");
                 }
-                if(table.equals("LichBaoHanh")) require(exists(conn,"SELECT 1 FROM dbo.ChiTietPhieuSuaChua WHERE maPSC=? AND ketQuaNghiemThu=N'Đạt' AND ngayBatDauBaoHanh<=? AND ngayHetHanBaoHanh>=?",row.get("maPSC"),row.get("ngayXuLy"),row.get("ngayXuLy")),"Phiếu sửa không có hạng mục còn bảo hành tại ngày xử lý.");
+                if(table.equals("LichBaoHanh")) require(row.get("maDichVu")!=null && row.get("maPhuTung")!=null && exists(conn,"SELECT 1 FROM dbo.ChiTietPhieuSuaChua WHERE maPSC=? AND maDichVu=? AND maPhuTung=? AND ketQuaNghiemThu=N'Đạt' AND ngayBatDauBaoHanh<=? AND ngayHetHanBaoHanh>=?",row.get("maPSC"),row.get("maDichVu"),row.get("maPhuTung"),row.get("ngayXuLy"),row.get("ngayXuLy")),"Chọn đúng hạng mục đang còn bảo hành tại ngày xử lý.");
             }
             case "LichSuTichDiem" -> {
                 Map<String,Object> invoice=lock(conn,"HoaDon",row.get("maHoaDon")); equal(row,invoice,"maKhachHang");
                 require("Đã thanh toán".equals(invoice.get("trangThaiThanhToan")),"Chỉ tích điểm cho hóa đơn đã thanh toán.");
-                BigDecimal total=((BigDecimal)invoice.get("tienPhuTung")).add((BigDecimal)invoice.get("tienCong")).add((BigDecimal)invoice.get("dichVuKhac")).add((BigDecimal)invoice.get("thueVAT")).subtract((BigDecimal)invoice.get("giamGia"));
-                require(((Number)row.get("soDiem")).intValue()==InvoiceMath.points(total),"Số điểm phải tính theo tiền thực trả: 100.000đ = 1 điểm.");
+                require(invoice.get("maPSC")!=null,"Chỉ hóa đơn sửa chữa/dịch vụ được tích điểm.");
+                BigDecimal total=((BigDecimal)invoice.get("tienPhuTung")).add((BigDecimal)invoice.get("tienCong")).add((BigDecimal)invoice.get("dichVuKhac")).add((BigDecimal)invoice.get("thueVAT"));
+                require(((Number)row.get("soDiem")).intValue()==InvoiceMath.points(total),"Số điểm tính trên tổng hóa đơn sau VAT, trước giảm giá: 100.000đ = 1 điểm.");
                 chronological(row,"ngayTichDiem",invoice,"ngayLap");
                 require(!exists(conn,"SELECT 1 FROM dbo.LichSuTichDiem WHERE maHoaDon=?",row.get("maHoaDon")),"Hóa đơn đã được tích điểm.");
             }
             default -> { }
         }
     }
-        /** UC009: Kiểm tra toàn vẹn phiếu nhập kho gắn với đơn duyệt và số lượng hợp lệ. */
+    /** UC009: Kiểm tra toàn vẹn phiếu nhập kho gắn với đơn duyệt và số lượng hợp lệ. */
     public static void validateReceiptIntegrity(Connection conn, Map<String,Object> header, List<? extends Map<String,Object>> details, String id, boolean isConfirming) throws SQLException {
         Object ycnId = header.get("maYCNK");
         require(ycnId != null && !String.valueOf(ycnId).isBlank(), "Phiếu nhập kho phải gắn với Yêu cầu nhập kho đã được duyệt.");
@@ -346,6 +361,7 @@ public final class QuyTrinhDAO {
                 require(vehicle!=null,"Vui lòng nhập hồ sơ phương tiện mới.");
                 Map<String,Object> vehicleRow=new LinkedHashMap<>(vehicle);
                 vehicleRow.put("soKM",odometer);
+                vehicleRow.put("maKhachHangChuHienTai",resolvedCustomer);
                 resolvedVin=new CoSoDAO("PhuongTien").insert(conn,vehicleRow);
             } else {
                 Map<String,Object> currentVehicle=lock(conn,"PhuongTien",resolvedVin);
@@ -353,6 +369,9 @@ public final class QuyTrinhDAO {
                 require(odometer.compareTo(currentOdometer)>=0,"Số ODO tiếp nhận không được thấp hơn số km đang lưu của phương tiện.");
                 if(odometer.compareTo(currentOdometer)>0)
                     execute(conn,"UPDATE dbo.PhuongTien SET soKM=? WHERE VIN=?",odometer,resolvedVin);
+                if(currentVehicle.get("maKhachHangChuHienTai")==null) {
+                    execute(conn,"UPDATE dbo.PhuongTien SET maKhachHangChuHienTai=? WHERE VIN=?",resolvedCustomer,resolvedVin);
+                }
             }
 
             Map<String,Object> receipt=new LinkedHashMap<>(header);
@@ -376,8 +395,14 @@ public final class QuyTrinhDAO {
             Map<String,Object> quote=lock(conn,"PhieuBaoGia",id); editable(conn,"PhieuBaoGia",quote);
             require(exists(conn,"SELECT 1 FROM dbo.PhieuBaoGia WHERE maBaoGia=? AND ngayHetHan>=SYSDATETIME()",id),"Báo giá đã hết hạn.");
             require(exists(conn,"SELECT 1 FROM dbo.ChiTietPhieuBaoGia WHERE maBaoGia=?",id),"Báo giá chưa có chi tiết.");
-            execute(conn,"UPDATE dbo.PhieuBaoGia SET trangThai=N'Đã xác nhận',thoiGianXacNhan=? WHERE maBaoGia=?",now(conn),id);
-            execute(conn,"UPDATE dbo.ChiTietPhieuBaoGia SET trangThai=N'Chờ sửa chữa' WHERE maBaoGia=?",id); return null;
+            List<LinkedHashMap<String,Object>> lines=new CoSoDAO("ChiTietPhieuBaoGia").getAll(conn,Map.of("maBaoGia",id));
+            for(Map<String,Object> line:lines) {
+                String part=String.valueOf(line.get("maPhuTung"));
+                int qty=((Number)line.get("soLuongPhuTung")).intValue();
+                boolean available="PT000".equals(part) || (qty==0) || execute(conn,"UPDATE dbo.TonKho SET soLuongHienTai=soLuongHienTai-? WHERE maPhuTung=? AND soLuongHienTai>=?",qty,part,qty)==1;
+                execute(conn,"UPDATE dbo.ChiTietPhieuBaoGia SET trangThai=? WHERE maBaoGia=? AND maDichVu=? AND maPhuTung=?",available?"Chờ sửa chữa":"Thiếu phụ tùng",id,line.get("maDichVu"),part);
+            }
+            execute(conn,"UPDATE dbo.PhieuBaoGia SET trangThai=N'Đã xác nhận',thoiGianXacNhan=? WHERE maBaoGia=?",now(conn),id); return null;
         });
     }
     public static String createRepair(String quoteId,String employee) throws SQLException {
@@ -392,10 +417,57 @@ public final class QuyTrinhDAO {
             require(!quoted.isEmpty(),"Báo giá chưa có chi tiết.");
             String id=new CoSoDAO("PhieuSuaChua").insert(conn,header);
             for(Map<String,Object> line:quoted) {
+                String part = String.valueOf(line.get("maPhuTung"));
+                int quantity = ((Number) line.get("soLuongPhuTung")).intValue();
+                String quoteState = String.valueOf(line.get("trangThai"));
+
+                String itemState;
+
+                if ("PT000".equals(part)) {
+                    // Hạng mục không dùng phụ tùng, không cần cấp phát.
+                    itemState = "Đang sửa chữa";
+                } else {
+                    require(
+                            quantity > 0,
+                            "Số lượng phụ tùng phải lớn hơn 0."
+                    );
+
+                    require(
+                            Set.of("Chờ sửa chữa", "Thiếu phụ tùng").contains(quoteState),
+                            "Trạng thái chi tiết báo giá không hợp lệ."
+                    );
+
+                    // Chờ sửa chữa nghĩa là đã giữ hàng khi xác nhận báo giá.
+                    boolean reserved = "Chờ sửa chữa".equals(quoteState);
+
+                    // Nếu trước đó thiếu, thử giữ hàng bằng lượng tồn hiện tại.
+                    if (!reserved) {
+                        reserved = execute(
+                                conn,
+                                "UPDATE dbo.TonKho "
+                                        + "SET soLuongHienTai=soLuongHienTai-? "
+                                        + "WHERE maPhuTung=? AND soLuongHienTai>=?",
+                                quantity, part, quantity
+                        ) == 1;
+
+                        if (reserved) {
+                            execute(
+                                    conn,
+                                    "UPDATE dbo.ChiTietPhieuBaoGia "
+                                            + "SET trangThai=N'Chờ sửa chữa' "
+                                            + "WHERE maBaoGia=? AND maDichVu=? "
+                                            + "AND maPhuTung=?",
+                                    quoteId, line.get("maDichVu"), part
+                            );
+                        }
+                    }
+
+                    itemState = reserved ? "Chờ sửa chữa" : "Thiếu phụ tùng";
+                }
                 Map<String,Object> detail=new LinkedHashMap<>();
                 detail.put("maPSC",id); detail.put("maDichVu",line.get("maDichVu")); detail.put("maPhuTung",line.get("maPhuTung"));
                 detail.put("soLuongPhuTung",line.get("soLuongPhuTung"));
-                detail.put("trangThaiHangMuc","PT000".equals(line.get("maPhuTung")) ? "Đang sửa chữa" : "Thiếu phụ tùng");
+                detail.put("trangThaiHangMuc", itemState);
                 detail.put("ketQuaNghiemThu","Không đạt"); detail.put("thoiHanBaoHanh",0);
                 new CoSoDAO("ChiTietPhieuSuaChua").insert(conn,detail);
             }
@@ -476,6 +548,7 @@ public final class QuyTrinhDAO {
                     } else {
                         new CoSoDAO("TonKho").insert(conn, Map.of("maPhuTung", part, "soLuongHienTai", accepted, "soLuongToiThieu", 0));
                     }
+                    fulfillShortages(conn, String.valueOf(part));
                 }
             }
 
@@ -493,14 +566,73 @@ public final class QuyTrinhDAO {
             execute(conn,"UPDATE dbo.PhieuSuaChua SET trangThai=N'Đang sửa chữa' WHERE maPSC=?",id); return null;
         });
     }
-    public static void completeRepairItem(String id,String service,String part,int months) throws SQLException {
-        require(months>=0 && months<=1200,"Thời hạn bảo hành phải từ 0 đến 1200 tháng.");
-        transaction(conn -> {
-            Map<String,Object> repair=lock(conn,"PhieuSuaChua",id);
-            require("Đang sửa chữa".equals(repair.get("trangThai")),"Chỉ xác nhận hạng mục của phiếu đang sửa chữa.");
-            require(execute(conn,"UPDATE dbo.ChiTietPhieuSuaChua SET trangThaiHangMuc=N'Hoàn thành',thoiHanBaoHanh=?,ketQuaNghiemThu=N'Không đạt',ngayBatDauBaoHanh=NULL,ngayHetHanBaoHanh=NULL WHERE maPSC=? AND maDichVu=? AND maPhuTung=? AND trangThaiHangMuc=N'Đang sửa chữa'",months,id,service,part)==1,"Hạng mục chưa cấp phát hoặc đã hoàn thành."); return null;
-        });
-    }
+    public static void completeRepairItem(
+        String id, String service, String part, int months
+        ) throws SQLException {
+            require(months >= 0, "Thời hạn bảo hành không được âm.");
+
+            transaction(conn -> {
+                Map<String, Object> repair = lock(conn, "PhieuSuaChua", id);
+
+                require(
+                        "Đang sửa chữa".equals(repair.get("trangThai")),
+                        "Chỉ xác nhận hạng mục của phiếu đang sửa chữa."
+                );
+
+                Map<String, Object> line = one(
+                        conn,
+                        "SELECT * FROM dbo.ChiTietPhieuSuaChua "
+                                + "WITH (UPDLOCK,HOLDLOCK) "
+                                + "WHERE maPSC=? AND maDichVu=? AND maPhuTung=?",
+                        id, service, part
+                );
+
+                require(
+                        "Đang sửa chữa".equals(line.get("trangThaiHangMuc")),
+                        "Hạng mục chưa cấp phát hoặc đã hoàn thành."
+                );
+
+                int issued = ((Number) line.get("soLuongCapPhat")).intValue();
+                int returned = ((Number) line.get("soLuongHoanTra")).intValue();
+
+                require(
+                        issued >= 0 && returned >= 0 && returned <= issued,
+                        "Số lượng cấp phát hoặc hoàn trả không hợp lệ."
+                );
+
+                boolean noPart = "PT000".equals(part);
+
+                require(
+                        !noPart || (issued == 0 && returned == 0),
+                        "Hạng mục không dùng phụ tùng phải có số lượng bằng 0."
+                );
+
+                require(
+                        noPart || issued > 0,
+                        "Hạng mục chưa được ghi nhận cấp phát phụ tùng."
+                );
+
+                int actualUsed = noPart ? 0 : issued - returned;
+                int actualMonths = noPart ? 0 : months;
+
+                int updated = execute(
+                        conn,
+                        "UPDATE dbo.ChiTietPhieuSuaChua "
+                                + "SET soLuongSuDung=?, "
+                                + "trangThaiHangMuc=N'Hoàn thành', "
+                                + "thoiHanBaoHanh=?, "
+                                + "ketQuaNghiemThu=N'Không đạt', "
+                                + "ngayBatDauBaoHanh=NULL, "
+                                + "ngayHetHanBaoHanh=NULL "
+                                + "WHERE maPSC=? AND maDichVu=? AND maPhuTung=? "
+                                + "AND trangThaiHangMuc=N'Đang sửa chữa'",
+                        actualUsed, actualMonths, id, service, part
+                );
+
+                require(updated == 1, "Không thể xác nhận hạng mục.");
+                return null;
+            });
+        }
     public static void finishRepair(String id) throws SQLException {
         acceptRepair(id);
     }
@@ -579,16 +711,31 @@ public final class QuyTrinhDAO {
     }
 
     public static void cancelRepair(String id) throws SQLException {
+        cancelRepair(id,"",null);
+    }
+    public static void cancelRepair(String id,String reason,String managerEmployee) throws SQLException {
         transaction(conn -> {
             Map<String,Object> repair=lock(conn,"PhieuSuaChua",id);
             require(Set.of("Chờ sửa chữa","Đang sửa chữa").contains(String.valueOf(repair.get("trangThai"))),"Chỉ hủy phiếu trước nghiệm thu.");
+            require(reason!=null && !reason.isBlank(),"Bắt buộc ghi lý do hủy phiếu.");
+            require(managerEmployee!=null && exists(conn,"SELECT 1 FROM dbo.NhanVien WHERE maNhanVien=? AND trangThai=N'Đang làm' AND vaiTro IN (N'Nhân viên quản lý',N'Quản trị viên')",managerEmployee),"Chọn người duyệt hủy là quản lý hoặc quản trị viên đang làm việc.");
             require(!exists(conn,"SELECT 1 FROM dbo.HoaDon WHERE maPSC=?",id),"Phiếu đã có hóa đơn, không thể hủy.");
             List<LinkedHashMap<String,Object>> lines=new CoSoDAO("ChiTietPhieuSuaChua").getAll(conn,Map.of("maPSC",id));
-            for(Map<String,Object> line:lines) if(!"PT000".equals(line.get("maPhuTung")) && Set.of("Đang sửa chữa","Hoàn thành").contains(String.valueOf(line.get("trangThaiHangMuc")))) {
-                require(execute(conn,"UPDATE dbo.TonKho SET soLuongHienTai=soLuongHienTai+? WHERE maPhuTung=?",line.get("soLuongPhuTung"),line.get("maPhuTung"))==1,"Không thể hoàn tồn kho cho phụ tùng đã cấp.");
+            for(Map<String,Object> line:lines) if(!"PT000".equals(line.get("maPhuTung"))) {
+                int issued=((Number)line.get("soLuongCapPhat")).intValue();
+                int used=((Number)line.get("soLuongSuDung")).intValue();
+                int returned=((Number)line.get("soLuongHoanTra")).intValue();
+                require(issued==0 || used+returned==issued,"Cần ghi nhận số lượng đã sử dụng và xác nhận hàng trả thực tế trước khi hủy.");
+                Map<String,Object> quoteLine=one(conn,"SELECT trangThai FROM dbo.ChiTietPhieuBaoGia WHERE maBaoGia=? AND maDichVu=? AND maPhuTung=?",repair.get("maBaoGia"),line.get("maDichVu"),line.get("maPhuTung"));
+                int reserved="Chờ sửa chữa".equals(quoteLine.get("trangThai")) ? ((Number)line.get("soLuongPhuTung")).intValue()-issued : 0;
+                if(reserved>0) {
+                    require(exists(conn,"SELECT 1 FROM dbo.TonKho WHERE maPhuTung=?",line.get("maPhuTung")),"Không tìm thấy tồn kho để hoàn phần chưa cấp phát.");
+                    execute(conn,"UPDATE dbo.TonKho SET soLuongHienTai=soLuongHienTai+? WHERE maPhuTung=?",reserved,line.get("maPhuTung"));
+                }
             }
-            execute(conn,"UPDATE dbo.ChiTietPhieuSuaChua SET trangThaiHangMuc=N'Thiếu phụ tùng' WHERE maPSC=? AND maPhuTung<>'PT000'",id);
-            execute(conn,"UPDATE dbo.PhieuSuaChua SET trangThai=N'Đã hủy' WHERE maPSC=?",id); return null;
+            execute(conn,"UPDATE dbo.PhieuSuaChua SET trangThai=N'Đã hủy',lyDoHuy=?,maNguoiDuyetHuy=? WHERE maPSC=?",reason.trim(),managerEmployee,id);
+            execute(conn,"UPDATE dbo.PhieuBaoGia SET trangThai=N'Hết hiệu lực' WHERE maBaoGia=? AND trangThai=N'Đã xác nhận'",repair.get("maBaoGia"));
+            return null;
         });
     }
     static Map<String,Object> one(Connection conn,String sql,Object... params) throws SQLException {
@@ -606,6 +753,152 @@ public final class QuyTrinhDAO {
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             for(int i=0;i<params.length;i++) ps.setObject(i+1,params[i]);
             return ps.executeUpdate();
+        }
+    }
+    public static void recordPartReturn(String repairId,String service,String part,int quantity,String warehouseEmployee) throws SQLException {
+        require(quantity>0,"Số lượng trả kho phải lớn hơn 0.");
+        transaction(conn -> {
+            Map<String,Object> repair=lock(conn,"PhieuSuaChua",repairId);
+            require(Set.of("Chờ sửa chữa","Đang sửa chữa").contains(String.valueOf(repair.get("trangThai"))),"Chỉ ghi nhận hoàn trả trước khi nghiệm thu.");
+            require(exists(conn,"SELECT 1 FROM dbo.NhanVien WHERE maNhanVien=? AND trangThai=N'Đang làm' AND vaiTro IN (N'Nhân viên kho',N'Nhân viên quản lý',N'Quản trị viên')",warehouseEmployee),"Chỉ nhân viên kho/quản lý đang làm mới được ghi nhận hàng trả.");
+            Map<String,Object> line=one(conn,"SELECT * FROM dbo.ChiTietPhieuSuaChua WITH (UPDLOCK,HOLDLOCK) WHERE maPSC=? AND maDichVu=? AND maPhuTung=?",repairId,service,part);
+            int issued=((Number)line.get("soLuongCapPhat")).intValue(), used=((Number)line.get("soLuongSuDung")).intValue(), returned=((Number)line.get("soLuongHoanTra")).intValue();
+            require(!"PT000".equals(part) && issued>0 && returned+used+quantity<=issued,"Số lượng trả vượt số phụ tùng đã cấp phát còn lại.");
+            require(execute(conn,"UPDATE dbo.TonKho SET soLuongHienTai=soLuongHienTai+? WHERE maPhuTung=?",quantity,part)==1,"Không tìm thấy tồn kho để ghi nhận trả phụ tùng.");
+            require(execute(conn,"UPDATE dbo.ChiTietPhieuSuaChua SET soLuongHoanTra=soLuongHoanTra+?,ngayHoanTra=?,maNhanVienXacNhanHoanTra=? WHERE maPSC=? AND maDichVu=? AND maPhuTung=?",quantity,now(conn),warehouseEmployee,repairId,service,part)==1,"Không thể cập nhật đối soát phụ tùng trả kho.");
+            return null;
+        });
+    }
+
+    public static void refreshRepairShortages() throws SQLException {
+        transaction(conn -> {
+            List<Map<String, Object>> candidates = new ArrayList<>();
+
+            String sql =
+                    "SELECT ct.maPSC, ct.maDichVu, ct.maPhuTung "
+                    + "FROM dbo.ChiTietPhieuSuaChua ct "
+                    + "JOIN dbo.PhieuSuaChua p ON p.maPSC=ct.maPSC "
+                    + "WHERE ct.trangThaiHangMuc=N'Thiếu phụ tùng' "
+                    + "AND ct.maPhuTung<>'PT000' "
+                    + "AND ct.soLuongCapPhat=0 "
+                    + "AND p.trangThai IN (N'Chờ sửa chữa', N'Đang sửa chữa') "
+                    + "ORDER BY p.ngayLap, ct.maPSC, ct.maDichVu, ct.maPhuTung";
+
+            try (PreparedStatement ps = conn.prepareStatement(sql);
+                ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    candidates.add(Map.of(
+                            "maPSC", rs.getString("maPSC"),
+                            "maDichVu", rs.getString("maDichVu"),
+                            "maPhuTung", rs.getString("maPhuTung")
+                    ));
+                }
+            }
+
+            for (Map<String, Object> candidate : candidates) {
+                Object repairId = candidate.get("maPSC");
+                Object service = candidate.get("maDichVu");
+                Object part = candidate.get("maPhuTung");
+
+                // Khóa phiếu và đọc lại để tránh dùng trạng thái đã cũ.
+                Map<String, Object> repair = lock(
+                        conn, "PhieuSuaChua", repairId
+                );
+
+                if (!Set.of("Chờ sửa chữa", "Đang sửa chữa")
+                        .contains(String.valueOf(repair.get("trangThai")))) {
+                    continue;
+                }
+
+                Map<String, Object> item = one(
+                        conn,
+                        "SELECT * FROM dbo.ChiTietPhieuSuaChua "
+                                + "WITH (UPDLOCK,HOLDLOCK) "
+                                + "WHERE maPSC=? AND maDichVu=? AND maPhuTung=?",
+                        repairId, service, part
+                );
+
+                if (!"Thiếu phụ tùng".equals(item.get("trangThaiHangMuc"))
+                        || ((Number) item.get("soLuongCapPhat")).intValue() != 0) {
+                    continue;
+                }
+
+                Object quoteId = repair.get("maBaoGia");
+
+                Map<String, Object> quoteItem = one(
+                        conn,
+                        "SELECT trangThai, soLuongPhuTung "
+                                + "FROM dbo.ChiTietPhieuBaoGia "
+                                + "WITH (UPDLOCK,HOLDLOCK) "
+                                + "WHERE maBaoGia=? AND maDichVu=? AND maPhuTung=?",
+                        quoteId, service, part
+                );
+
+                int quantity = ((Number) item.get("soLuongPhuTung")).intValue();
+                int quotedQuantity =
+                        ((Number) quoteItem.get("soLuongPhuTung")).intValue();
+
+                require(
+                        quantity > 0 && quantity == quotedQuantity,
+                        "Số lượng phiếu sửa chữa không khớp báo giá: "
+                                + repairId + " / " + service + " / " + part
+                );
+
+                String quoteState = String.valueOf(quoteItem.get("trangThai"));
+
+                if ("Thiếu phụ tùng".equals(quoteState)) {
+                    // Kiểm tra đủ tồn và giữ hàng trong cùng một câu lệnh.
+                    int reserved = execute(
+                            conn,
+                            "UPDATE dbo.TonKho "
+                                    + "SET soLuongHienTai=soLuongHienTai-? "
+                                    + "WHERE maPhuTung=? AND soLuongHienTai>=?",
+                            quantity, part, quantity
+                    );
+
+                    if (reserved == 0) continue;
+
+                    execute(
+                            conn,
+                            "UPDATE dbo.ChiTietPhieuBaoGia "
+                                    + "SET trangThai=N'Chờ sửa chữa' "
+                                    + "WHERE maBaoGia=? AND maDichVu=? AND maPhuTung=?",
+                            quoteId, service, part
+                    );
+                } else if (!"Chờ sửa chữa".equals(quoteState)) {
+                    // Không tự suy đoán việc giữ hàng ở trạng thái khác.
+                    continue;
+                }
+
+                // Báo giá đã Chờ sửa chữa nghĩa là đã giữ hàng:
+                // chỉ đồng bộ hạng mục, không trừ tồn thêm lần nữa.
+                execute(
+                        conn,
+                        "UPDATE dbo.ChiTietPhieuSuaChua "
+                                + "SET trangThaiHangMuc=N'Chờ sửa chữa' "
+                                + "WHERE maPSC=? AND maDichVu=? AND maPhuTung=? "
+                                + "AND trangThaiHangMuc=N'Thiếu phụ tùng' "
+                                + "AND soLuongCapPhat=0",
+                        repairId, service, part
+                );
+            }
+
+            return null;
+        });
+    }
+
+    private static void fulfillShortages(Connection conn,String part) throws SQLException {
+        List<Map<String,Object>> shortages=new ArrayList<>();
+        try(PreparedStatement ps=conn.prepareStatement("SELECT d.maBaoGia,d.maDichVu,d.soLuongPhuTung FROM dbo.ChiTietPhieuBaoGia d WITH (UPDLOCK,ROWLOCK) JOIN dbo.PhieuBaoGia h ON h.maBaoGia=d.maBaoGia WHERE d.maPhuTung=? AND d.trangThai=N'Thiếu phụ tùng' AND h.trangThai=N'Đã xác nhận' ORDER BY h.thoiGianXacNhan,d.maBaoGia")) {
+            ps.setString(1,part); try(ResultSet rs=ps.executeQuery()) { while(rs.next()) shortages.add(Map.of("maBaoGia",rs.getString(1),"maDichVu",rs.getString(2),"soLuong",rs.getInt(3))); }
+        }
+        for(Map<String,Object> row:shortages) {
+            int qty=((Number)row.get("soLuong")).intValue();
+            int updated=execute(conn,"UPDATE dbo.TonKho SET soLuongHienTai=soLuongHienTai-? WHERE maPhuTung=? AND soLuongHienTai>=?",qty,part,qty);
+            if (updated == 0) continue;
+            String quote=String.valueOf(row.get("maBaoGia"));
+            execute(conn,"UPDATE dbo.ChiTietPhieuBaoGia SET trangThai=N'Chờ sửa chữa' WHERE maBaoGia=? AND maDichVu=? AND maPhuTung=?",quote,row.get("maDichVu"),part);
+            execute(conn,"UPDATE s SET trangThaiHangMuc=N'Chờ sửa chữa' FROM dbo.ChiTietPhieuSuaChua s JOIN dbo.PhieuSuaChua h ON h.maPSC=s.maPSC WHERE h.maBaoGia=? AND s.maDichVu=? AND s.maPhuTung=? AND s.trangThaiHangMuc=N'Thiếu phụ tùng'",quote,row.get("maDichVu"),part);
         }
     }
 }
