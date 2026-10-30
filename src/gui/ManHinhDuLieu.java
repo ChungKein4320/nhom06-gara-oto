@@ -303,6 +303,18 @@ public final class ManHinhDuLieu extends JPanel {
             pnlButtons.add(btnReturn);
         }
 
+        final JButton btnThreshold;
+        if (tableName.equals("TonKho") && (role == VaiTro.KHO || role == VaiTro.ADMIN)) {
+            btnThreshold = GiaoDien.button(
+                    "Cập nhật mức tồn tối thiểu", GiaoDien.TEAL, Color.WHITE
+            );
+            btnThreshold.setEnabled(false);
+            btnThreshold.addActionListener(e -> updateMinimumThreshold());
+            pnlButtons.add(btnThreshold);
+        } else {
+            btnThreshold = null;
+        }
+
         if (!Set.of("TonKho", "HoaDon").contains(tableName) && !isManagerReview) {
             pnlButtons.add(btnEdit);
 
@@ -325,6 +337,9 @@ public final class ManHinhDuLieu extends JPanel {
         tblTable.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
                 int selected = tblTable.getSelectedRow();
+                if (btnThreshold != null) {
+                    btnThreshold.setEnabled(selected >= 0);
+                }
                 if (selected < 0) {
                     btnEdit.setEnabled(false);
                 } else {
@@ -380,6 +395,8 @@ public final class ManHinhDuLieu extends JPanel {
                         ) >= 0) {
                     if (tableName.equals("HoaDon") || QuyTrinhDAO.detailTable(tableName) != null) {
                         openDocument();
+                    } else if (tableName.equals("TonKho") && (role == VaiTro.KHO || role == VaiTro.ADMIN)) {
+                        updateMinimumThreshold();
                     }
                 }
             }
@@ -593,6 +610,26 @@ public final class ManHinhDuLieu extends JPanel {
         } catch(Exception ex) {
             JOptionPane.showMessageDialog(this,ex.getMessage(),"Không thể ghi nhận trả kho",JOptionPane.ERROR_MESSAGE);
         }
+    }
+
+    private void updateMinimumThreshold() {
+        int selected = tblTable.getSelectedRow();
+        if (selected < 0) {
+            JOptionPane.showMessageDialog(
+                    this, "Vui lòng chọn phụ tùng cần cập nhật mức tồn tối thiểu.",
+                    "Chưa chọn bản ghi", JOptionPane.WARNING_MESSAGE
+            );
+            return;
+        }
+        int row = tblTable.convertRowIndexToModel(selected);
+        Map<String, Object> record = new LinkedHashMap<>();
+        for (String field : displayFields) {
+            int col = Arrays.asList(displayFields).indexOf(field);
+            if (col >= 0) {
+                record.put(field, model.getValueAt(row, col));
+            }
+        }
+        HopThoaiCapNhatTonToiThieu.show(this, record, role, this::load);
     }
 
     private void edit(boolean existing) {
