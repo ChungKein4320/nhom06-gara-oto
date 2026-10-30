@@ -19,7 +19,7 @@ public final class NhanCot {
             {"soDienThoai", "Số điện thoại"}, {"email", "Email"},
             {"diaChi", "Địa chỉ"}, {"vaiTro", "Vai trò"}, {"trangThai", "Trạng thái"},
             {"maKhachHang", "Mã khách hàng"}, {"hoTenKH", "Họ tên khách hàng"},
-            {"maKhachHangChuHienTai", "Mã chủ xe hiện tại"}, {"maNguoiDuyetHuy", "Nhân viên duyệt hủy"}, {"lyDoHuy", "Lý do hủy"},
+            {"maNguoiDuyetHuy", "Nhân viên duyệt hủy"}, {"lyDoHuy", "Lý do hủy"},
             {"VIN", "Số khung (VIN)"}, {"bienSo", "Biển số"}, {"hangXe", "Hãng xe"},
             {"dongXe", "Dòng xe"}, {"mauXe", "Màu xe"}, {"namSanXuat", "Năm sản xuất"},
             {"soMay", "Số máy"}, {"soKm", "Số km"},

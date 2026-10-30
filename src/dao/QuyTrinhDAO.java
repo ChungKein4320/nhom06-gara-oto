@@ -190,7 +190,6 @@ public final class QuyTrinhDAO {
                 require(vehicle!=null,"Vui lòng nhập hồ sơ phương tiện mới.");
                 Map<String,Object> vehicleRow=new LinkedHashMap<>(vehicle);
                 vehicleRow.put("soKM",odometer);
-                vehicleRow.put("maKhachHangChuHienTai",resolvedCustomer);
                 resolvedVin=new CoSoDAO("PhuongTien").insert(conn,vehicleRow);
             } else {
                 Map<String,Object> currentVehicle=lock(conn,"PhuongTien",resolvedVin);
@@ -198,9 +197,6 @@ public final class QuyTrinhDAO {
                 require(odometer.compareTo(currentOdometer)>=0,"Số ODO tiếp nhận không được thấp hơn số km đang lưu của phương tiện.");
                 if(odometer.compareTo(currentOdometer)>0)
                     execute(conn,"UPDATE dbo.PhuongTien SET soKM=? WHERE VIN=?",odometer,resolvedVin);
-                if(currentVehicle.get("maKhachHangChuHienTai")==null) {
-                    execute(conn,"UPDATE dbo.PhuongTien SET maKhachHangChuHienTai=? WHERE VIN=?",resolvedCustomer,resolvedVin);
-                }
             }
 
             Map<String,Object> receipt=new LinkedHashMap<>(header);
