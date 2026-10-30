@@ -14,11 +14,15 @@ final class BieuMauBanGhi extends JPanel {
     private final Map<String,JComponent> inputs=new LinkedHashMap<>();
     private final TruongKeThua.Binding inherited;
     private final GiaDanhMuc prices;
+
     BieuMauBanGhi(String table,Map<String,Object> row,Set<String> excluded) {
         this(table,row,excluded,false);
     }
     BieuMauBanGhi(String table,Map<String,Object> row,Set<String> excluded,boolean readOnly) {
-        super(new GridBagLayout()); this.table=table; existing=row!=null;
+        this(table,row,excluded,readOnly,isExisting(table,row));
+    }
+    BieuMauBanGhi(String table,Map<String,Object> row,Set<String> excluded,boolean readOnly,boolean existing) {
+        super(new GridBagLayout()); this.table=table; this.existing=existing;
         setBackground(GiaoDien.WHITE); setBorder(BorderFactory.createEmptyBorder(8,10,8,10)); int index=0;
         for(String field:Schema.COLUMNS.get(table)) {
             if(excluded.contains(field)) continue;
@@ -40,7 +44,7 @@ final class BieuMauBanGhi extends JPanel {
                 if(!existing && Set.of("ngayLap","ngayTao","ngayNhap","ngayTiepNhan","ngayKiemTra").contains(field))
                     value=type.equals("date") ? LocalDate.now().toString() : new java.sql.Timestamp(System.currentTimeMillis()/1000*1000).toString();
                 input=new OChonNgay(value);
-                if(field.equals("ngayHoanThanh") || field.equals("thoiGianXacNhan")) setEnabledDeep(input,false);
+                if(field.equals("ngayHoanThanh") || field.equals("thoiGianXacNhan") || field.equals("ngayDuyet")) setEnabledDeep(input,false);
             } else if(type.equals("bit")) {
                 JPanel pnlGender=new JPanel(new FlowLayout(FlowLayout.LEFT,14,7)); pnlGender.setOpaque(false);
                 ButtonGroup group=new ButtonGroup();
@@ -52,9 +56,10 @@ final class BieuMauBanGhi extends JPanel {
                 input=pnlGender;
             } else {
                 JTextField txtValue=GiaoDien.field("");
-                if(!existing && Set.of("soLuongPhuTung","soLuongNhap","soLuong").contains(field)) value="1";
-                if(!existing && !field.equals("namSanXuat") && (type.equals("int") || type.equals("decimal")) && value.isEmpty()) value="0";
+                if(!existing && !table.equals("ChiTietPhieuNhapKho") && Set.of("soLuongPhuTung","soLuongNhap","soLuong","soLuongYeuCau","soLuongThucNhan").contains(field)) value="1";
+                if(!existing && !field.equals("namSanXuat") && !(table.equals("ChiTietPhieuNhapKho") && (field.equals("soLuongThucNhan") || field.equals("soLuongNhap"))) && (type.equals("int") || type.equals("decimal")) && value.isEmpty()) value="0";
                 txtValue.setText(value); input=txtValue;
+                if(field.equals("maNhanVienDuyet")) setEnabledDeep(input,false);
             }
             inputs.put(field,input);
             GridBagConstraints c=new GridBagConstraints(); c.gridx=index%2; c.gridy=index/2; c.fill=GridBagConstraints.HORIZONTAL; c.weightx=1; c.insets=new Insets(6,8,6,8);
@@ -78,6 +83,25 @@ final class BieuMauBanGhi extends JPanel {
         inherited=readOnly ? null : TruongKeThua.bind(table,inputs);
         prices=readOnly ? null : GiaDanhMuc.bind(table,inputs);
     }
+
+    static boolean isExisting(String table,Map<String,Object> row) {
+        if(row==null || row.isEmpty()) return false;
+        String pk=Schema.PRIMARY.get(table);
+        if(pk!=null && !table.startsWith("ChiTiet")) {
+            Object val=row.get(pk);
+            return val!=null && !String.valueOf(val).trim().isEmpty();
+        }
+        String[] keys=Schema.KEYS.get(table);
+        if(keys!=null && keys.length>1) {
+            for(int i=1;i<keys.length;i++) {
+                Object val=row.get(keys[i]);
+                if(val!=null && !String.valueOf(val).trim().isEmpty()) return true;
+            }
+            return false;
+        }
+        return true;
+    }
+
     Map<String,Object> read() throws SQLException {
         if(inherited!=null) inherited.validate();
         if(prices!=null) prices.validate();

@@ -27,7 +27,9 @@ public final class ManHinhDuLieu extends JPanel {
         ROUTES.put("Bảo hành", "LichBaoHanh");
         ROUTES.put("Lịch nhắc bảo dưỡng", "LichNhacBaoDuong");
         ROUTES.put("Tồn kho", "TonKho");
+        ROUTES.put("Phiếu cấp phát phụ tùng", "ChiTietPhieuSuaChua");
         ROUTES.put("Cấp phát phụ tùng", "ChiTietPhieuSuaChua");
+        ROUTES.put("Phiếu nhập kho phụ tùng", "PhieuNhapKho");
         ROUTES.put("Nhập kho phụ tùng", "PhieuNhapKho");
         ROUTES.put("Lịch sử sửa chữa", "PhieuSuaChua");
         ROUTES.put("Hóa đơn", "HoaDon");
@@ -42,13 +44,20 @@ public final class ManHinhDuLieu extends JPanel {
         ROUTES.put("Danh mục phụ tùng", "PhuTung");
         ROUTES.put("Tài khoản", "TaiKhoan");
         ROUTES.put("Khuyến mãi", "MaGiamGia");
+        ROUTES.put("Phiếu yêu cầu nhập kho", "YeuCauNhapKho");
+        ROUTES.put("Danh sách yêu cầu nhập", "YeuCauNhapKho");
+        ROUTES.put("Yêu cầu nhập kho", "YeuCauNhapKho");
     }
 
     public static String tableFor(String page) {
         return ROUTES.get(page);
     }
 
+    private final String page;
     private final String tableName;
+    private final VaiTro role;
+    private final String employeeId;
+    private final boolean isManagerReview;
     private transient CoSoDAO dao;
     private final JTable tblTable;
     private final DefaultTableModel model;
@@ -68,10 +77,19 @@ public final class ManHinhDuLieu extends JPanel {
                         ? new dao.HoaDonDAO()
                         : tableName.equals("KhachHang")
                                 ? new dao.KhachHangDAO()
-                                : new CoSoDAO(tableName);
+                                : tableName.equals("YeuCauNhapKho")
+                                        ? new dao.YeuCauNhapKhoDAO()
+                                        : new CoSoDAO(tableName);
     }
 
     public ManHinhDuLieu(String page) {
+        this(page, null, null);
+    }
+
+    public ManHinhDuLieu(String page, VaiTro role, String employeeId) {
+        this.page = page;
+        this.role = role;
+        this.employeeId = employeeId;
         setLayout(new BorderLayout(0, 18));
         setBackground(GiaoDien.BG);
         setBorder(new EmptyBorder(26, 26, 26, 26));
@@ -82,6 +100,8 @@ public final class ManHinhDuLieu extends JPanel {
                     "Chưa có nguồn dữ liệu cho: " + page
             );
         }
+        isManagerReview = "Danh sách yêu cầu nhập".equals(page)
+                || ("YeuCauNhapKho".equals(tableName) && role == VaiTro.QUAN_LY);
 
         dao = tableName.equals("TonKho")
                 ? new dao.TonKhoDAO()
@@ -89,7 +109,9 @@ public final class ManHinhDuLieu extends JPanel {
                         ? new dao.HoaDonDAO()
                         : tableName.equals("KhachHang")
                                 ? new dao.KhachHangDAO()
-                                : new CoSoDAO(tableName);
+                                : tableName.equals("YeuCauNhapKho")
+                                        ? new dao.YeuCauNhapKhoDAO()
+                                        : new CoSoDAO(tableName);
 
         fields = Schema.COLUMNS.get(tableName);
         displayFields = tableName.equals("TonKho")
@@ -157,12 +179,14 @@ public final class ManHinhDuLieu extends JPanel {
                 "Thêm mới",
                 GiaoDien.TEAL, Color.WHITE
         );
-        btnAdd.setEnabled(
-                !tableName.startsWith("ChiTiet")
+        boolean canAdd = !tableName.startsWith("ChiTiet")
                 && !Set.of(
-                        "PhieuSuaChua", "HoaDon", "LichSuTichDiem"
-                ).contains(tableName)
-        );
+                        "PhieuSuaChua", "HoaDon", "LichSuTichDiem", "PhieuNhapKho"
+                ).contains(tableName);
+        if (isManagerReview) {
+            canAdd = false;
+        }
+        btnAdd.setEnabled(canAdd);
         btnAdd.addActionListener(e -> edit(false));
 
         if (tableName.equals("HoaDon")) {
@@ -174,7 +198,7 @@ public final class ManHinhDuLieu extends JPanel {
                 load();
             });
             pnlToolbar.add(btnCreateInvoice, BorderLayout.EAST);
-        } else if (!tableName.equals("TonKho")) {
+        } else if (!tableName.equals("TonKho") && !isManagerReview) {
             pnlToolbar.add(btnAdd, BorderLayout.EAST);
         }
 
@@ -229,12 +253,13 @@ public final class ManHinhDuLieu extends JPanel {
                 "Xóa", GiaoDien.ORANGE, Color.WHITE
         );
 
-        btnEdit.setEnabled(
-                !tableName.startsWith("ChiTiet")
+        final boolean canEdit = !tableName.startsWith("ChiTiet")
                 && !Set.of(
                         "HoaDon", "LichSuTichDiem"
                 ).contains(tableName)
-        );
+                && !isManagerReview
+                && !(role == VaiTro.QUAN_LY && (tableName.equals("YeuCauNhapKho") || tableName.equals("PhieuNhapKho")));
+        btnEdit.setEnabled(false);
         btnDelete.setEnabled(
                 !tableName.startsWith("ChiTiet")
                 && QuyTrinhDAO.detailTable(tableName) == null
@@ -251,7 +276,7 @@ public final class ManHinhDuLieu extends JPanel {
             JButton btnDetails = GiaoDien.button(
                     tableName.equals("HoaDon")
                             ? "Chi tiết hóa đơn"
-                            : "Chi tiết phiếu",
+                            : isManagerReview ? "Xem chi tiết" : "Chi tiết phiếu",
                     GiaoDien.CREAM, GiaoDien.NAV
             );
             btnDetails.addActionListener(e -> openDocument());
@@ -259,11 +284,12 @@ public final class ManHinhDuLieu extends JPanel {
         }
 
         ThaoTacNghiepVu.install(
-                pnlButtons, tableName,
-                this::selectedRecord, this::load, this
+                pnlButtons, tableName, page,
+                this::currentRecord, this::load, this,
+                role, employeeId, tblTable
         );
 
-        if (page.equals("Cấp phát phụ tùng")) {
+        if (page.equals("Phiếu cấp phát phụ tùng") || page.equals("Cấp phát phụ tùng")) {
             JButton btnAllocate = GiaoDien.button(
                     "Xác nhận cấp phát", GiaoDien.TEAL, Color.WHITE
             );
@@ -271,20 +297,47 @@ public final class ManHinhDuLieu extends JPanel {
             pnlButtons.add(btnAllocate);
         }
 
-        if (!Set.of("TonKho", "HoaDon").contains(tableName)) {
+        if (!Set.of("TonKho", "HoaDon").contains(tableName) && !isManagerReview) {
             pnlButtons.add(btnEdit);
 
             boolean hideDelete = Set.of(
                     "Phiếu tiếp nhận",
                     "Phiếu sửa chữa",
                     "Phiếu báo giá",
-                    "Phiếu kiểm tra"
-            ).contains(page);
+                    "Phiếu kiểm tra",
+                    "Phiếu yêu cầu nhập kho",
+                    "Yêu cầu nhập kho",
+                    "Phiếu nhập kho phụ tùng",
+                    "Nhập kho phụ tùng"
+            ).contains(page) || QuyTrinhDAO.detailTable(tableName) != null;
 
             if (!hideDelete) {
                 pnlButtons.add(btnDelete);
             }
         }
+
+        tblTable.getSelectionModel().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                int selected = tblTable.getSelectedRow();
+                if (selected < 0) {
+                    btnEdit.setEnabled(false);
+                } else {
+                    int row = tblTable.convertRowIndexToModel(selected);
+                    if (tableName.equals("YeuCauNhapKho")) {
+                        int statusCol = Arrays.asList(displayFields).indexOf("trangThai");
+                        boolean isPending = statusCol >= 0 && "Chờ duyệt".equals(String.valueOf(model.getValueAt(row, statusCol)));
+                        btnEdit.setEnabled(isPending && !isManagerReview && (role == VaiTro.KHO || role == VaiTro.ADMIN));
+                    } else if (tableName.equals("PhieuNhapKho")) {
+                        int statusCol = Arrays.asList(displayFields).indexOf("trangThai");
+                        String st = statusCol >= 0 ? String.valueOf(model.getValueAt(row, statusCol)) : "";
+                        boolean isPending = "Chờ xác nhận nhập kho".equals(st);
+                        btnEdit.setEnabled(isPending && (role == VaiTro.KHO || role == VaiTro.ADMIN));
+                    } else {
+                        btnEdit.setEnabled(canEdit);
+                    }
+                }
+            }
+        });
 
         for (Component comp : pnlButtons.getComponents()) {
             if (comp instanceof JButton btnAction) {
@@ -309,22 +362,22 @@ public final class ManHinhDuLieu extends JPanel {
         pnlCard.add(pnlActions, BorderLayout.SOUTH);
         add(pnlCard, BorderLayout.CENTER);
 
-        if (tableName.equals("HoaDon")) {
-            tblTable.addMouseListener(
-                    new java.awt.event.MouseAdapter() {
-                @Override
-                public void mouseClicked(
-                        java.awt.event.MouseEvent event
-                ) {
-                    if (event.getClickCount() == 2
-                            && tblTable.rowAtPoint(
-                                    event.getPoint()
-                            ) >= 0) {
+        tblTable.addMouseListener(
+                new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(
+                    java.awt.event.MouseEvent event
+            ) {
+                if (event.getClickCount() == 2
+                        && tblTable.rowAtPoint(
+                                event.getPoint()
+                        ) >= 0) {
+                    if (tableName.equals("HoaDon") || QuyTrinhDAO.detailTable(tableName) != null) {
                         openDocument();
                     }
                 }
-            });
-        }
+            }
+        });
 
         txtSearch.getDocument().addDocumentListener(
                 new javax.swing.event.DocumentListener() {
@@ -350,25 +403,32 @@ public final class ManHinhDuLieu extends JPanel {
             }
         });
 
-        load();
+        // Khởi tạo các lựa chọn lọc cố định theo quy định nghiệp vụ và trạng thái mặc định
+        String statusField = (page.equals("Phiếu cấp phát phụ tùng") || page.equals("Cấp phát phụ tùng"))
+                ? "trangThaiHangMuc"
+                : "trangThai";
+        int statusCol = Arrays.asList(displayFields).indexOf(statusField);
+        if (statusCol >= 0) {
+            List<String> options = filterOptionsFor(tableName, statusField);
+            if (!options.isEmpty()) {
+                statusFilters.setPredefinedOptions(statusCol, options);
+            }
+        }
 
-        // Chọn bộ lọc mặc định một lần khi mở trang.
         String defaultState = switch (page) {
             case "Phiếu báo giá" -> "Còn hiệu lực";
             case "Phiếu sửa chữa" -> "Chờ sửa chữa";
-            case "Cấp phát phụ tùng" -> "Thiếu phụ tùng";
+            case "Phiếu cấp phát phụ tùng", "Cấp phát phụ tùng" -> "Thiếu phụ tùng";
+            case "Phiếu yêu cầu nhập kho", "Danh sách yêu cầu nhập", "Yêu cầu nhập kho" -> "Chờ duyệt";
+            case "Phiếu nhập kho phụ tùng", "Nhập kho phụ tùng" -> "Chờ xác nhận nhập kho";
             default -> null;
         };
 
-        if (defaultState != null) {
-            String statusField = page.equals("Cấp phát phụ tùng")
-                    ? "trangThaiHangMuc"
-                    : "trangThai";
-
-            int column = Arrays.asList(displayFields)
-                    .indexOf(statusField);
-            statusFilters.selectDefault(column, defaultState);
+        if (defaultState != null && statusCol >= 0) {
+            statusFilters.selectDefault(statusCol, defaultState);
         }
+
+        load();
     }
 
     private void lamMoi() {
@@ -385,6 +445,15 @@ public final class ManHinhDuLieu extends JPanel {
             List<LinkedHashMap<String, Object>> rows = dao.getAll();
 
             for (Map<String, Object> row : rows) {
+                if (tableName.equals("PhieuNhapKho")) {
+                    Object rawYcn = row.get("maYCNK");
+                    Object rawStatus = row.get("trangThai");
+                    boolean isUc009 = rawYcn != null && !rawYcn.toString().isBlank();
+                    if (isUc009 && "Chờ duyệt".equals(rawStatus)) {
+                        row.put("trangThai", "Chờ xác nhận nhập kho");
+                    }
+                }
+
                 if (tableName.equals("HoaDon")) {
                     java.math.BigDecimal total =
                             java.math.BigDecimal.ZERO;
@@ -492,13 +561,24 @@ public final class ManHinhDuLieu extends JPanel {
     }
 
     private void edit(boolean existing) {
+        if (isManagerReview) {
+            if (!existing) {
+                JOptionPane.showMessageDialog(this,
+                        "Quản lý chỉ có quyền xem xét và duyệt yêu cầu nhập kho, không được tạo mới yêu cầu.",
+                        "Phân quyền", JOptionPane.WARNING_MESSAGE);
+            } else {
+                openDocument();
+            }
+            return;
+        }
+
         if (!existing && tableName.equals("PhieuTiepNhan")) {
             HopThoaiTiepNhanMoi.show(this);
             load();
             return;
         }
         if (existing && tableName.equals("PhieuSuaChua")) {
-            Map<String, Object> record = selectedRecord();
+            Map<String, Object> record = requireSelectedRecord("chỉnh sửa");
             if (record == null) return;
 
             if (Set.of(
@@ -512,12 +592,33 @@ public final class ManHinhDuLieu extends JPanel {
             }
         }
 
-        if (QuyTrinhDAO.detailTable(tableName) != null) {
-            Map<String, Object> record =
-                    existing ? selectedRecord() : null;
-            if (existing && record == null) return;
+        if (!existing && tableName.equals("PhieuNhapKho")) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Phiếu nhập kho phải được lập từ Yêu cầu nhập kho đã duyệt.\n"
+                    + "Vui lòng chọn menu 'Phiếu yêu cầu nhập kho', chọn yêu cầu có trạng thái 'Đã duyệt' và nhấn 'Lập phiếu nhập kho'.",
+                    "Quy trình nhập kho",
+                    JOptionPane.INFORMATION_MESSAGE
+            );
+            return;
+        }
 
-            TrinhSuaPhieu.show(this, tableName, record);
+        if (existing) {
+            Map<String, Object> record = requireSelectedRecord("chỉnh sửa");
+            if (record == null) return;
+
+            if (QuyTrinhDAO.detailTable(tableName) != null) {
+                TrinhSuaPhieu.show(this, tableName, record, role, employeeId);
+                load();
+                return;
+            }
+        } else if (QuyTrinhDAO.detailTable(tableName) != null) {
+            Map<String, Object> record = null;
+            if (employeeId != null) {
+                record = new LinkedHashMap<>();
+                record.put("maNhanVien", employeeId);
+            }
+            TrinhSuaPhieu.show(this, tableName, record, role, employeeId);
             load();
             return;
         }
@@ -840,14 +941,9 @@ public final class ManHinhDuLieu extends JPanel {
         winDialog.setVisible(true);
     }
 
-    private Map<String, Object> selectedRecord() {
+    private Map<String, Object> currentRecord() {
         int selected = tblTable.getSelectedRow();
-        if (selected < 0) {
-            JOptionPane.showMessageDialog(
-                    this, "Vui lòng chọn một bản ghi."
-            );
-            return null;
-        }
+        if (selected < 0) return null;
 
         int row = tblTable.convertRowIndexToModel(selected);
         Map<String, Object> record = new LinkedHashMap<>();
@@ -857,6 +953,17 @@ public final class ManHinhDuLieu extends JPanel {
             if (column >= 0) {
                 record.put(field, model.getValueAt(row, column));
             }
+        }
+        return record;
+    }
+
+    private Map<String, Object> requireSelectedRecord(String actionDesc) {
+        Map<String, Object> record = currentRecord();
+        if (record == null) {
+            JOptionPane.showMessageDialog(
+                    this, "Vui lòng chọn một bản ghi" + (actionDesc == null ? "." : " để " + actionDesc + "."),
+                    "Chưa chọn bản ghi", JOptionPane.WARNING_MESSAGE
+            );
         }
         return record;
     }
@@ -906,16 +1013,26 @@ public final class ManHinhDuLieu extends JPanel {
             return;
         }
 
-        Map<String, Object> record = selectedRecord();
+        Map<String, Object> record = requireSelectedRecord("xem chi tiết");
         if (record != null) {
-            TrinhSuaPhieu.view(this, tableName, record);
+            if (isManagerReview) {
+                TrinhSuaPhieu.review(this, tableName, record, role, employeeId);
+            } else {
+                TrinhSuaPhieu.view(this, tableName, record);
+            }
             load();
         }
     }
 
     private void hideRecord() {
         int row = tblTable.getSelectedRow();
-        if (row < 0) return;
+        if (row < 0) {
+            JOptionPane.showMessageDialog(
+                    this, "Vui lòng chọn một bản ghi để xóa.",
+                    "Chưa chọn bản ghi", JOptionPane.WARNING_MESSAGE
+            );
+            return;
+        }
 
         if (JOptionPane.showConfirmDialog(
                 this,
@@ -940,5 +1057,59 @@ public final class ManHinhDuLieu extends JPanel {
                     "Lỗi SQL", JOptionPane.ERROR_MESSAGE
             );
         }
+    }
+    public static List<String> filterOptionsFor(String table, String field) {
+
+        if ("PhieuNhapKho".equals(table) && "trangThai".equals(field)) {
+
+            return List.of("Chờ xác nhận nhập kho", "Đã nhập kho", "Đã hủy");
+
+        }
+
+        if ("YeuCauNhapKho".equals(table) && "trangThai".equals(field)) {
+
+            return List.of("Chờ duyệt", "Đã duyệt", "Từ chối", "Đã xử lý");
+
+        }
+
+        String[] opts = LuaChonBieuMau.getOptions(table, field);
+
+        if (opts != null && opts.length > 0) {
+
+            return Arrays.asList(opts);
+
+        }
+
+        return Collections.emptyList();
+
+    }
+
+
+
+    public JComboBox<String> getStatusFilterCombo() {
+
+        String statusField = (page.equals("Phiếu cấp phát phụ tùng") || page.equals("Cấp phát phụ tùng"))
+
+                ? "trangThaiHangMuc"
+
+                : "trangThai";
+
+        int column = Arrays.asList(displayFields).indexOf(statusField);
+
+        return column >= 0 ? statusFilters.getFilter(column) : null;
+
+    }
+
+
+
+    public BoLocTrangThai getStatusFilters() {
+
+        return statusFilters;
+
+    }
+
+
+    public JTable getTable() {
+        return tblTable;
     }
 }

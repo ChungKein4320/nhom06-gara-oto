@@ -1,4 +1,4 @@
-﻿
+
 USE [master];
 GO
 IF DB_ID(N'GaraOto') IS NOT NULL
@@ -32,6 +32,7 @@ CREATE SEQUENCE dbo.[Seq_PhieuTiepNhan] AS int START WITH 101 INCREMENT BY 1 MIN
 CREATE SEQUENCE dbo.[Seq_PhieuKiemTra] AS int START WITH 91 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
 CREATE SEQUENCE dbo.[Seq_PhieuBaoGia] AS int START WITH 81 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
 CREATE SEQUENCE dbo.[Seq_PhieuSuaChua] AS int START WITH 71 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
+CREATE SEQUENCE dbo.[Seq_YeuCauNhapKho] AS int START WITH 4 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
 CREATE SEQUENCE dbo.[Seq_PhieuNhapKho] AS int START WITH 37 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
 CREATE SEQUENCE dbo.[Seq_HoaDon] AS int START WITH 31 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
 CREATE SEQUENCE dbo.[Seq_LichBaoHanh] AS int START WITH 21 INCREMENT BY 1 MINVALUE 1 MAXVALUE 999 NO CYCLE;
@@ -315,6 +316,35 @@ CREATE TABLE dbo.[ChiTietPhieuSuaChua] (
     CONSTRAINT [CK_ChiTietPhieuSuaChua_NgayBaoHanh] CHECK ((ngayBatDauBaoHanh IS NULL AND ngayHetHanBaoHanh IS NULL) OR (ngayBatDauBaoHanh IS NOT NULL AND ngayHetHanBaoHanh IS NOT NULL AND ngayHetHanBaoHanh>=ngayBatDauBaoHanh))
 );
 
+-- 19a. YeuCauNhapKho
+CREATE TABLE dbo.[YeuCauNhapKho] (
+    [maYCNK] varchar(6) NOT NULL CONSTRAINT [DF_YeuCauNhapKho_Ma] DEFAULT ('YCN' + RIGHT('000' + CONVERT(varchar(3), NEXT VALUE FOR dbo.[Seq_YeuCauNhapKho]),3)),
+    [maNCC] varchar(6) NOT NULL,
+    [maNhanVien] varchar(5) NOT NULL,
+    [ngayTao] datetime2(0) NOT NULL CONSTRAINT [DF_YeuCauNhapKho_NgayTao] DEFAULT (SYSDATETIME()),
+    [trangThai] nvarchar(30) NOT NULL CONSTRAINT [DF_YeuCauNhapKho_TrangThai] DEFAULT (N'Chờ duyệt'),
+    [maNhanVienDuyet] varchar(5) NULL,
+    [ngayDuyet] datetime2(0) NULL,
+    [ghiChu] nvarchar(255) NULL,
+    CONSTRAINT [PK_YeuCauNhapKho] PRIMARY KEY ([maYCNK]),
+    CONSTRAINT [CK_YeuCauNhapKho_Ma] CHECK (DATALENGTH([maYCNK]) = 6 AND [maYCNK] COLLATE Latin1_General_100_BIN2 LIKE 'YCN[0-9][0-9][0-9]'),
+    CONSTRAINT [CK_YeuCauNhapKho_NgayTao] CHECK (ngayTao<=SYSDATETIME()),
+    CONSTRAINT [CK_YeuCauNhapKho_TrangThai] CHECK ([trangThai] IN (N'Chờ duyệt', N'Đã duyệt', N'Từ chối', N'Đã xử lý')),
+    CONSTRAINT [CK_YeuCauNhapKho_NgayDuyet] CHECK (ngayDuyet IS NULL OR ngayDuyet>=ngayTao)
+);
+
+-- 19b. ChiTietYeuCauNhapKho
+CREATE TABLE dbo.[ChiTietYeuCauNhapKho] (
+    [maYCNK] varchar(6) NOT NULL,
+    [maPhuTung] varchar(5) NOT NULL,
+    [soLuongYeuCau] int NOT NULL,
+    [donGiaDuKien] decimal(18,2) NOT NULL,
+    CONSTRAINT [PK_ChiTietYeuCauNhapKho] PRIMARY KEY ([maYCNK], [maPhuTung]),
+    CONSTRAINT [CK_ChiTietYeuCauNhapKho_SoLuong] CHECK (soLuongYeuCau>0),
+    CONSTRAINT [CK_ChiTietYeuCauNhapKho_DonGia] CHECK (donGiaDuKien>=0),
+    CONSTRAINT [CK_ChiTietYeuCauNhapKho_KhongPT000] CHECK ([maPhuTung]<>'PT000')
+);
+
 -- 19. PhieuNhapKho
 CREATE TABLE dbo.[PhieuNhapKho] (
     [maPNK] varchar(6) NOT NULL CONSTRAINT [DF_PhieuNhapKho_Ma] DEFAULT ('PNK' + RIGHT('000' + CONVERT(varchar(3), NEXT VALUE FOR dbo.[Seq_PhieuNhapKho]),3)),
@@ -322,10 +352,11 @@ CREATE TABLE dbo.[PhieuNhapKho] (
     [maNhanVien] varchar(5) NOT NULL,
     [ngayNhap] datetime2(0) NOT NULL,
     [trangThai] nvarchar(30) NOT NULL,
+    [maYCNK] varchar(6) NULL,
     CONSTRAINT [PK_PhieuNhapKho] PRIMARY KEY ([maPNK]),
     CONSTRAINT [CK_PhieuNhapKho_Ma] CHECK (DATALENGTH([maPNK]) = 6 AND [maPNK] COLLATE Latin1_General_100_BIN2 LIKE 'PNK[0-9][0-9][0-9]'),
     CONSTRAINT [CK_PhieuNhapKho_Ngay] CHECK (ngayNhap<=SYSDATETIME()),
-    CONSTRAINT [CK_PhieuNhapKho_TrangThai] CHECK ([trangThai] IN (N'Chờ duyệt', N'Đã duyệt', N'Không duyệt'))
+    CONSTRAINT [CK_PhieuNhapKho_TrangThai] CHECK ([trangThai] IN (N'Chờ xác nhận nhập kho', N'Đã nhập kho', N'Đã hủy'))
 );
 
 -- 20. ChiTietPhieuNhapKho
@@ -334,10 +365,15 @@ CREATE TABLE dbo.[ChiTietPhieuNhapKho] (
     [maPhuTung] varchar(5) NOT NULL,
     [soLuongNhap] int NOT NULL,
     [donGiaNhap] decimal(18,2) NOT NULL,
+    [soLuongYeuCau] int NULL,
+    [soLuongThucNhan] int NULL,
     CONSTRAINT [PK_ChiTietPhieuNhapKho] PRIMARY KEY ([maPNK], [maPhuTung]),
-    CONSTRAINT [CK_ChiTietPhieuNhapKho_SoLuong] CHECK (soLuongNhap>0),
+    CONSTRAINT [CK_ChiTietPhieuNhapKho_SoLuong] CHECK (soLuongNhap>=0),
     CONSTRAINT [CK_ChiTietPhieuNhapKho_DonGia] CHECK (donGiaNhap>=0),
-    CONSTRAINT [CK_ChiTietPhieuNhapKho_KhongPT000] CHECK ([maPhuTung]<>'PT000')
+    CONSTRAINT [CK_ChiTietPhieuNhapKho_KhongPT000] CHECK ([maPhuTung]<>'PT000'),
+    CONSTRAINT [CK_ChiTietPhieuNhapKho_SoLuongYeuCau] CHECK (soLuongYeuCau IS NULL OR soLuongYeuCau>0),
+    CONSTRAINT [CK_ChiTietPhieuNhapKho_SoLuongThucNhan] CHECK (soLuongThucNhan IS NULL OR soLuongThucNhan>=0),
+    CONSTRAINT [CK_ChiTietPhieuNhapKho_HopLeThucNhan] CHECK (soLuongThucNhan IS NULL OR (soLuongNhap<=soLuongThucNhan AND (soLuongYeuCau IS NULL OR soLuongThucNhan<=soLuongYeuCau)))
 );
 
 -- 21. HoaDon
@@ -448,6 +484,13 @@ ALTER TABLE dbo.[PhieuSuaChua] WITH CHECK ADD CONSTRAINT [FK_PhieuSuaChua_NhanVi
 ALTER TABLE dbo.[ChiTietPhieuSuaChua] WITH CHECK ADD CONSTRAINT [FK_ChiTietPhieuSuaChua_PhieuSuaChua] FOREIGN KEY ([maPSC]) REFERENCES dbo.[PhieuSuaChua] ([maPSC]);
 ALTER TABLE dbo.[ChiTietPhieuSuaChua] WITH CHECK ADD CONSTRAINT [FK_ChiTietPhieuSuaChua_DichVu] FOREIGN KEY ([maDichVu]) REFERENCES dbo.[DichVu] ([maDichVu]);
 ALTER TABLE dbo.[ChiTietPhieuSuaChua] WITH CHECK ADD CONSTRAINT [FK_ChiTietPhieuSuaChua_PhuTung] FOREIGN KEY ([maPhuTung]) REFERENCES dbo.[PhuTung] ([maPhuTung]);
+ALTER TABLE dbo.[YeuCauNhapKho] WITH CHECK ADD CONSTRAINT [FK_YeuCauNhapKho_NhaCungCap] FOREIGN KEY ([maNCC]) REFERENCES dbo.[NhaCungCap] ([maNCC]);
+ALTER TABLE dbo.[YeuCauNhapKho] WITH CHECK ADD CONSTRAINT [FK_YeuCauNhapKho_NhanVien] FOREIGN KEY ([maNhanVien]) REFERENCES dbo.[NhanVien] ([maNhanVien]);
+ALTER TABLE dbo.[YeuCauNhapKho] WITH CHECK ADD CONSTRAINT [FK_YeuCauNhapKho_NhanVienDuyet] FOREIGN KEY ([maNhanVienDuyet]) REFERENCES dbo.[NhanVien] ([maNhanVien]);
+ALTER TABLE dbo.[ChiTietYeuCauNhapKho] WITH CHECK ADD CONSTRAINT [FK_ChiTietYeuCauNhapKho_YeuCauNhapKho] FOREIGN KEY ([maYCNK]) REFERENCES dbo.[YeuCauNhapKho] ([maYCNK]);
+ALTER TABLE dbo.[ChiTietYeuCauNhapKho] WITH CHECK ADD CONSTRAINT [FK_ChiTietYeuCauNhapKho_PhuTung] FOREIGN KEY ([maPhuTung]) REFERENCES dbo.[PhuTung] ([maPhuTung]);
+CREATE UNIQUE NONCLUSTERED INDEX [UQ_PhieuNhapKho_maYCNK] ON dbo.[PhieuNhapKho] ([maYCNK]) WHERE [maYCNK] IS NOT NULL;
+ALTER TABLE dbo.[PhieuNhapKho] WITH CHECK ADD CONSTRAINT [FK_PhieuNhapKho_YeuCauNhapKho] FOREIGN KEY ([maYCNK]) REFERENCES dbo.[YeuCauNhapKho] ([maYCNK]);
 ALTER TABLE dbo.[PhieuNhapKho] WITH CHECK ADD CONSTRAINT [FK_PhieuNhapKho_NhaCungCap] FOREIGN KEY ([maNCC]) REFERENCES dbo.[NhaCungCap] ([maNCC]);
 ALTER TABLE dbo.[PhieuNhapKho] WITH CHECK ADD CONSTRAINT [FK_PhieuNhapKho_NhanVien] FOREIGN KEY ([maNhanVien]) REFERENCES dbo.[NhanVien] ([maNhanVien]);
 ALTER TABLE dbo.[ChiTietPhieuNhapKho] WITH CHECK ADD CONSTRAINT [FK_ChiTietPhieuNhapKho_PhieuNhapKho] FOREIGN KEY ([maPNK]) REFERENCES dbo.[PhieuNhapKho] ([maPNK]);
@@ -1983,6 +2026,22 @@ VALUES
     (N'PSC060', N'DV009', N'PT022', N'Hoàn thành', 1, N'Đạt', NULL, 0, NULL),
     (N'PSC060', N'DV010', N'PT029', N'Hoàn thành', 2, N'Đạt', DATEADD(minute,720,DATEADD(day,-150,@NgayMau)), 30, DATEADD(minute,720,DATEADD(day,-120,@NgayMau)));
 
+-- YeuCauNhapKho: 3 bản ghi mẫu (UC009)
+INSERT INTO dbo.[YeuCauNhapKho] ([maYCNK], [maNCC], [maNhanVien], [ngayTao], [trangThai], [maNhanVienDuyet], [ngayDuyet], [ghiChu])
+VALUES
+    (N'YCN001', N'NCC001', N'NV002', DATEADD(minute,480,DATEADD(day,-10,@NgayMau)), N'Đã duyệt', N'NV001', DATEADD(minute,540,DATEADD(day,-9,@NgayMau)), N'Đơn nhập định kỳ tháng'),
+    (N'YCN002', N'NCC002', N'NV002', DATEADD(minute,500,DATEADD(day,-2,@NgayMau)), N'Chờ duyệt', NULL, NULL, N'Bổ sung phụ tùng khẩn cấp'),
+    (N'YCN003', N'NCC003', N'NV002', DATEADD(minute,520,DATEADD(day,-1,@NgayMau)), N'Chờ duyệt', NULL, NULL, N'Má phanh và gạt mưa');
+
+-- ChiTietYeuCauNhapKho: 5 bản ghi mẫu
+INSERT INTO dbo.[ChiTietYeuCauNhapKho] ([maYCNK], [maPhuTung], [soLuongYeuCau], [donGiaDuKien])
+VALUES
+    (N'YCN001', N'PT001', 20, 150000.00),
+    (N'YCN001', N'PT002', 15, 320000.00),
+    (N'YCN002', N'PT003', 10, 680000.00),
+    (N'YCN002', N'PT004', 25, 160000.00),
+    (N'YCN003', N'PT005', 30, 1300000.00);
+
 -- PhieuNhapKho: 36 bản ghi
 INSERT INTO dbo.[PhieuNhapKho] ([maPNK], [maNCC], [maNhanVien], [ngayNhap], [trangThai])
 VALUES
@@ -2416,6 +2475,8 @@ UNION ALL SELECT N'PhieuBaoGia',COUNT_BIG(*) FROM dbo.[PhieuBaoGia]
 UNION ALL SELECT N'ChiTietPhieuBaoGia',COUNT_BIG(*) FROM dbo.[ChiTietPhieuBaoGia]
 UNION ALL SELECT N'PhieuSuaChua',COUNT_BIG(*) FROM dbo.[PhieuSuaChua]
 UNION ALL SELECT N'ChiTietPhieuSuaChua',COUNT_BIG(*) FROM dbo.[ChiTietPhieuSuaChua]
+UNION ALL SELECT N'YeuCauNhapKho',COUNT_BIG(*) FROM dbo.[YeuCauNhapKho]
+UNION ALL SELECT N'ChiTietYeuCauNhapKho',COUNT_BIG(*) FROM dbo.[ChiTietYeuCauNhapKho]
 UNION ALL SELECT N'PhieuNhapKho',COUNT_BIG(*) FROM dbo.[PhieuNhapKho]
 UNION ALL SELECT N'ChiTietPhieuNhapKho',COUNT_BIG(*) FROM dbo.[ChiTietPhieuNhapKho]
 UNION ALL SELECT N'HoaDon',COUNT_BIG(*) FROM dbo.[HoaDon]

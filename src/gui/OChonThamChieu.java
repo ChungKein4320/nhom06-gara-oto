@@ -43,13 +43,14 @@ final class OChonThamChieu extends OChonTimKiem<LuaChonDuLieu.Choice> {
             case "PhieuTiepNhan" -> "CONCAT(maKhachHang, N' — ', VIN, N' — ', CONVERT(nvarchar(10),ngayTiepNhan,103))";
             case "PhieuKiemTra" -> "CONCAT(maKhachHang, N' — ', VIN, N' — ', CONVERT(nvarchar(10),ngayKiemTra,103))";
             case "PhieuBaoGia", "PhieuSuaChua" -> "CONCAT(VIN, N' — ', CONVERT(nvarchar(10),ngayLap,103), N' — ', trangThai)";
+            case "YeuCauNhapKho" -> "CONCAT(maNCC, N' — ', CONVERT(nvarchar(10),ngayTao,103), N' — ', trangThai)";
             case "HoaDon" -> "CONCAT(maKhachHang, N' — ', CONVERT(nvarchar(10),ngayLap,103), N' — ', trangThaiThanhToan)";
             case "MaGiamGia" -> "CONCAT(maKhachHang, N' — ', mucGiam, N' — ', trangThai)";
             default -> primary;
         };
         String filter=owner.equals("LichBaoHanh") && field.equals("maPSC")
                 ? " WHERE [trangThai]=N'Hoàn tất'" : "";
-        if(target.equals("PhuTung") && Set.of("TonKho","ChiTietPhieuNhapKho","ChiTietHoaDon").contains(owner))
+        if(target.equals("PhuTung") && Set.of("TonKho","ChiTietPhieuNhapKho","ChiTietYeuCauNhapKho","ChiTietHoaDon").contains(owner))
             filter=" WHERE [maPhuTung]<>'PT000'";
         query = "SELECT [" + primary + "], CONCAT([" + primary + "], N' — ', " + description
                 + ") FROM dbo.[" + target + "]" + filter + " ORDER BY [" + primary + "]";
