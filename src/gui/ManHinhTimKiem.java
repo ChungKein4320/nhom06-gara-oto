@@ -89,8 +89,15 @@ public final class ManHinhTimKiem extends JPanel {
     private void taoBieuMau() {
         String selected=nhom;
         if(!nhomDuocPhep.contains(selected)) return;
-        table=selected.equals("Dịch vụ") ? "DichVu" : ManHinhDuLieu.tableFor(selected);
-        fields=Arrays.stream(Schema.COLUMNS.get(table)).filter(field -> !field.equals("matKhau")).toArray(String[]::new);
+        table=switch(selected) {
+            case "Dịch vụ", "Danh mục dịch vụ" -> "DichVu";
+            case "Phụ tùng", "Danh mục phụ tùng" -> "PhuTung";
+            default -> ManHinhDuLieu.tableFor(selected);
+        };
+        String[] configuredFields=table==null ? null : Schema.COLUMNS.get(table);
+        if(configuredFields==null || configuredFields.length==0)
+            throw new IllegalArgumentException("Chưa cấu hình bảng dữ liệu để tìm kiếm nhóm: "+selected);
+        fields=Arrays.stream(configuredFields).filter(field -> !field.equals("matKhau")).toArray(String[]::new);
         displayFields=table.equals("KhachHang")
                 ? Arrays.copyOf(fields,fields.length+2) : fields.clone();
         if(table.equals("KhachHang")) {

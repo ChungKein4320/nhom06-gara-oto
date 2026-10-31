@@ -100,8 +100,11 @@ final class TruongKeThua {
         }
         private void set(String field,String value) {
             JComponent control=inputs.get(field);
-            if(control instanceof OChonThamChieu cmbValue) cmbValue.selectId(value);
-            else if(control instanceof JTextField txtValue) txtValue.setText(value);
+            switch(control) {
+                case OChonThamChieu cmbValue -> cmbValue.selectId(value);
+                case JTextField txtValue -> txtValue.setText(value);
+                case null, default -> { }
+            }
         }
     }
     private static Map<String,Object> load(Connection conn,String table,Object id) throws SQLException {

@@ -145,8 +145,11 @@ public final class ManHinhChinh extends JFrame {
         row.setPreferredSize(new Dimension(232, 34));
         JLabel title = GiaoDien.label("  " + label, 11, true, textColor);
         JButton btnArrow = new JButton(new Icon() {
+            @Override
             public int getIconWidth(){ return 12; }
+            @Override
             public int getIconHeight(){ return 12; }
+            @Override
             public void paintIcon(Component c,Graphics g,int x,int y){
                 Graphics2D q=(Graphics2D)g.create();
                 q.setRenderingHint(RenderingHints.KEY_ANTIALIASING,RenderingHints.VALUE_ANTIALIAS_ON);
@@ -212,8 +215,11 @@ public final class ManHinhChinh extends JFrame {
             if(search) {
                 final boolean expanded=searchExpanded;
                 JLabel arrow=new JLabel(new Icon() {
+                    @Override
                     public int getIconWidth(){ return 12; }
+                    @Override
                     public int getIconHeight(){ return 12; }
+                    @Override
                     public void paintIcon(Component c,Graphics g,int x,int y){
                         Graphics2D q=(Graphics2D)g.create();
                         q.setRenderingHint(RenderingHints.KEY_ANTIALIASING,RenderingHints.VALUE_ANTIALIAS_ON);

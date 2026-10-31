@@ -9,7 +9,8 @@ import javax.swing.table.DefaultTableModel;
 
 final class HopThoaiLapHoaDon {
     static void show(Component parent) {
-        DefaultTableModel model=new DefaultTableModel(new String[]{"Mã phiếu sửa chữa","Khách hàng","Xe/VIN","Ngày hoàn thành"},0){public boolean isCellEditable(int r,int c){return false;}};
+        DefaultTableModel model=new DefaultTableModel(new String[]{"Mã phiếu sửa chữa","Khách hàng","Xe/VIN","Ngày hoàn thành"},0){@Override
+        public boolean isCellEditable(int r,int c){return false;}};
         String sql="SELECT s.maPSC,CONCAT(s.maKhachHang,N' — ',k.hoTenKH),s.VIN,s.ngayHoanThanh FROM dbo.PhieuSuaChua s JOIN dbo.KhachHang k ON k.maKhachHang=s.maKhachHang WHERE s.trangThai=N'Đã sửa xong' AND EXISTS(SELECT 1 FROM dbo.ChiTietPhieuSuaChua c WHERE c.maPSC=s.maPSC) AND NOT EXISTS(SELECT 1 FROM dbo.ChiTietPhieuSuaChua c WHERE c.maPSC=s.maPSC AND (c.trangThaiHangMuc<>N'Hoàn thành' OR c.ketQuaNghiemThu<>N'Đạt')) AND NOT EXISTS(SELECT 1 FROM dbo.HoaDon h WHERE h.maPSC=s.maPSC) ORDER BY s.maPSC";
         try(Connection conn=KetNoiCSDL.getConnection();PreparedStatement ps=conn.prepareStatement(sql);ResultSet rs=ps.executeQuery()) {while(rs.next()) model.addRow(new Object[]{rs.getString(1),rs.getString(2),rs.getString(3),rs.getTimestamp(4)});}
         catch(SQLException ex){JOptionPane.showMessageDialog(parent,ex.getMessage(),"Không tải được phiếu sửa chữa",JOptionPane.ERROR_MESSAGE);return;}

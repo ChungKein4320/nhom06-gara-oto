@@ -15,13 +15,7 @@ import javax.swing.*;
 final class ThaoTacNghiepVu {
     private ThaoTacNghiepVu() {}
 
-    static void install(JPanel pnlButtons, String table, Supplier<Map<String,Object>> selection, Runnable refresh, Component parent) {
-        install(pnlButtons, table, selection, refresh, parent, null, null);
-    }
 
-    static void install(JPanel pnlButtons, String table, Supplier<Map<String,Object>> selection, Runnable refresh, Component parent, VaiTro role, String employeeId) {
-        install(pnlButtons, table, null, selection, refresh, parent, role, employeeId, null);
-    }
 
     static void install(JPanel pnlButtons, String table, String page, Supplier<Map<String,Object>> selection, Runnable refresh, Component parent, VaiTro role, String employeeId, JTable tblTable) {
         String[] actions = switch(table) {
@@ -30,7 +24,7 @@ final class ThaoTacNghiepVu {
             case "PhieuBaoGia" -> new String[]{"Xác nhận báo giá", "Lập phiếu sửa chữa"};
             case "PhieuSuaChua" -> new String[]{"Hủy", "Bàn giao"};
             case "YeuCauNhapKho" -> getYeuCauNhapKhoActions(page, role);
-            case "PhieuNhapKho" -> getPhieuNhapKhoActions(page, role);
+            case "PhieuNhapKho" -> getPhieuNhapKhoActions(role);
             case "LichNhacBaoDuong" -> new String[]{"Ghi nhận đã gửi"};
             default -> new String[0];
         };
@@ -72,15 +66,13 @@ final class ThaoTacNghiepVu {
         return new String[0];
     }
 
-    private static String[] getPhieuNhapKhoActions(String page, VaiTro role) {
-        if (role == VaiTro.QUAN_LY) {
-            return new String[0];
-        }
+    private static String[] getPhieuNhapKhoActions(VaiTro role) {
         if (role == VaiTro.KHO || role == VaiTro.ADMIN) {
             return new String[]{"Xác nhận nhập kho"};
         }
         return new String[0];
     }
+
 
     private static void installButton(JPanel pnlButtons, String table, Supplier<Map<String,Object>> selection, Runnable refresh, Component parent, String fixedAction, JComboBox<String> cmbAction, VaiTro role, String employeeId, JTable tblTable) {
         JButton btnApply = GiaoDien.button(
@@ -91,43 +83,49 @@ final class ThaoTacNghiepVu {
         pnlButtons.add(btnApply);
 
         if (tblTable != null && fixedAction != null) {
-            if ("Duyệt yêu cầu".equals(fixedAction) || "Từ chối yêu cầu".equals(fixedAction)) {
-                btnApply.setVisible(false);
-                tblTable.getSelectionModel().addListSelectionListener(e -> {
-                    if (!e.getValueIsAdjusting()) {
-                        Map<String,Object> row = selection.get();
-                        boolean isPending = row != null && "Chờ duyệt".equals(row.get("trangThai"));
-                        btnApply.setVisible(isPending);
-                        btnApply.setEnabled(isPending);
-                        pnlButtons.revalidate();
-                        pnlButtons.repaint();
-                    }
-                });
-            } else if ("Lập phiếu nhập kho".equals(fixedAction)) {
-                btnApply.setVisible(false);
-                tblTable.getSelectionModel().addListSelectionListener(e -> {
-                    if (!e.getValueIsAdjusting()) {
-                        Map<String,Object> row = selection.get();
-                        boolean isApproved = row != null && "Đã duyệt".equals(row.get("trangThai"));
-                        btnApply.setVisible(isApproved);
-                        btnApply.setEnabled(isApproved);
-                        pnlButtons.revalidate();
-                        pnlButtons.repaint();
-                    }
-                });
-            } else if ("Xác nhận nhập kho".equals(fixedAction)) {
-                btnApply.setVisible(false);
-                tblTable.getSelectionModel().addListSelectionListener(e -> {
-                    if (!e.getValueIsAdjusting()) {
-                        Map<String,Object> row = selection.get();
-                        Object st = row != null ? row.get("trangThai") : null;
-                        boolean isDraft = row != null && "Chờ xác nhận nhập kho".equals(st);
-                        btnApply.setVisible(isDraft);
-                        btnApply.setEnabled(isDraft);
-                        pnlButtons.revalidate();
-                        pnlButtons.repaint();
-                    }
-                });
+            switch (fixedAction) {
+                case "Duyệt yêu cầu", "Từ chối yêu cầu" -> {
+                    btnApply.setVisible(false);
+                    tblTable.getSelectionModel().addListSelectionListener(e -> {
+                        if (!e.getValueIsAdjusting()) {
+                            Map<String,Object> row = selection.get();
+                            boolean isPending = row != null && "Chờ duyệt".equals(row.get("trangThai"));
+                            btnApply.setVisible(isPending);
+                            btnApply.setEnabled(isPending);
+                            pnlButtons.revalidate();
+                            pnlButtons.repaint();
+                        }
+                    });
+                }
+                case "Lập phiếu nhập kho" -> {
+                    btnApply.setVisible(false);
+                    tblTable.getSelectionModel().addListSelectionListener(e -> {
+                        if (!e.getValueIsAdjusting()) {
+                            Map<String,Object> row = selection.get();
+                            boolean isApproved = row != null && "Đã duyệt".equals(row.get("trangThai"));
+                            btnApply.setVisible(isApproved);
+                            btnApply.setEnabled(isApproved);
+                            pnlButtons.revalidate();
+                            pnlButtons.repaint();
+                        }
+                    });
+                }
+                case "Xác nhận nhập kho" -> {
+                    btnApply.setVisible(false);
+                    tblTable.getSelectionModel().addListSelectionListener(e -> {
+                        if (!e.getValueIsAdjusting()) {
+                            Map<String,Object> row = selection.get();
+                            Object st = row != null ? row.get("trangThai") : null;
+                            boolean isDraft = row != null && "Chờ xác nhận nhập kho".equals(st);
+                            btnApply.setVisible(isDraft);
+                            btnApply.setEnabled(isDraft);
+                            pnlButtons.revalidate();
+                            pnlButtons.repaint();
+                        }
+                    });
+                }
+                default -> {
+                }
             }
         }
         btnApply.addActionListener(e -> {
@@ -317,8 +315,10 @@ final class ThaoTacNghiepVu {
                         Object ycnId = row.get("maYCNK");
                         if (ycnId == null || String.valueOf(ycnId).isBlank()) {
                             JOptionPane.showMessageDialog(parent,
-                                    "Phiếu nhập kho này là phiếu lịch sử (không gắn Yêu cầu nhập kho).\n"
-                                    + "Không thuộc quy trình xác nhận nhập kho thực tế UC009.",
+                                    """
+                                    Phiếu nhập kho này là phiếu lịch sử (không gắn Yêu cầu nhập kho).
+                                    Không thuộc quy trình xác nhận nhập kho thực tế UC009.
+                                    """,
                                     "Bản ghi lịch sử", JOptionPane.WARNING_MESSAGE);
                             return;
                         }

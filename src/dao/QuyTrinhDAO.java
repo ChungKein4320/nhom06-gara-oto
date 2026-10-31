@@ -22,17 +22,14 @@ public final class QuyTrinhDAO {
                 conn.commit();
                 completed = true;
                 return result;
-            } catch (Throwable t) {
+            } catch (SQLException t) {
                 try {
                     conn.rollback();
                     rolledBack = true;
                 } catch (SQLException rbEx) {
                     t.addSuppressed(rbEx);
                 }
-                if (t instanceof SQLException sqlEx) throw sqlEx;
-                if (t instanceof RuntimeException runEx) throw runEx;
-                if (t instanceof Error err) throw err;
-                throw new SQLException("Lỗi giao dịch", t);
+                throw t;
             } finally {
                 if (completed || rolledBack) {
                     try {

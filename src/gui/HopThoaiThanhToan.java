@@ -6,10 +6,12 @@ import entity.HoaDon;
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.image.BufferedImage;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.sql.*;
 import java.text.NumberFormat;
 import java.util.Locale;
+import java.util.concurrent.ExecutionException;
 import javax.imageio.ImageIO;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -29,9 +31,6 @@ final class HopThoaiThanhToan extends JDialog {
     private BigDecimal total;
     private boolean busy,loading,qrReady;
     record Method(String id,String label,boolean qr) { @Override public String toString() { return label; } }
-    static void show(Component parent,String invoice,Runnable refreshed) {
-        show(parent,invoice,refreshed,null);
-    }
     static void show(Component parent,String invoice,Runnable refreshed,String scannedCustomer) {
         HopThoaiThanhToan winPayment=new HopThoaiThanhToan(parent,invoice,refreshed,scannedCustomer);
         if(winPayment.reload()) { winPayment.pack(); winPayment.setLocationRelativeTo(null); winPayment.setVisible(true); }
@@ -172,7 +171,7 @@ final class HopThoaiThanhToan extends JDialog {
 
             qrReady = true;
             btnConfirm.setEnabled(!busy);
-        } catch (Exception ex) {
+        } catch (IOException ex) {
             lblQr.setIcon(null);
             lblQr.setText("Không đọc được ảnh QR.");
             lblQr.setToolTipText(ex.getMessage());
@@ -189,7 +188,13 @@ final class HopThoaiThanhToan extends JDialog {
             @Override protected void done() {
                 busy=false;
                 try { get(); cancelQr(); dispose(); JOptionPane.showMessageDialog(getOwner(),scannedCustomer==null ? "Đã thanh toán. Không tích điểm do chưa quét mã khách hàng." : "Đã thanh toán và ghi nhận điểm tích lũy."); refreshed.run(); }
-                catch(Exception ex) { toggle(true); error(ex.getCause()==null ? ex : ex.getCause()); reload(); refreshed.run(); }
+                catch(HeadlessException | InterruptedException | ExecutionException ex) {
+                    toggle(true);
+                    Throwable cause = ex.getCause();
+                    error(cause == null ? ex : cause);
+                    reload();
+                    refreshed.run();
+                }
             }
         }.execute();
     }
