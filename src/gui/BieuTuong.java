@@ -1,8 +1,9 @@
 package gui;
-import javax.swing.*;
 import java.awt.*;
 import java.awt.image.*;
+import java.io.IOException;
 import java.net.*;
+import javax.swing.*;
 /** Biểu tượng PNG được đóng gói trong src/IMG/icons, không tải từ mạng. */ public final class BieuTuong {
     private BieuTuong(){
     }
@@ -44,7 +45,7 @@ import java.net.*;
             g.dispose();
             return new ImageIcon(out);
         }
-        catch(Exception e){
+        catch(IOException e){
             return null;
         }
     }

@@ -1,9 +1,9 @@
 package gui;
+import java.awt.*;
 import javax.swing.*;
 import javax.swing.border.*;
 import javax.swing.plaf.basic.BasicScrollBarUI;
 import javax.swing.table.*;
-import java.awt.*;
 public final class GiaoDien {
     private static boolean dialogCenteringInstalled;
     public static final Color NAV=new Color(0x13272E),TEAL=new Color(0x487674),MINT=new Color(0x83B4AE),CREAM=new Color(0xE8C69B),PEACH=new Color(0xD69369),ORANGE=new Color(0xCB6330),BG=new Color(0xF4F7F6),WHITE=Color.WHITE,TEXT=new Color(0x21383C),MUTED=new Color(0x718387),LINE=new Color(0xE4EBE9);
@@ -115,6 +115,7 @@ public final class GiaoDien {
     }
     public static JPanel rounded(Color c,int r){
         return new JPanel(){
+            @Override
             protected void paintComponent(Graphics g){
                 Graphics2D q=(Graphics2D)g.create();
                 q.setRenderingHint(RenderingHints.KEY_ANTIALIASING,RenderingHints.VALUE_ANTIALIAS_ON);
@@ -126,6 +127,7 @@ public final class GiaoDien {
     }
     public static JButton button(String s,Color bg,Color fg){
         JButton btnB=new JButton(s){
+            @Override
             protected void paintComponent(Graphics g){
                 Graphics2D q=(Graphics2D)g.create();
                 q.setRenderingHint(RenderingHints.KEY_ANTIALIASING,RenderingHints.VALUE_ANTIALIAS_ON);

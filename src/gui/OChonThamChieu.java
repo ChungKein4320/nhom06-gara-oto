@@ -60,10 +60,11 @@ final class OChonThamChieu extends OChonTimKiem<LuaChonDuLieu.Choice> {
             case "MaGiamGia" -> "CONCAT(maKhachHang, N' — ', mucGiam, N' — ', trangThai)";
             default -> primary;
         };
-        String filter=owner.equals("LichBaoHanh") && field.equals("maPSC")
+        String filter = "LichBaoHanh".equals(owner) && "maPSC".equals(field)
                 ? " WHERE [trangThai]=N'Hoàn tất'" : "";
-        if(target.equals("PhuTung") && Set.of("TonKho","ChiTietPhieuNhapKho","ChiTietYeuCauNhapKho","ChiTietHoaDon").contains(owner))
-            filter=" WHERE [maPhuTung]<>'PT000'";
+        if ("PhuTung".equals(target)
+                && Set.of("TonKho", "ChiTietPhieuNhapKho", "ChiTietYeuCauNhapKho", "ChiTietHoaDon").contains(owner))
+            filter = " WHERE [maPhuTung]<>'PT000'";
         baseQuery = "SELECT [" + primary + "], CONCAT([" + primary + "], N' — ', " + description
                 + ") FROM dbo.[" + target + "]" + filter + " ORDER BY [" + primary + "]";
         query = baseQuery;

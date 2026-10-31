@@ -218,7 +218,7 @@ final class HopThoaiTienDoSuaChua {
                             );
 
                             load[0].run();
-                        } catch (Exception ex) {
+                        } catch (SQLException ex) {
                             JOptionPane.showMessageDialog(
                                     winDialog,
                                     ex.getMessage(),

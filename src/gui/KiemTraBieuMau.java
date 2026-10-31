@@ -151,6 +151,7 @@ final class KiemTraBieuMau {
     }
 
     static String errorField(Throwable error, String table) {
+        if (error == null) return null;
         if (error instanceof Issue issue) return issue.field;
         if (error instanceof dao.DataRules.Invalid issue) return issue.field;
         String message = error.getMessage() == null ? "" : error.getMessage();
@@ -166,20 +167,28 @@ final class KiemTraBieuMau {
                     default -> suffix;
                 };
                 String primary = Schema.PRIMARY.get(target);
-                if (primary != null && Schema.TYPES.get(table).containsKey(primary)) return primary;
+                Map<String, String> types = Schema.TYPES.get(table);
+                if (primary != null && types != null && types.containsKey(primary)) return primary;
             }
-            if (suffix.equalsIgnoreCase("SDT")) return "soDienThoai";
-            if (suffix.equalsIgnoreCase("Ten") && table.equals("PhuongThucThanhToan")) return "tenPhuongThuc";
-            if (suffix.equalsIgnoreCase("SoLuong") && table.equals("TonKho")) return "soLuongHienTai";
-            if (suffix.equalsIgnoreCase("Ngay")) return switch (table) {
-                case "PhieuSuaChua" -> "ngayHoanThanh";
-                case "PhieuTiepNhan" -> "ngayTiepNhan";
-                default -> "ngayHetHan";
-            };
-            for (String field : Schema.COLUMNS.get(table)) {
-                if (field.equalsIgnoreCase(suffix) || field.equalsIgnoreCase("ten" + suffix) || field.equalsIgnoreCase("ma" + suffix)) return field;
+            if ("SDT".equalsIgnoreCase(suffix)) return "soDienThoai";
+            if ("Ten".equalsIgnoreCase(suffix) && table.equals("PhuongThucThanhToan")) return "tenPhuongThuc";
+            if ("SoLuong".equalsIgnoreCase(suffix) && table.equals("TonKho")) return "soLuongHienTai";
+            if ("Ngay".equalsIgnoreCase(suffix)) {
+                if (table == null) return "ngayHetHan";
+                return switch (table) {
+                    case "PhieuSuaChua" -> "ngayHoanThanh";
+                    case "PhieuTiepNhan" -> "ngayTiepNhan";
+                    default -> "ngayHetHan";
+                };
+            }
+            String[] columns = Schema.COLUMNS == null ? null : Schema.COLUMNS.get(table);
+            if (columns != null) {
+                for (String field : columns) {
+                    if (field.equalsIgnoreCase(suffix) || field.equalsIgnoreCase("ten" + suffix) || field.equalsIgnoreCase("ma" + suffix)) return field;
+                }
             }
         }
+        if (table == null || Schema.COLUMNS == null) return null;
         for (String field : Schema.COLUMNS.get(table)) {
             if (Pattern.compile("(?i)(?<![A-Za-z0-9_])" + Pattern.quote(field) + "(?![A-Za-z0-9_])").matcher(message).find()) return field;
         }

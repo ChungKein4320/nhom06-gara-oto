@@ -1,5 +1,6 @@
 package gui;
 
+import java.util.Arrays;
 import java.util.LinkedHashSet;
 
 public final class DuLieuTrinhDon {
@@ -25,17 +26,17 @@ public final class DuLieuTrinhDon {
     public static String[] forRole(VaiTro role) {
         if (role == VaiTro.ADMIN) {
             LinkedHashSet<String> all = new LinkedHashSet<>();
-            for (String value : TECH) all.add(value);
-            for (String value : WARE) all.add(value);
-            for (String value : CASH) all.add(value);
-            for (String value : MANAGER) all.add(value);
-            return all.toArray(new String[0]);
+            all.addAll(Arrays.asList(TECH));
+            all.addAll(Arrays.asList(WARE));
+            all.addAll(Arrays.asList(CASH));
+            all.addAll(Arrays.asList(MANAGER));
+            return all.toArray(String[]::new);
         }
-        switch (role) {
-            case KY_THUAT: return TECH;
-            case KHO: return WARE;
-            case THU_NGAN: return CASH;
-            default: return MANAGER;
-        }
+        return switch (role) {
+            case KY_THUAT -> TECH;
+            case KHO -> WARE;
+            case THU_NGAN -> CASH;
+            default -> MANAGER;
+        };
     }
 }

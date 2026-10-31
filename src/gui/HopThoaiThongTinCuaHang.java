@@ -83,8 +83,11 @@ final class HopThoaiThongTinCuaHang extends JDialog {
         setContentPane(root); getRootPane().setDefaultButton(save);
         getRootPane().registerKeyboardAction(e -> dispose(), KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), JComponent.WHEN_IN_FOCUSED_WINDOW);
         DocumentListener changes = new DocumentListener() {
+            @Override
             public void insertUpdate(DocumentEvent e) { updatePreview(); }
+            @Override
             public void removeUpdate(DocumentEvent e) { updatePreview(); }
+            @Override
             public void changedUpdate(DocumentEvent e) { updatePreview(); }
         };
         for (JTextField field : fields) field.getDocument().addDocumentListener(changes);

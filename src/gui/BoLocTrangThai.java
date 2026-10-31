@@ -93,15 +93,6 @@ final class BoLocTrangThai extends JPanel {
         return filters.get(column);
     }
 
-    List<String> getFilterOptions(int column) {
-        JComboBox<String> combo = filters.get(column);
-        if (combo == null) return Collections.emptyList();
-        List<String> res = new ArrayList<>();
-        for (int i = 0; i < combo.getItemCount(); i++) {
-            res.add(combo.getItemAt(i));
-        }
-        return res;
-    }
 
     void refresh() {
         rebuilding = true;
@@ -145,7 +136,7 @@ final class BoLocTrangThai extends JPanel {
                     targetSelection = "Tất cả";
                 }
 
-                Vector<String> items = new Vector<>();
+                List<String> items = new ArrayList<>();
                 items.add("Tất cả");
                 items.addAll(values);
 
@@ -161,7 +152,7 @@ final class BoLocTrangThai extends JPanel {
                 }
 
                 if (!modelMatches) {
-                    combo.setModel(new DefaultComboBoxModel<>(items));
+                    combo.setModel(new DefaultComboBoxModel<>(items.toArray(String[]::new)));
                 }
                 if (!Objects.equals(combo.getSelectedItem(), targetSelection)) {
                     combo.setSelectedItem(targetSelection);

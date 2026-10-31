@@ -1,6 +1,7 @@
 package dao;
 
 import connectDB.KetNoiCSDL;
+import java.math.BigDecimal;
 import java.sql.*;
 import java.text.NumberFormat;
 import java.util.Locale;
@@ -29,9 +30,12 @@ public final class TongQuanDAO {
         try (Connection conn = KetNoiCSDL.getConnection(); PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
             if (!rs.next()) throw new SQLException("Không đọc được chỉ số.");
-            return key.equals("Doanh thu")
-                    ? NumberFormat.getNumberInstance(Locale.forLanguageTag("vi-VN")).format(rs.getBigDecimal(1)) + " đ"
-                    : rs.getString(1);
+            if ("Doanh thu".equals(key)) {
+                BigDecimal revenue = rs.getBigDecimal(1);
+                return NumberFormat.getNumberInstance(Locale.forLanguageTag("vi-VN"))
+                        .format(revenue != null ? revenue : BigDecimal.ZERO) + " đ";
+            }
+            return rs.getString(1);
         }
     }
 }

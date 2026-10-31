@@ -176,19 +176,24 @@ class OChonTimKiem<T> extends JComboBox<T> {
                     fireActionEvent(); open(true);
                 });
             }
+            @Override
             public void insertUpdate(DocumentEvent e){update();}
+            @Override
             public void removeUpdate(DocumentEvent e){update();}
+            @Override
             public void changedUpdate(DocumentEvent e){update();}
         });
 
         txtEditor.getInputMap().put(KeyStroke.getKeyStroke("ENTER"),"pickResult");
         txtEditor.getActionMap().put("pickResult",new AbstractAction(){
             private static final long serialVersionUID = 1L;
+            @Override
             public void actionPerformed(ActionEvent e){choose();}});
         for(int key:new int[]{KeyEvent.VK_DOWN,KeyEvent.VK_UP}) {
             String action="result"+key; txtEditor.getInputMap().put(KeyStroke.getKeyStroke(key,0),action);
             txtEditor.getActionMap().put(action,new AbstractAction(){
                 private static final long serialVersionUID = 1L;
+                @Override
                 public void actionPerformed(ActionEvent e){
                 if(!isPopupVisible()) { open(true); return; }
                 if(results!=null && !results.isEmpty()) { int next=Math.max(0,Math.min(results.size()-1,lstResults.getSelectedIndex()+(key==KeyEvent.VK_DOWN ? 1 : -1))); lstResults.setSelectedIndex(next); lstResults.ensureIndexIsVisible(next); }
@@ -197,6 +202,7 @@ class OChonTimKiem<T> extends JComboBox<T> {
         txtEditor.getInputMap().put(KeyStroke.getKeyStroke("ESCAPE"),"cancelSearch");
         txtEditor.getActionMap().put("cancelSearch",new AbstractAction(){
             private static final long serialVersionUID = 1L;
+            @Override
             public void actionPerformed(ActionEvent e){setPopupVisible(false); restore();}});
 
         txtEditor.addFocusListener(new FocusAdapter(){
@@ -317,13 +323,16 @@ class OChonTimKiem<T> extends JComboBox<T> {
             GiaoDien.styleScroll(scrResults, false);
             popup.add(scrResults);
             popup.addPopupMenuListener(new PopupMenuListener(){
+                @Override
                 public void popupMenuWillBecomeVisible(PopupMenuEvent e){}
+                @Override
                 public void popupMenuWillBecomeInvisible(PopupMenuEvent e){
                     popupClosedAt=System.currentTimeMillis();
                     setBorder(new LineBorder(txtEditor != null && txtEditor.isFocusOwner() ? GiaoDien.TEAL : GiaoDien.LINE, 1, true));
                     repaint();
                     firePopupMenuWillBecomeInvisible();
                 }
+                @Override
                 public void popupMenuCanceled(PopupMenuEvent e){
                     popupClosedAt=System.currentTimeMillis();
                     setBorder(new LineBorder(txtEditor != null && txtEditor.isFocusOwner() ? GiaoDien.TEAL : GiaoDien.LINE, 1, true));
