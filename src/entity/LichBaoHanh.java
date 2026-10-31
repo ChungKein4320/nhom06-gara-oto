@@ -21,6 +21,8 @@ public class LichBaoHanh {
     }
 
     public void setMaLBH(String value) {
+        if (value == null || !value.matches("LBH[0-9]{3}"))
+            throw new IllegalArgumentException("Mã lịch bảo hành không hợp lệ");
         this.maLBH = value;
     }
 
@@ -29,19 +31,31 @@ public class LichBaoHanh {
     }
 
     public void setMaPSC(PhieuSuaChua value) {
+        if (value == null || value.getMaPSC() == null || !value.getMaPSC().matches("PSC[0-9]{3}"))
+            throw new IllegalArgumentException("Mã phiếu sửa chữa không hợp lệ");
         this.maPSC = value;
     }
 
     public DichVu getMaDichVu() { return maDichVu; }
-    public void setMaDichVu(DichVu value) { this.maDichVu = value; }
+    public void setMaDichVu(DichVu value) {
+        if (value != null && (value.getMaDichVu() == null || !value.getMaDichVu().matches("DV[0-9]{3}")))
+            throw new IllegalArgumentException("Mã dịch vụ không hợp lệ");
+        this.maDichVu = value;
+    }
     public PhuTung getMaPhuTung() { return maPhuTung; }
-    public void setMaPhuTung(PhuTung value) { this.maPhuTung = value; }
+    public void setMaPhuTung(PhuTung value) {
+        if (value != null && (value.getMaPhuTung() == null || !value.getMaPhuTung().matches("PT[0-9]{3}")))
+            throw new IllegalArgumentException("Mã phụ tùng không hợp lệ");
+        this.maPhuTung = value;
+    }
 
     public NhanVien getMaNhanVien() {
         return maNhanVien;
     }
 
     public void setMaNhanVien(NhanVien value) {
+        if (value == null || value.getMaNhanVien() == null || !value.getMaNhanVien().matches("NV[0-9]{3}"))
+            throw new IllegalArgumentException("Mã nhân viên không hợp lệ");
         this.maNhanVien = value;
     }
 
@@ -50,6 +64,8 @@ public class LichBaoHanh {
     }
 
     public void setMaKhachHang(KhachHang value) {
+        if (value == null || value.getMaKhachHang() == null || !value.getMaKhachHang().matches("KH[0-9]{3}"))
+            throw new IllegalArgumentException("Mã khách hàng không hợp lệ");
         this.maKhachHang = value;
     }
 
@@ -58,6 +74,8 @@ public class LichBaoHanh {
     }
 
     public void setVIN(PhuongTien value) {
+        if (value == null || value.getVIN() == null || !value.getVIN().matches("[A-HJ-NPR-Z0-9]{17}"))
+            throw new IllegalArgumentException("Mã phương tiện không hợp lệ");
         this.VIN = value;
     }
 
@@ -66,6 +84,8 @@ public class LichBaoHanh {
     }
 
     public void setNgayXuLy(Timestamp value) {
+        if (value == null || value.after(new Timestamp(System.currentTimeMillis())))
+            throw new IllegalArgumentException("Ngày xử lý không hợp lệ");
         this.ngayXuLy = value;
     }
 
@@ -74,7 +94,9 @@ public class LichBaoHanh {
     }
 
     public void setKetQuaXuLy(String value) {
-        this.ketQuaXuLy = value;
+        if (value == null || value.isBlank())
+            throw new IllegalArgumentException("Kết quả xử lý không được rỗng");
+        this.ketQuaXuLy = value.trim();
     }
 
     public String getGhiChu() {
@@ -85,20 +107,27 @@ public class LichBaoHanh {
         this.ghiChu = value;
     }
 
-    public LichBaoHanh(String maLBH, PhieuSuaChua maPSC,
-            NhanVien maNhanVien, KhachHang maKhachHang,
-            PhuongTien VIN, Timestamp ngayXuLy,
-            String ketQuaXuLy, String ghiChu) {
 
-        this();
-        setMaPSC(maPSC);
-        setMaNhanVien(maNhanVien);
-        setMaKhachHang(maKhachHang);
-        setVIN(VIN);
-        setNgayXuLy(ngayXuLy);
-        setKetQuaXuLy(ketQuaXuLy);
-        setGhiChu(ghiChu);
+    public LichBaoHanh(
+            String maLBH,
+            PhieuSuaChua maPSC,
+            NhanVien maNhanVien,
+            KhachHang maKhachHang,
+            PhuongTien VIN,
+            Timestamp ngayXuLy,
+            String ketQuaXuLy,
+            String ghiChu) {
+
+        this.maLBH = maLBH;
+        this.maPSC = maPSC;
+        this.maNhanVien = maNhanVien;
+        this.maKhachHang = maKhachHang;
+        this.VIN = VIN;
+        this.ngayXuLy = ngayXuLy;
+        this.ketQuaXuLy = ketQuaXuLy;
+        this.ghiChu = ghiChu;
     }
+
 
     @Override
     public String toString() {

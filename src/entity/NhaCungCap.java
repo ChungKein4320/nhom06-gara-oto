@@ -23,6 +23,8 @@ public class NhaCungCap {
     }
 
     public void setMaNCC(String value) {
+        if (value == null || !value.matches("NCC[0-9]{3}"))
+            throw new IllegalArgumentException("Mã nhà cung cấp không hợp lệ");
         this.maNCC = value;
     }
 

@@ -2,6 +2,7 @@ package gui;
 
 import connectDB.KetNoiCSDL;
 import dao.ThuongMaiDAO;
+import entity.HoaDon;
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.image.BufferedImage;
@@ -71,7 +72,13 @@ final class HopThoaiThanhToan extends JDialog {
                     if(!rs.next()) throw new SQLException("Hóa đơn không còn tồn tại.");
                     String state=rs.getString("trangThaiThanhToan");
                     if(!state.equals("Chưa thanh toán") && !state.equals("Chờ thanh toán")) throw new SQLException("Hóa đơn không còn chờ thanh toán.");
-                    total=rs.getBigDecimal("tienPhuTung").add(rs.getBigDecimal("tienCong")).add(rs.getBigDecimal("dichVuKhac")).add(rs.getBigDecimal("thueVAT")).subtract(rs.getBigDecimal("giamGia"));
+                    HoaDon hoaDon=new HoaDon();
+                    hoaDon.setTienPhuTung(rs.getBigDecimal("tienPhuTung"));
+                    hoaDon.setTienCong(rs.getBigDecimal("tienCong"));
+                    hoaDon.setDichVuKhac(rs.getBigDecimal("dichVuKhac"));
+                    hoaDon.setThueVAT(rs.getBigDecimal("thueVAT"));
+                    hoaDon.setGiamGia(rs.getBigDecimal("giamGia"));
+                    total=hoaDon.tongThanhToan();
                     if(total.signum()<0) throw new SQLException("Số tiền hóa đơn không hợp lệ.");
                 }
             }

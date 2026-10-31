@@ -34,6 +34,8 @@ public class MaGiamGia {
     }
 
     public void setMaGiamGia(String value) {
+        if (value == null || !value.matches("MGG[0-9]{3}"))
+            throw new IllegalArgumentException("Mã giảm giá không hợp lệ");
         this.maGiamGia = value;
     }
 
@@ -42,6 +44,9 @@ public class MaGiamGia {
     }
 
     public void setMaKhachHang(KhachHang value) {
+        if (value == null || value.getMaKhachHang() == null
+                || !value.getMaKhachHang().matches("KH[0-9]{3}"))
+            throw new IllegalArgumentException("Mã khách hàng không hợp lệ");
         this.maKhachHang = value;
     }
 
@@ -85,9 +90,16 @@ public class MaGiamGia {
     }
 
     public Integer getMocDiem() { return mocDiem; }
-    public void setMocDiem(Integer value) { this.mocDiem = value; }
+    public void setMocDiem(Integer value) {
+        if (value != null && value < 0) throw new IllegalArgumentException("Mốc điểm không hợp lệ");
+        this.mocDiem = value;
+    }
     public Timestamp getNgayBatDauChuKy() { return ngayBatDauChuKy; }
-    public void setNgayBatDauChuKy(Timestamp value) { this.ngayBatDauChuKy = value; }
+    public void setNgayBatDauChuKy(Timestamp value) {
+        if (value != null && value.after(new Timestamp(System.currentTimeMillis())))
+            throw new IllegalArgumentException("Ngày bắt đầu chu kỳ không hợp lệ");
+        this.ngayBatDauChuKy = value;
+    }
     
     public boolean kiemTraHieuLuc() {
         if (ngayHetHan == null) {
@@ -95,7 +107,9 @@ public class MaGiamGia {
         }
 
         Timestamp hienTai = new Timestamp(System.currentTimeMillis());
-        return !ngayHetHan.before(hienTai);
+        return "Đang hiệu lực".equals(trangThai)
+                && ngayTao != null && !ngayTao.after(hienTai)
+                && !ngayHetHan.before(hienTai);
     }
 
     @Override

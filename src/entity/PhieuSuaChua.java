@@ -21,6 +21,8 @@ public class PhieuSuaChua {
     }
 
     public void setMaPSC(String value) {
+        if (value == null || !value.matches("PSC[0-9]{3}"))
+            throw new IllegalArgumentException("Mã phiếu sửa chữa không hợp lệ");
         this.maPSC = value;
     }
 
@@ -29,6 +31,8 @@ public class PhieuSuaChua {
     }
 
     public void setMaBaoGia(PhieuBaoGia value) {
+        if (value == null || value.getMaBaoGia() == null || !value.getMaBaoGia().matches("PBG[0-9]{3}"))
+            throw new IllegalArgumentException("Mã phiếu báo giá không hợp lệ");
         this.maBaoGia = value;
     }
 
@@ -37,6 +41,8 @@ public class PhieuSuaChua {
     }
 
     public void setMaKhachHang(KhachHang value) {
+        if (value == null || value.getMaKhachHang() == null || !value.getMaKhachHang().matches("KH[0-9]{3}"))
+            throw new IllegalArgumentException("Mã khách hàng không hợp lệ");
         this.maKhachHang = value;
     }
 
@@ -45,6 +51,8 @@ public class PhieuSuaChua {
     }
 
     public void setVIN(PhuongTien value) {
+        if (value == null || value.getVIN() == null || !value.getVIN().matches("[A-HJ-NPR-Z0-9]{17}"))
+            throw new IllegalArgumentException("Mã VIN không hợp lệ");
         this.VIN = value;
     }
 
@@ -53,6 +61,8 @@ public class PhieuSuaChua {
     }
 
     public void setMaNhanVien(NhanVien value) {
+        if (value == null || value.getMaNhanVien() == null || !value.getMaNhanVien().matches("NV[0-9]{3}"))
+            throw new IllegalArgumentException("Mã nhân viên không hợp lệ");
         this.maNhanVien = value;
     }
 
@@ -61,6 +71,8 @@ public class PhieuSuaChua {
     }
 
     public void setNgayLap(Timestamp value) {
+        if (value == null || value.after(new Timestamp(System.currentTimeMillis())))
+            throw new IllegalArgumentException("Ngày lập không hợp lệ");
         this.ngayLap = value;
     }
 
@@ -69,6 +81,8 @@ public class PhieuSuaChua {
     }
 
     public void setNgayHoanThanh(Timestamp value) {
+        if (value != null && (ngayLap == null || value.before(ngayLap)))
+            throw new IllegalArgumentException("Ngày hoàn thành không hợp lệ, phải >= ngayLap");
         this.ngayHoanThanh = value;
     }
 
@@ -77,27 +91,38 @@ public class PhieuSuaChua {
     }
 
     public void setTrangThai(String value) {
+        if (value == null || !java.util.Set.of("Chờ sửa chữa", "Đang sửa chữa", "Đã sửa xong",
+                "Chờ thanh toán", "Đã thanh toán", "Hoàn tất", "Đã hủy").contains(value))
+            throw new IllegalArgumentException("Trạng thái không hợp lệ");
         this.trangThai = value;
     }
 
     public String getLyDoHuy() { return lyDoHuy; }
-    public void setLyDoHuy(String value) { this.lyDoHuy = value; }
+    public void setLyDoHuy(String value) {
+        if (value != null && value.length() > 500)
+            throw new IllegalArgumentException("Lý do hủy không được quá 500 ký tự");
+        this.lyDoHuy = value;
+    }
     public NhanVien getMaNguoiDuyetHuy() { return maNguoiDuyetHuy; }
-    public void setMaNguoiDuyetHuy(NhanVien value) { this.maNguoiDuyetHuy = value; }
+    public void setMaNguoiDuyetHuy(NhanVien value) {
+        if (value != null && (value.getMaNhanVien() == null || !value.getMaNhanVien().matches("NV[0-9]{3}")))
+            throw new IllegalArgumentException("Mã người duyệt hủy không hợp lệ");
+        this.maNguoiDuyetHuy = value;
+    }
 
-    PhieuSuaChua(String maPSC, PhieuBaoGia maBaoGia,
+    public PhieuSuaChua(String maPSC, PhieuBaoGia maBaoGia,
             KhachHang maKhachHang, PhuongTien VIN,
             NhanVien maNhanVien, Timestamp ngayLap,
             Timestamp ngayHoanThanh, String trangThai) {
 
-        this();
-        setMaBaoGia(maBaoGia);
-        setMaKhachHang(maKhachHang);
-        setVIN(VIN);
-        setMaNhanVien(maNhanVien);
-        setNgayLap(ngayLap);
-        setNgayHoanThanh(ngayHoanThanh);
-        setTrangThai(trangThai);
+        this.maPSC = maPSC;
+        this.maBaoGia = maBaoGia;
+        this.maKhachHang = maKhachHang;
+        this.VIN = VIN;
+        this.maNhanVien = maNhanVien;
+        this.ngayLap = ngayLap;
+        this.ngayHoanThanh = ngayHoanThanh;
+        this.trangThai = trangThai;
     }
 
     @Override

@@ -18,6 +18,8 @@ public class LichNhacBaoDuong {
     }
 
     public void setMaLichNhac(String value) {
+        if (value == null || !value.matches("LNBD[0-9]{3}"))
+            throw new IllegalArgumentException("Mã lịch nhắc không hợp lệ");
         this.maLichNhac = value;
     }
 
@@ -26,6 +28,8 @@ public class LichNhacBaoDuong {
     }
 
     public void setMaKhachHang(KhachHang   value) {
+        if (value == null || value.getMaKhachHang() == null || !value.getMaKhachHang().matches("KH[0-9]{3}"))
+            throw new IllegalArgumentException("Mã khách hàng không hợp lệ");
         this.maKhachHang = value;
     }
 
@@ -34,6 +38,8 @@ public class LichNhacBaoDuong {
     }
 
     public void setMaPSC(PhieuSuaChua value) {
+        if (value == null || value.getMaPSC() == null || !value.getMaPSC().matches("PSC[0-9]{3}"))
+            throw new IllegalArgumentException("Mã phiếu sửa chữa không hợp lệ");
         this.maPSC = value;
     }
 
@@ -42,6 +48,8 @@ public class LichNhacBaoDuong {
     }
 
     public void setVIN(PhuongTien value) {
+        if (value == null || value.getVIN() == null || !value.getVIN().matches("[A-HJ-NPR-Z0-9]{17}"))
+            throw new IllegalArgumentException("Phương tiện không hợp lệ");
         this.VIN = value;
     }
 
@@ -50,6 +58,7 @@ public class LichNhacBaoDuong {
     }
 
     public void setNgayNhac(Timestamp value) {
+        if (value == null) throw new IllegalArgumentException("Ngày nhắc không hợp lệ");
         this.ngayNhac = value;
     }
 
@@ -58,7 +67,9 @@ public class LichNhacBaoDuong {
     }
 
     public void setNoiDung(String value) {
-        this.noiDung = value;
+        if (value == null || value.isBlank())
+            throw new IllegalArgumentException("Nội dung không được rỗng");
+        this.noiDung = value.trim();
     }
 
     public String getTrangThai() {
@@ -66,7 +77,9 @@ public class LichNhacBaoDuong {
     }
 
     public void setTrangThai(String value) {
-        this.trangThai = value;
+        if (value == null || value.isBlank())
+            throw new IllegalArgumentException("Trạng thái không được rỗng");
+        this.trangThai = value.trim();
     }
 
      public LichNhacBaoDuong(String maLichNhac,
@@ -74,13 +87,13 @@ public class LichNhacBaoDuong {
             PhieuSuaChua maPSC, Timestamp ngayNhac,
             String noiDung, String trangThai) {
 
-        this();
-        setMaKhachHang(maKhachHang);
-        setVIN(VIN);
-        setMaPSC(maPSC);
-        setNgayNhac(ngayNhac);
-        setNoiDung(noiDung);
-        setTrangThai(trangThai);
+        this.maLichNhac = maLichNhac;
+        this.maKhachHang = maKhachHang;
+        this.VIN = VIN;
+        this.maPSC = maPSC;
+        this.ngayNhac = ngayNhac;
+        this.noiDung = noiDung;
+        this.trangThai = trangThai;
     }
 
     @Override

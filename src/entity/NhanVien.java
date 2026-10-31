@@ -1,11 +1,11 @@
 package entity;
 
-import java.sql.Timestamp;
+import java.sql.Date;
 
 public class NhanVien {
     private String maNhanVien;
     private String hoTenNV;
-    private Timestamp ngaySinh;
+    private Date ngaySinh;
     private String soDienThoai;
     private String email;
     private String diaChi;
@@ -15,7 +15,7 @@ public class NhanVien {
 
     public NhanVien() { }
 
-    public NhanVien(String maNhanVien, String hoTenNV, Timestamp ngaySinh, String soDienThoai, String email,
+    public NhanVien(String maNhanVien, String hoTenNV, Date ngaySinh, String soDienThoai, String email,
 			String diaChi, String vaiTro, boolean gioiTinh, String trangThai) {
 		super();
 		this.maNhanVien = maNhanVien;
@@ -38,6 +38,8 @@ public class NhanVien {
     }
 
     public void setMaNhanVien(String value) {
+        if (value == null || !value.matches("NV[0-9]{3}"))
+            throw new IllegalArgumentException("Mã nhân viên không hợp lệ");
         this.maNhanVien = value;
     }
 
@@ -51,13 +53,13 @@ public class NhanVien {
         this.hoTenNV = value.trim();
     }
 
-    public Timestamp getNgaySinh() {
+    public Date getNgaySinh() {
         return ngaySinh;
     }
 
-    public void setNgaySinh(Timestamp value) {
+    public void setNgaySinh(Date value) {
         if (value == null) throw new IllegalArgumentException("Ngày sinh không được rỗng");
-        int tuoi = java.time.Period.between(value.toLocalDateTime().toLocalDate(), java.time.LocalDate.now()).getYears();
+        int tuoi = java.time.Period.between(value.toLocalDate(), java.time.LocalDate.now()).getYears();
         if (tuoi < 18 || tuoi > 65) throw new IllegalArgumentException("Nhân viên phải từ 18 đến 65 tuổi");
         this.ngaySinh = value;
     }
@@ -95,7 +97,7 @@ public class NhanVien {
     }
 
     public void setVaiTro(String value) {
-        if (!java.util.Set.of("Nhân viên kỹ thuật", "Nhân viên bán hàng", "Nhân viên kho", "Nhân viên quản lý").contains(value))
+        if (value == null || !java.util.Set.of("Nhân viên kỹ thuật", "Nhân viên bán hàng", "Nhân viên kho", "Nhân viên quản lý").contains(value))
             throw new IllegalArgumentException("Vai trò không hợp lệ");
         this.vaiTro = value;
     }
@@ -112,7 +114,7 @@ public class NhanVien {
         this.trangThai = value;
     }
 
-    public void capNhatThongTin(String hoTenNV, Timestamp ngaySinh, 
+    public void capNhatThongTin(String hoTenNV, Date ngaySinh,
     							String soDienThoai, String email,
     							String diaChi, String vaiTro,
     							boolean gioiTinh, String trangThai) {

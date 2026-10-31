@@ -2,6 +2,7 @@
 -- FILE SQL DUY NHẤT: TẠO / CHỌN DATABASE, TẠO SCHEMA VÀ NẠP DỮ LIỆU MẪU [GaraOto]
 -- Tự tạo database nếu chưa có; không xóa database hoặc ghi đè bản ghi đã tồn tại.
 -- Thứ tự chạy: database -> sequence/bảng -> khóa và trigger/view -> dữ liệu mẫu -> kiểm tra.
+-- Kiểu cột SQL ánh xạ từ Entity Java: BigDecimal -> decimal; Timestamp -> datetime2(0); Date -> date; Integer -> int; boolean -> bit; String -> varchar/nvarchar.
 -- Gồm 27 bảng, 36 phiếu nhập kho lịch sử, dữ liệu UC009 và mẫu hóa đơn bán lẻ.
 -- ============================================================================
 USE [master];

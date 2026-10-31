@@ -1,6 +1,8 @@
 package dao;
 
 import connectDB.KetNoiCSDL;
+import entity.HoaDon;
+import entity.MaGiamGia;
 import java.math.BigDecimal;
 import java.sql.*;
 import java.util.*;
@@ -664,8 +666,16 @@ public final class QuyTrinhDAO {
                 serviceFees.merge(line.get("maDichVu"),(BigDecimal)price.get("chiPhiNhanCong"),BigDecimal::add);
             }
             for(var fee:serviceFees.entrySet()) { labor=labor.add(fee.getValue()); lines.add(Map.of("maDichVu",fee.getKey(),"soLuong",1,"donGia",fee.getValue())); }
-            BigDecimal subtotal=parts.add(labor), vat=InvoiceMath.vat(subtotal), discount=BigDecimal.ZERO;
+            BigDecimal subtotal=parts.add(labor);
+            HoaDon hoaDonTinhToan=new HoaDon();
+            hoaDonTinhToan.setTienPhuTung(parts);
+            hoaDonTinhToan.setTienCong(labor);
+            hoaDonTinhToan.setDichVuKhac(BigDecimal.ZERO);
+            BigDecimal vat=hoaDonTinhToan.tinhThueVAT(), discount=BigDecimal.ZERO;
             if(coupon!=null && !coupon.isBlank()) discount=couponDiscount(conn,coupon,repair.get("maKhachHang"),subtotal);
+            hoaDonTinhToan.setThueVAT(vat);
+            hoaDonTinhToan.setGiamGia(discount);
+            if(hoaDonTinhToan.tongThanhToan().signum()<0) throw new SQLException("Tổng tiền hóa đơn không hợp lệ.");
             Map<String,Object> header=new LinkedHashMap<>(); header.put("maGiamGia",coupon==null || coupon.isBlank() ? null : coupon);
             header.put("maKhachHang",repair.get("maKhachHang")); header.put("maNhanVien",employee); header.put("maPSC",repairId); header.put("VIN",repair.get("VIN"));
             header.put("ngayLap",now(conn)); header.put("tienPhuTung",parts); header.put("tienCong",labor); header.put("dichVuKhac",BigDecimal.ZERO); header.put("thueVAT",vat); header.put("giamGia",discount); header.put("trangThaiThanhToan","Chưa thanh toán"); header.put("maPhuongThuc",initialMethod);
@@ -687,7 +697,15 @@ public final class QuyTrinhDAO {
         require(Objects.equals(value.get("maKhachHang"),customer),"Mã giảm giá không thuộc khách hàng này.");
         require("Đang hiệu lực".equals(value.get("trangThai")) && exists(conn,"SELECT 1 FROM dbo.MaGiamGia WHERE maGiamGia=? AND ngayTao<=SYSDATETIME() AND ngayHetHan>=SYSDATETIME()",coupon),"Mã giảm giá không còn hiệu lực.");
         require(!exists(conn,"SELECT 1 FROM dbo.HoaDon WHERE maGiamGia=? AND trangThaiThanhToan=N'Đã thanh toán'",coupon),"Mã giảm giá đã được sử dụng.");
-        return InvoiceMath.discount(subtotal,(BigDecimal)value.get("mucGiam"));
+        HoaDon hoaDonTinhToan=new HoaDon();
+        hoaDonTinhToan.setTienPhuTung(subtotal);
+        hoaDonTinhToan.setTienCong(BigDecimal.ZERO);
+        hoaDonTinhToan.setDichVuKhac(BigDecimal.ZERO);
+        MaGiamGia maGiamGia=new MaGiamGia();
+        maGiamGia.setMaGiamGia(coupon);
+        maGiamGia.setMucGiam((BigDecimal)value.get("mucGiam"));
+        hoaDonTinhToan.setMaGiamGia(maGiamGia);
+        return hoaDonTinhToan.tinhGiamGia();
     }
     static Timestamp now(Connection conn) throws SQLException {
         Timestamp serverNow=(Timestamp)one(conn,"SELECT SYSDATETIME() AS serverNow").get("serverNow");

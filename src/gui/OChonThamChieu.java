@@ -14,7 +14,9 @@ final class OChonThamChieu extends OChonTimKiem<LuaChonDuLieu.Choice> {
     private final String owner;
     private final String field;
     private final String target;
-    private final String query;
+    private final String baseQuery;
+    private String query;
+    private String[] queryParams = new String[0];
     private String preservedId;
     private boolean refreshing;
     @Override protected void fireActionEvent() { if(!refreshing) super.fireActionEvent(); }
@@ -62,8 +64,9 @@ final class OChonThamChieu extends OChonTimKiem<LuaChonDuLieu.Choice> {
                 ? " WHERE [trangThai]=N'Hoàn tất'" : "";
         if(target.equals("PhuTung") && Set.of("TonKho","ChiTietPhieuNhapKho","ChiTietYeuCauNhapKho","ChiTietHoaDon").contains(owner))
             filter=" WHERE [maPhuTung]<>'PT000'";
-        query = "SELECT [" + primary + "], CONCAT([" + primary + "], N' — ', " + description
+        baseQuery = "SELECT [" + primary + "], CONCAT([" + primary + "], N' — ', " + description
                 + ") FROM dbo.[" + target + "]" + filter + " ORDER BY [" + primary + "]";
+        query = baseQuery;
         setFont(GiaoDien.font(12, false));
         setEditable(true);
         setMaximumRowCount(10);
@@ -93,7 +96,7 @@ final class OChonThamChieu extends OChonTimKiem<LuaChonDuLieu.Choice> {
         String previous = selectedId();
         refreshing=true;
         try {
-            LuaChonDuLieu.load(this, query, target, preservedId, shouldFilterHidden());
+            LuaChonDuLieu.load(this, query, target, preservedId, shouldFilterHidden(), queryParams);
             insertItemAt(new LuaChonDuLieu.Choice("", "— Chọn " + NhanCot.forField(field).toLowerCase() + " —"), 0);
             setSelectedIndex(0);
             if (!previous.isEmpty()) {
@@ -109,6 +112,34 @@ final class OChonThamChieu extends OChonTimKiem<LuaChonDuLieu.Choice> {
             refreshing=false;
             if(!previous.equals(selectedId())) super.fireActionEvent();
         }
+    }
+
+    void filterVehiclesByCustomer(String customerId) throws SQLException {
+        if (!"PhieuTiepNhan".equals(owner) || !"VIN".equals(field) || !"PhuongTien".equals(target))
+            throw new IllegalStateException("Bộ lọc khách hàng chỉ áp dụng cho danh sách phương tiện của phiếu tiếp nhận.");
+
+        if (customerId == null || customerId.isBlank()) {
+            int orderBy = baseQuery.lastIndexOf(" ORDER BY ");
+            query = baseQuery.substring(0, orderBy) + " WHERE 1=0" + baseQuery.substring(orderBy);
+            queryParams = new String[0];
+        } else {
+            int orderBy = baseQuery.lastIndexOf(" ORDER BY ");
+            String beforeOrder = baseQuery.substring(0, orderBy);
+            String predicate = beforeOrder.contains(" WHERE ") ? " AND " : " WHERE ";
+            query = beforeOrder + predicate + "[maKhachHang]=?" + baseQuery.substring(orderBy);
+            queryParams = new String[] { customerId.trim() };
+        }
+        refresh();
+        if (customerId != null && !customerId.isBlank() && getItemCount() == 2)
+            setSelectedIndex(1);
+    }
+
+    void clearVehicleCustomerFilter() throws SQLException {
+        if (!"PhieuTiepNhan".equals(owner) || !"VIN".equals(field) || !"PhuongTien".equals(target))
+            throw new IllegalStateException("Bộ lọc khách hàng chỉ áp dụng cho danh sách phương tiện của phiếu tiếp nhận.");
+        query = baseQuery;
+        queryParams = new String[0];
+        refresh();
     }
 
     String selectedId() {

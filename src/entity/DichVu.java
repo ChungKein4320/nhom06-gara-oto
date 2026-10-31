@@ -25,6 +25,8 @@ public class DichVu {
     }
 
     public void setMaDichVu(String value) {
+        if (value == null || !value.matches("DV[0-9]{3}"))
+            throw new IllegalArgumentException("Mã dịch vụ không hợp lệ");
         this.maDichVu = value;
     }
 
@@ -55,8 +57,8 @@ public class DichVu {
     }
 
     public void setDonGia(BigDecimal value) {
-        if (value == null || value.signum() < 0)
-            throw new IllegalArgumentException("Đơn giá dịch vụ phải là số không âm");
+        if (value == null || value.signum() <= 0)
+            throw new IllegalArgumentException("Đơn giá phải > 0");
         if (value.scale() > 2 || value.precision() - value.scale() > 16)
             throw new IllegalArgumentException("Đơn giá quá lớn, vui lòng nhập giá trị nhỏ hơn.");
         this.donGia = value;

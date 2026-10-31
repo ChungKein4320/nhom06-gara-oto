@@ -4,6 +4,7 @@ import dao.CoSoDAO;
 import dao.QuyTrinhDAO;
 import dao.Schema;
 import dao.ThuongMaiDAO;
+import entity.HoaDon;
 import java.awt.*;
 import java.sql.SQLException;
 import java.util.*;
@@ -260,6 +261,17 @@ public final class ManHinhDuLieu extends JPanel {
 
         tblTable.setRowHeight(40);
         tblTable.getTableHeader().setResizingAllowed(true);
+        if (page.equals("Phiếu cấp phát phụ tùng") || page.equals("Cấp phát phụ tùng")) {
+            Set<String> columnsToHide = Set.of(
+                    "ketQuaNghiemThu", "ngayBatDauBaoHanh", "thoiHanBaoHanh", "ngayHetHanBaoHanh"
+            );
+            for (int viewColumn = tblTable.getColumnModel().getColumnCount() - 1; viewColumn >= 0; viewColumn--) {
+                int modelColumn = tblTable.getColumnModel().getColumn(viewColumn).getModelIndex();
+                if (columnsToHide.contains(displayFields[modelColumn])) {
+                    tblTable.getColumnModel().removeColumn(tblTable.getColumnModel().getColumn(viewColumn));
+                }
+            }
+        }
 
         JScrollPane scrScroll = new JScrollPane(tblTable);
         scrScroll.setPreferredSize(new Dimension(850, 440));
@@ -524,25 +536,13 @@ public final class ManHinhDuLieu extends JPanel {
                 }
 
                 if (tableName.equals("HoaDon")) {
-                    java.math.BigDecimal total =
-                            java.math.BigDecimal.ZERO;
-
-                    for (String field : List.of(
-                            "tienPhuTung", "tienCong",
-                            "dichVuKhac", "thueVAT"
-                    )) {
-                        total = total.add(
-                                (java.math.BigDecimal) row.get(field)
-                        );
-                    }
-
-                    row.put(
-                            "tongThanhToan",
-                            total.subtract(
-                                     (java.math.BigDecimal)
-                                            row.get("giamGia")
-                            )
-                    );
+                    HoaDon hoaDon=new HoaDon();
+                    hoaDon.setTienPhuTung((java.math.BigDecimal)row.get("tienPhuTung"));
+                    hoaDon.setTienCong((java.math.BigDecimal)row.get("tienCong"));
+                    hoaDon.setDichVuKhac((java.math.BigDecimal)row.get("dichVuKhac"));
+                    hoaDon.setThueVAT((java.math.BigDecimal)row.get("thueVAT"));
+                    hoaDon.setGiamGia((java.math.BigDecimal)row.get("giamGia"));
+                    row.put("tongThanhToan",hoaDon.tongThanhToan());
                 }
 
                 Object[] values = new Object[displayFields.length];

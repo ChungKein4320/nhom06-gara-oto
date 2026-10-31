@@ -54,7 +54,7 @@ final class HopThoaiTiepNhanMoi {
         JRadioButton radNewVehicle=modeButton("Tạo hồ sơ phương tiện mới",false,vehicleMode);
         JPanel vehicleCards=new JPanel(new CardLayout()); vehicleCards.setOpaque(false);
         JPanel existingVehiclePanel=new JPanel(new BorderLayout(0,5)); existingVehiclePanel.setOpaque(false);
-        existingVehiclePanel.add(GiaoDien.label("Chọn phương tiện theo VIN",12,true,GiaoDien.TEXT),BorderLayout.NORTH);
+        existingVehiclePanel.add(GiaoDien.label("Phương tiện thuộc khách hàng đã chọn",12,true,GiaoDien.TEXT),BorderLayout.NORTH);
         existingVehiclePanel.add(compactChooser(existingVehicle),BorderLayout.CENTER);
         JPanel newVehiclePanel=new JPanel(new BorderLayout(0,4)); newVehiclePanel.setOpaque(false);
         newVehiclePanel.add(GiaoDien.label("Nhập VIN và thông tin xe. Số km hiện tại sẽ lấy từ ODO tiếp nhận.",11,false,GiaoDien.MUTED),BorderLayout.NORTH);
@@ -74,6 +74,26 @@ final class HopThoaiTiepNhanMoi {
         radNewCustomer.addActionListener(e -> showCard(customerCards,"new",newCustomerPanel));
         radExistingVehicle.addActionListener(e -> showCard(vehicleCards,"existing",existingVehiclePanel));
         radNewVehicle.addActionListener(e -> showCard(vehicleCards,"new",newVehiclePanel));
+
+        Runnable filterCustomerVehicles=() -> {
+            existingVehicle.selectId("");
+            try {
+                existingVehicle.filterVehiclesByCustomer(existingCustomer.selectedId());
+            } catch(SQLException ex) {
+                JOptionPane.showMessageDialog(dialog,"Không tải được phương tiện của khách hàng: "+ex.getMessage(),"Lỗi tải danh sách",JOptionPane.ERROR_MESSAGE);
+            }
+        };
+        existingCustomer.addActionListener(e -> filterCustomerVehicles.run());
+        radExistingCustomer.addActionListener(e -> filterCustomerVehicles.run());
+        radNewCustomer.addActionListener(e -> {
+            existingVehicle.selectId("");
+            try { existingVehicle.clearVehicleCustomerFilter(); }
+            catch(SQLException ex) {
+                JOptionPane.showMessageDialog(dialog,"Không tải được danh sách phương tiện: "+ex.getMessage(),"Lỗi tải danh sách",JOptionPane.ERROR_MESSAGE);
+            }
+        });
+        try { existingVehicle.filterVehiclesByCustomer(""); }
+        catch(SQLException ex) { existingVehicle.setToolTipText("Không tải được phương tiện: "+ex.getMessage()); }
 
         JPanel receiptCard=GiaoDien.card(new BorderLayout(0,5));
         receiptCard.add(GiaoDien.label("3. Thông tin tiếp nhận",15,true,GiaoDien.NAV),BorderLayout.NORTH);
