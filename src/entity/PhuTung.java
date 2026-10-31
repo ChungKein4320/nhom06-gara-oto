@@ -26,6 +26,8 @@ public class PhuTung {
     }
 
     public void setMaPhuTung(String value) {
+        if (value == null || !value.matches("PT[0-9]{3}"))
+            throw new IllegalArgumentException("Mã phụ tùng không hợp lệ");
         this.maPhuTung = value;
     }
 
@@ -70,8 +72,8 @@ public class PhuTung {
     }
 
     public void setThoiHanBaoHanh(Integer value) {
-    	if (value != null && value < 0)
-            throw new IllegalArgumentException("Thời hạn bảo hành không được âm");
+        if (value == null || value < 0)
+            throw new IllegalArgumentException("Thời hạn bảo hành không được rỗng hoặc âm");
         this.thoiHanBaoHanh = value;
     }
     public void capNhatGia(BigDecimal giaMoi) {

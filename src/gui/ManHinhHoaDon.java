@@ -2,6 +2,7 @@ package gui;
 
 import connectDB.KetNoiCSDL;
 import dao.ThuongMaiDAO;
+import entity.HoaDon;
 import java.awt.*;
 import java.awt.print.PrinterException;
 import java.sql.*;
@@ -242,9 +243,15 @@ public final class ManHinhHoaDon extends JPanel {
                         lblCoupon.setText("Mã giảm giá: "+(coupon==null ? "Chưa áp dụng" : coupon));
                         java.math.BigDecimal labor=result.getBigDecimal("tienCong").add(result.getBigDecimal("dichVuKhac"));
                         java.math.BigDecimal part=result.getBigDecimal("tienPhuTung"),vat=result.getBigDecimal("thueVAT"),discount=result.getBigDecimal("giamGia");
+                        HoaDon hoaDon=new HoaDon();
+                        hoaDon.setTienPhuTung(part);
+                        hoaDon.setTienCong(result.getBigDecimal("tienCong"));
+                        hoaDon.setDichVuKhac(result.getBigDecimal("dichVuKhac"));
+                        hoaDon.setThueVAT(vat);
+                        hoaDon.setGiamGia(discount);
                         lblTotals[0].setText(money.format(labor)+" đ");lblTotals[1].setText(money.format(part)+" đ");
                         lblTotals[2].setText(money.format(vat)+" đ");lblTotals[3].setText("− "+money.format(discount)+" đ");
-                        lblTotals[4].setText(money.format(labor.add(part).add(vat).subtract(discount))+" đ");
+                        lblTotals[4].setText(money.format(hoaDon.tongThanhToan())+" đ");
                     } else throw new SQLException("Không tìm thấy hóa đơn "+id+".");
                 }
             }
@@ -345,7 +352,6 @@ public final class ManHinhHoaDon extends JPanel {
             }
 
             printAllPages();
-
         } catch (PrinterException | java.io.IOException ex) {
             String message;
 

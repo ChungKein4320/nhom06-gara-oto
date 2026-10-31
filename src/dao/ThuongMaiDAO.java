@@ -1,5 +1,6 @@
 package dao;
 
+import entity.HoaDon;
 import java.math.BigDecimal;
 import java.sql.*;
 import java.util.*;
@@ -18,8 +19,15 @@ public final class ThuongMaiDAO {
             Map<String,Object> initial=QuyTrinhDAO.one(conn,"SELECT maPSC FROM dbo.HoaDon WHERE maHoaDon=?",invoice);
             Map<String,Object> repair=initial.get("maPSC")==null ? null : QuyTrinhDAO.lock(conn,"PhieuSuaChua",initial.get("maPSC"));
             Map<String,Object> row=QuyTrinhDAO.lock(conn,"HoaDon",invoice);
+            HoaDon hoaDon=new HoaDon();
+            hoaDon.setTienPhuTung(amount(row,"tienPhuTung"));
+            hoaDon.setTienCong(amount(row,"tienCong"));
+            hoaDon.setDichVuKhac(amount(row,"dichVuKhac"));
+            hoaDon.setThueVAT(amount(row,"thueVAT"));
+            hoaDon.setGiamGia(amount(row,"giamGia"));
+            hoaDon.setTrangThaiThanhToan(String.valueOf(row.get("trangThaiThanhToan")));
             if(scannedCustomer!=null) QuyTrinhDAO.require(scannedCustomer.matches("KH[0-9]{3}") && scannedCustomer.equals(row.get("maKhachHang")),"QR tích điểm không khớp khách hàng của hóa đơn.");
-            QuyTrinhDAO.require(Set.of("Chưa thanh toán","Chờ thanh toán").contains(String.valueOf(row.get("trangThaiThanhToan"))),"Hóa đơn không còn chờ thanh toán.");
+            QuyTrinhDAO.require(Set.of("Chưa thanh toán","Chờ thanh toán").contains(hoaDon.getTrangThaiThanhToan()),"Hóa đơn không còn chờ thanh toán.");
             QuyTrinhDAO.require(repair==null || Set.of("Đã sửa xong","Chờ thanh toán").contains(String.valueOf(repair.get("trangThai"))),"Phiếu sửa chưa sẵn sàng thanh toán.");
             QuyTrinhDAO.require(QuyTrinhDAO.exists(conn,"SELECT 1 FROM dbo.ChiTietHoaDon WHERE maHoaDon=?",invoice),"Hóa đơn chưa có chi tiết.");
             Map<String,Object> totals=QuyTrinhDAO.one(conn,"SELECT COALESCE(SUM(CASE WHEN maPhuTung IS NOT NULL THEN soLuong*donGia ELSE 0 END),0) AS partsSum, COALESCE(SUM(CASE WHEN maPhuTung IS NULL AND maDichVu IS NOT NULL THEN soLuong*donGia ELSE 0 END),0) AS laborSum FROM dbo.ChiTietHoaDon WHERE maHoaDon=?",invoice);
@@ -27,16 +35,18 @@ public final class ThuongMaiDAO {
             QuyTrinhDAO.require(QuyTrinhDAO.exists(conn,"SELECT 1 FROM dbo.PhuongThucThanhToan WHERE maPhuongThuc=?",method),"Phương thức thanh toán không tồn tại.");
             if(repair!=null) QuyTrinhDAO.require(!QuyTrinhDAO.exists(conn,"SELECT 1 FROM dbo.ChiTietPhieuSuaChua WHERE maPSC=? AND (trangThaiHangMuc<>N'Hoàn thành' OR ketQuaNghiemThu<>N'Đạt')",row.get("maPSC")),"Còn hạng mục chưa nghiệm thu đạt.");
             BigDecimal subtotal=amount(row,"tienPhuTung").add(amount(row,"tienCong")).add(amount(row,"dichVuKhac"));
-            BigDecimal discount=amount(row,"giamGia"); Object coupon=row.get("maGiamGia");
+            BigDecimal discount=hoaDon.getGiamGia()==null ? BigDecimal.ZERO : hoaDon.getGiamGia(); Object coupon=row.get("maGiamGia");
             if(coupon!=null) {
                 QuyTrinhDAO.require(repair!=null,"Mã giảm giá điểm chỉ áp dụng cho hóa đơn sửa chữa/dịch vụ.");
                 discount=QuyTrinhDAO.couponDiscount(conn,coupon.toString(),row.get("maKhachHang"),subtotal);
                 QuyTrinhDAO.execute(conn,"UPDATE dbo.MaGiamGia SET trangThai=N'Đã sử dụng' WHERE maGiamGia=?",coupon);
             }
-            BigDecimal paid=subtotal.add(amount(row,"thueVAT")).subtract(discount);
+            hoaDon.setGiamGia(discount);
+            BigDecimal paid=hoaDon.tongThanhToan();
             QuyTrinhDAO.require(paid.signum()>=0,"Tổng tiền thanh toán không hợp lệ.");
             QuyTrinhDAO.require(expectedTotal==null || paid.compareTo(expectedTotal)==0,"Số tiền hóa đơn đã thay đổi. Vui lòng tải lại và tạo lại QR trước khi xác nhận.");
-            QuyTrinhDAO.execute(conn,"UPDATE dbo.HoaDon SET trangThaiThanhToan=N'Đã thanh toán',maPhuongThuc=?,giamGia=? WHERE maHoaDon=?",method,discount,invoice);
+            String trangThaiMoi=hoaDon.capNhatTrangThai("Đã thanh toán");
+            QuyTrinhDAO.execute(conn,"UPDATE dbo.HoaDon SET trangThaiThanhToan=?,maPhuongThuc=?,giamGia=? WHERE maHoaDon=?",trangThaiMoi,method,discount,invoice);
             if(repair!=null) QuyTrinhDAO.execute(conn,"UPDATE dbo.PhieuSuaChua SET trangThai=N'Đã thanh toán' WHERE maPSC=?",row.get("maPSC"));
             // Một hóa đơn chỉ sinh một lịch sử điểm, kể cả người dùng bấm lại.
             if (repair != null && scannedCustomer != null && !QuyTrinhDAO.exists(
@@ -115,7 +125,14 @@ public final class ThuongMaiDAO {
             header.put("maKhachHang",resolvedCustomer); header.put("maNhanVien",employee);
             header.put("maPSC",null); header.put("VIN",null); header.put("ngayLap",QuyTrinhDAO.now(conn));
             header.put("tienPhuTung",subtotal); header.put("tienCong",BigDecimal.ZERO); header.put("dichVuKhac",BigDecimal.ZERO);
-            header.put("thueVAT",InvoiceMath.vat(subtotal)); header.put("giamGia",BigDecimal.ZERO);
+            HoaDon hoaDonTinhToan=new HoaDon();
+            hoaDonTinhToan.setTienPhuTung(subtotal);
+            hoaDonTinhToan.setTienCong(BigDecimal.ZERO);
+            hoaDonTinhToan.setDichVuKhac(BigDecimal.ZERO);
+            BigDecimal vat=hoaDonTinhToan.tinhThueVAT();
+            hoaDonTinhToan.setThueVAT(vat);
+            hoaDonTinhToan.setGiamGia(BigDecimal.ZERO);
+            header.put("thueVAT",vat); header.put("giamGia",BigDecimal.ZERO);
             header.put("trangThaiThanhToan","Chưa thanh toán"); header.put("maPhuongThuc",method);
             String invoice=new CoSoDAO("HoaDon").insert(conn,header);
             for(SaleItem item:basket) QuyTrinhDAO.insertInvoiceLine(conn,Map.of("maHoaDon",invoice,"maPhuTung",item.part(),"soLuong",item.quantity(),"donGia",item.expectedPrice()));
@@ -154,7 +171,14 @@ public final class ThuongMaiDAO {
             BigDecimal parts=amount(row,"tienPhuTung").add(added);
             BigDecimal subtotal=parts.add(amount(row,"tienCong")).add(amount(row,"dichVuKhac"));
             BigDecimal discount=row.get("maGiamGia")==null ? amount(row,"giamGia") : QuyTrinhDAO.couponDiscount(conn,row.get("maGiamGia").toString(),row.get("maKhachHang"),subtotal);
-            QuyTrinhDAO.execute(conn,"UPDATE dbo.HoaDon SET tienPhuTung=?,thueVAT=?,giamGia=? WHERE maHoaDon=?",parts,InvoiceMath.vat(subtotal),discount,invoice); return null;
+            HoaDon hoaDonTinhToan=new HoaDon();
+            hoaDonTinhToan.setTienPhuTung(parts);
+            hoaDonTinhToan.setTienCong(amount(row,"tienCong"));
+            hoaDonTinhToan.setDichVuKhac(amount(row,"dichVuKhac"));
+            BigDecimal vat=hoaDonTinhToan.tinhThueVAT();
+            hoaDonTinhToan.setThueVAT(vat);
+            hoaDonTinhToan.setGiamGia(discount);
+            QuyTrinhDAO.execute(conn,"UPDATE dbo.HoaDon SET tienPhuTung=?,thueVAT=?,giamGia=? WHERE maHoaDon=?",parts,vat,discount,invoice); return null;
         });
     }
     public static void allocate(String repair,String service,String part) throws SQLException {

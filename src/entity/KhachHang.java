@@ -30,6 +30,8 @@ public class KhachHang {
     }
 
     public void setMaKhachHang(String value) {
+        if (value == null || !value.matches("KH[0-9]{3}"))
+            throw new IllegalArgumentException("Mã khách hàng không hợp lệ");
         this.maKhachHang = value;
     }
 

@@ -27,6 +27,8 @@ public class ChiTietPhieuSuaChua {
     }
 
     public void setMaPSC(PhieuSuaChua value) {
+        if (value == null || value.getMaPSC() == null || !value.getMaPSC().matches("PSC[0-9]{3}"))
+            throw new IllegalArgumentException("Mã phiếu sửa chữa không hợp lệ");
         this.maPSC = value;
     }
 
@@ -35,6 +37,8 @@ public class ChiTietPhieuSuaChua {
     }
 
     public void setMaDichVu(DichVu  value) {
+        if (value != null && (value.getMaDichVu() == null || !value.getMaDichVu().matches("DV[0-9]{3}")))
+            throw new IllegalArgumentException("Mã dịch vụ không hợp lệ");
         this.maDichVu = value;
     }
 
@@ -43,6 +47,8 @@ public class ChiTietPhieuSuaChua {
     }
 
     public void setMaPhuTung(PhuTung value) {
+        if (value != null && (value.getMaPhuTung() == null || !value.getMaPhuTung().matches("PT[0-9]{3}")))
+            throw new IllegalArgumentException("Mã phụ tùng không hợp lệ");
         this.maPhuTung = value;
     }
 
@@ -51,6 +57,8 @@ public class ChiTietPhieuSuaChua {
     }
 
     public void setTrangThaiHangMuc(String value) {
+        if (value == null || !java.util.Set.of("Chờ sửa chữa", "Đang sửa chữa", "Thiếu phụ tùng", "Hoàn thành").contains(value))
+            throw new IllegalArgumentException("Trạng thái hạng mục không hợp lệ");
         this.trangThaiHangMuc = value;
     }
 
@@ -59,29 +67,76 @@ public class ChiTietPhieuSuaChua {
     }
 
     public void setSoLuongPhuTung(Integer value) {
+        if (value != null && value < 0)
+            throw new IllegalArgumentException("Số lượng phụ tùng không hợp lệ");
+        if (value != null && maPhuTung != null && !"PT000".equals(maPhuTung.getMaPhuTung()) && value == 0)
+            throw new IllegalArgumentException("Số lượng phụ tùng phải lớn hơn 0");
+        if (value != null && soLuongCapPhat != null && soLuongCapPhat > value)
+            throw new IllegalArgumentException("Số lượng cấp phát không được vượt số lượng phụ tùng");
         this.soLuongPhuTung = value;
     }
 
     public Integer getSoLuongCapPhat() { return soLuongCapPhat; }
-    public void setSoLuongCapPhat(Integer value) { this.soLuongCapPhat = value; }
+    public void setSoLuongCapPhat(Integer value) {
+        if (value != null && (value < 0 || (soLuongPhuTung != null && value > soLuongPhuTung)))
+            throw new IllegalArgumentException("Số lượng cấp phát không hợp lệ");
+        if (value != null && soLuongSuDung != null && soLuongSuDung > value)
+            throw new IllegalArgumentException("Số lượng sử dụng không được vượt số lượng cấp phát");
+        if (value != null && soLuongHoanTra != null && soLuongSuDung != null
+                && soLuongSuDung + soLuongHoanTra > value)
+            throw new IllegalArgumentException("Tổng số lượng sử dụng và hoàn trả vượt số lượng cấp phát");
+        this.soLuongCapPhat = value;
+    }
     public Integer getSoLuongSuDung() { return soLuongSuDung; }
-    public void setSoLuongSuDung(Integer value) { this.soLuongSuDung = value; }
+    public void setSoLuongSuDung(Integer value) {
+        if (value != null && (value < 0 || (soLuongCapPhat != null && value > soLuongCapPhat)))
+            throw new IllegalArgumentException("Số lượng sử dụng không hợp lệ");
+        if (value != null && soLuongHoanTra != null && soLuongCapPhat != null
+                && value + soLuongHoanTra > soLuongCapPhat)
+            throw new IllegalArgumentException("Tổng số lượng sử dụng và hoàn trả vượt số lượng cấp phát");
+        this.soLuongSuDung = value;
+    }
     public Integer getSoLuongHoanTra() { return soLuongHoanTra; }
-    public void setSoLuongHoanTra(Integer value) { this.soLuongHoanTra = value; }
+    public void setSoLuongHoanTra(Integer value) {
+        if (value != null && (value < 0 || (soLuongCapPhat != null && value > soLuongCapPhat)))
+            throw new IllegalArgumentException("Số lượng hoàn trả không hợp lệ");
+        if (value != null && soLuongSuDung != null && soLuongCapPhat != null
+                && value + soLuongSuDung > soLuongCapPhat)
+            throw new IllegalArgumentException("Tổng số lượng sử dụng và hoàn trả vượt số lượng cấp phát");
+        this.soLuongHoanTra = value;
+    }
     public Timestamp getNgayCapPhat() { return ngayCapPhat; }
-    public void setNgayCapPhat(Timestamp value) { this.ngayCapPhat = value; }
+    public void setNgayCapPhat(Timestamp value) {
+        if (value != null && ngayHoanTra != null && ngayHoanTra.before(value))
+            throw new IllegalArgumentException("Ngày cấp phát phải trước hoặc bằng ngày hoàn trả");
+        this.ngayCapPhat = value;
+    }
     public NhanVien getMaNhanVienCapPhat() { return maNhanVienCapPhat; }
-    public void setMaNhanVienCapPhat(NhanVien value) { this.maNhanVienCapPhat = value; }
+    public void setMaNhanVienCapPhat(NhanVien value) {
+        if (value != null && (value.getMaNhanVien() == null || !value.getMaNhanVien().matches("NV[0-9]{3}")))
+            throw new IllegalArgumentException("Mã nhân viên cấp phát không hợp lệ");
+        this.maNhanVienCapPhat = value;
+    }
     public Timestamp getNgayHoanTra() { return ngayHoanTra; }
-    public void setNgayHoanTra(Timestamp value) { this.ngayHoanTra = value; }
+    public void setNgayHoanTra(Timestamp value) {
+        if (value != null && ngayCapPhat != null && value.before(ngayCapPhat))
+            throw new IllegalArgumentException("Ngày hoàn trả không được trước ngày cấp phát");
+        this.ngayHoanTra = value;
+    }
     public NhanVien getMaNhanVienXacNhanHoanTra() { return maNhanVienXacNhanHoanTra; }
-    public void setMaNhanVienXacNhanHoanTra(NhanVien value) { this.maNhanVienXacNhanHoanTra = value; }
+    public void setMaNhanVienXacNhanHoanTra(NhanVien value) {
+        if (value != null && (value.getMaNhanVien() == null || !value.getMaNhanVien().matches("NV[0-9]{3}")))
+            throw new IllegalArgumentException("Mã nhân viên xác nhận hoàn trả không hợp lệ");
+        this.maNhanVienXacNhanHoanTra = value;
+    }
 
     public String getKetQuaNghiemThu() {
         return ketQuaNghiemThu;
     }
 
     public void setKetQuaNghiemThu(String value) {
+        if (value != null && !java.util.Set.of("Đạt", "Không đạt").contains(value))
+            throw new IllegalArgumentException("Kết quả nghiệm thu không hợp lệ");
         this.ketQuaNghiemThu = value;
     }
 
@@ -90,6 +145,8 @@ public class ChiTietPhieuSuaChua {
     }
 
     public void setNgayBatDauBaoHanh(Timestamp value) {
+        if (value != null && ngayHetHanBaoHanh != null && ngayHetHanBaoHanh.before(value))
+            throw new IllegalArgumentException("Ngày bắt đầu bảo hành phải trước hoặc bằng ngày hết hạn");
         this.ngayBatDauBaoHanh = value;
     }
 
@@ -98,6 +155,8 @@ public class ChiTietPhieuSuaChua {
     }
 
     public void setThoiHanBaoHanh(Integer value) {
+        if (value != null && value < 0)
+            throw new IllegalArgumentException("Thời hạn bảo hành không được âm");
         this.thoiHanBaoHanh = value;
     }
 
@@ -106,26 +165,44 @@ public class ChiTietPhieuSuaChua {
     }
 
     public void setNgayHetHanBaoHanh(Timestamp value) {
+        if (value != null && ngayBatDauBaoHanh != null && value.before(ngayBatDauBaoHanh))
+            throw new IllegalArgumentException("Ngày hết hạn bảo hành không được trước ngày bắt đầu");
         this.ngayHetHanBaoHanh = value;
     }
 
-     public ChiTietPhieuSuaChua(PhieuSuaChua maPSC,
-            DichVu maDichVu, PhuTung maPhuTung,
-            String trangThaiHangMuc, int soLuongPhuTung,
-            String ketQuaNghiemThu, Timestamp ngayBatDauBaoHanh,
-            int thoiHanBaoHanh, Timestamp ngayHetHanBaoHanh) {
-
-        this();
-        setMaPSC(maPSC);
-        setMaDichVu(maDichVu);
-        setMaPhuTung(maPhuTung);
-        setTrangThaiHangMuc(trangThaiHangMuc);
-        setSoLuongPhuTung(soLuongPhuTung);
-        setKetQuaNghiemThu(ketQuaNghiemThu);
-        setThoiHanBaoHanh(thoiHanBaoHanh);
-        setNgayBatDauBaoHanh(ngayBatDauBaoHanh);
-        setNgayHetHanBaoHanh(ngayHetHanBaoHanh);
+    public void capNhatTrangThai(String trangThaiMoi) {
+        setTrangThaiHangMuc(trangThaiMoi);
     }
+
+    public boolean kiemTraBaoHanh() {
+        Timestamp now = new Timestamp(System.currentTimeMillis());
+        return ngayBatDauBaoHanh != null && ngayHetHanBaoHanh != null
+                && !now.before(ngayBatDauBaoHanh) && !now.after(ngayHetHanBaoHanh);
+    }
+
+
+    public ChiTietPhieuSuaChua(
+            PhieuSuaChua maPSC,
+            DichVu maDichVu,
+            PhuTung maPhuTung,
+            String trangThaiHangMuc,
+            Integer soLuongPhuTung,
+            String ketQuaNghiemThu,
+            Timestamp ngayBatDauBaoHanh,
+            Integer thoiHanBaoHanh,
+            Timestamp ngayHetHanBaoHanh) {
+
+        this.maPSC = maPSC;
+        this.maDichVu = maDichVu;
+        this.maPhuTung = maPhuTung;
+        this.trangThaiHangMuc = trangThaiHangMuc;
+        this.soLuongPhuTung = soLuongPhuTung;
+        this.ketQuaNghiemThu = ketQuaNghiemThu;
+        this.thoiHanBaoHanh = thoiHanBaoHanh;
+        this.ngayBatDauBaoHanh = ngayBatDauBaoHanh;
+        this.ngayHetHanBaoHanh = ngayHetHanBaoHanh;
+    }
+
 
     @Override
     public String toString() {

@@ -1,3 +1,4 @@
+
 package entity;
 
 public class ChiTietPhieuKiemTra {
@@ -7,13 +8,30 @@ public class ChiTietPhieuKiemTra {
     private String ketQuaChuanDoan;
     private String ketQuaKiemTra;
 
-    public ChiTietPhieuKiemTra() { }
+    public ChiTietPhieuKiemTra() {
+    }
+
+    public ChiTietPhieuKiemTra(
+            PhieuKiemTra maPKT,
+            DichVu maDichVu,
+            String hangMucKiemTra,
+            String ketQuaChuanDoan,
+            String ketQuaKiemTra) {
+
+        this.maPKT = maPKT;
+        this.maDichVu = maDichVu;
+        this.hangMucKiemTra = hangMucKiemTra;
+        this.ketQuaChuanDoan = ketQuaChuanDoan;
+        this.ketQuaKiemTra = ketQuaKiemTra;
+    }
 
     public PhieuKiemTra getMaPKT() {
         return maPKT;
     }
 
     public void setMaPKT(PhieuKiemTra value) {
+        if (value == null || value.getMaPKT() == null || !value.getMaPKT().matches("PKT[0-9]{3}"))
+            throw new IllegalArgumentException("Mã phiếu kiểm tra không hợp lệ");
         this.maPKT = value;
     }
 
@@ -22,6 +40,8 @@ public class ChiTietPhieuKiemTra {
     }
 
     public void setMaDichVu(DichVu value) {
+        if (value == null || value.getMaDichVu() == null || !value.getMaDichVu().matches("DV[0-9]{3}"))
+            throw new IllegalArgumentException("Mã dịch vụ không hợp lệ");
         this.maDichVu = value;
     }
 
@@ -30,7 +50,9 @@ public class ChiTietPhieuKiemTra {
     }
 
     public void setHangMucKiemTra(String value) {
-        this.hangMucKiemTra = value;
+        if (value == null || value.isBlank())
+            throw new IllegalArgumentException("Hạng mục kiểm tra không hợp lệ");
+        this.hangMucKiemTra = value.trim();
     }
 
     public String getKetQuaChanDoan() {
@@ -38,31 +60,29 @@ public class ChiTietPhieuKiemTra {
     }
 
     public void setKetQuaChanDoan(String value) {
-        this.ketQuaChuanDoan = value;
+        if (value == null || value.isBlank())
+            throw new IllegalArgumentException("Kết quả chẩn đoán không hợp lệ");
+        this.ketQuaChuanDoan = value.trim();
     }
 
-    public String getKetQuaChuanDoan() { return ketQuaChuanDoan; }
-    public void setKetQuaChuanDoan(String value) { ketQuaChuanDoan=value; }
+    public String getKetQuaChuanDoan() {
+        return ketQuaChuanDoan;
+    }
+
+    public void setKetQuaChuanDoan(String value) {
+        if (value == null || value.isBlank())
+            throw new IllegalArgumentException("Kết quả chẩn đoán không hợp lệ");
+        this.ketQuaChuanDoan = value.trim();
+    }
 
     public String getKetQuaKiemTra() {
         return ketQuaKiemTra;
     }
 
     public void setKetQuaKiemTra(String value) {
+        if (value != null && !java.util.Set.of("Đạt", "Không đạt").contains(value))
+            throw new IllegalArgumentException("Kết quả kiểm tra không hợp lệ");
         this.ketQuaKiemTra = value;
-    }
-
-     public ChiTietPhieuKiemTra(PhieuKiemTra maPKT,
-                               DichVu maDichVu,
-                               String hangMucKiemTra,
-                               String ketQuaChuanDoan,
-                               String ketQuaKiemTra) {
-
-        setMaPKT(maPKT);
-        setMaDichVu(maDichVu);
-        setHangMucKiemTra(hangMucKiemTra);
-        setKetQuaChanDoan(ketQuaChuanDoan);
-        setKetQuaKiemTra(ketQuaKiemTra);
     }
 
     @Override

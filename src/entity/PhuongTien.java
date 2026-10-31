@@ -4,7 +4,7 @@ import java.math.BigDecimal;
 
 public class PhuongTien {
     private String VIN;
-    private String maKhachHang;
+    private KhachHang maKhachHang;
     private String bienSo;
     private String hangXe;
     private String dongXe;
@@ -15,7 +15,7 @@ public class PhuongTien {
 
     public PhuongTien() { }
 
-    public PhuongTien(String vIN,String maKhachHang, String bienSo, String hangXe, String dongXe, String mauXe, Integer namSanXuat,
+    public PhuongTien(String vIN,KhachHang maKhachHang, String bienSo, String hangXe, String dongXe, String mauXe, Integer namSanXuat,
 			String soMay, BigDecimal soKm) {
 		super();
 		VIN = vIN;
@@ -40,13 +40,14 @@ public class PhuongTien {
         this.VIN = value;
     }
 
-    public String getMaKhachHang() {
+    public KhachHang getMaKhachHang() {
         return maKhachHang;
     }
 
-    public void setMaKhachHang(String value) {
-        if (value == null || !value.matches("KH[0-9]{3}"))
-            throw new IllegalArgumentException("Mã khách hàng chủ sở hữu phải có dạng KH001.");
+    public void setMaKhachHang(KhachHang value) {
+        if (value == null || value.getMaKhachHang() == null
+                || !value.getMaKhachHang().matches("KH[0-9]{3}"))
+            throw new IllegalArgumentException("Mã khách hàng không hợp lệ");
         this.maKhachHang = value;
     }
 
@@ -111,6 +112,8 @@ public class PhuongTien {
     }
 
     public void setSoKm(BigDecimal value) {
+        if (value == null || value.compareTo(BigDecimal.ZERO) < 0)
+            throw new IllegalArgumentException("Số km không được nhỏ hơn 0");
         this.soKm = value;
     }
 

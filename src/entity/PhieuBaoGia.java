@@ -20,6 +20,8 @@ public class PhieuBaoGia {
     }
 
     public void setMaBaoGia(String value) {
+        if (value == null || !value.matches("PBG[0-9]{3}"))
+            throw new IllegalArgumentException("Mã báo giá không hợp lệ");
         this.maBaoGia = value;
     }
 
@@ -28,6 +30,8 @@ public class PhieuBaoGia {
     }
 
     public void setMaPKT(PhieuKiemTra value) {
+        if (value == null || value.getMaPKT() == null || !value.getMaPKT().matches("PKT[0-9]{3}"))
+            throw new IllegalArgumentException("Mã phiếu kiểm tra không hợp lệ");
         this.maPKT = value;
     }
 
@@ -36,6 +40,8 @@ public class PhieuBaoGia {
     }
 
     public void setMaKhachHang(KhachHang value) {
+        if (value == null || value.getMaKhachHang() == null || !value.getMaKhachHang().matches("KH[0-9]{3}"))
+            throw new IllegalArgumentException("Mã khách hàng không hợp lệ");
         this.maKhachHang = value;
     }
 
@@ -44,6 +50,8 @@ public class PhieuBaoGia {
     }
 
     public void setMaNhanVien(NhanVien value) {
+        if (value == null || value.getMaNhanVien() == null || !value.getMaNhanVien().matches("NV[0-9]{3}"))
+            throw new IllegalArgumentException("Mã nhân viên không hợp lệ");
         this.maNhanVien = value;
     }
 
@@ -52,6 +60,8 @@ public class PhieuBaoGia {
     }
 
     public void setVIN(PhuongTien value) {
+        if (value == null || value.getVIN() == null || !value.getVIN().matches("[A-HJ-NPR-Z0-9]{17}"))
+            throw new IllegalArgumentException("Mã phương tiện không hợp lệ");
         this.VIN = value;
     }
 
@@ -60,6 +70,8 @@ public class PhieuBaoGia {
     }
 
     public void setNgayLap(Timestamp value) {
+        if (value == null || value.after(new Timestamp(System.currentTimeMillis())))
+            throw new IllegalArgumentException("Ngày lập không hợp lệ");
         this.ngayLap = value;
     }
 
@@ -68,6 +80,8 @@ public class PhieuBaoGia {
     }
 
     public void setNgayHetHan(Timestamp value) {
+        if (value == null || ngayLap == null || value.before(ngayLap))
+            throw new IllegalArgumentException("Ngày hết hạn không hợp lệ, phải >= ngayLap");
         this.ngayHetHan = value;
     }
 
@@ -76,6 +90,8 @@ public class PhieuBaoGia {
     }
 
     public void setThoiGianXacNhan(Timestamp value) {
+        if (value != null && (ngayLap == null || value.before(ngayLap)))
+            throw new IllegalArgumentException("Thời gian xác nhận không hợp lệ, phải >= ngayLap");
         this.thoiGianXacNhan = value;
     }
 
@@ -84,6 +100,8 @@ public class PhieuBaoGia {
     }
 
     public void setTrangThai(String value) {
+        if (value == null || !java.util.Set.of("Còn hiệu lực", "Hết hiệu lực", "Đã xác nhận").contains(value))
+            throw new IllegalArgumentException("Trạng thái không hợp lệ");
         this.trangThai = value;
     }
 
@@ -96,15 +114,14 @@ public class PhieuBaoGia {
                        Timestamp ngayHetHan,
                        Timestamp thoiGianXacNhan) {
 
-        this.maBaoGia = getMaBaoGia();
-
-        setMaPKT(maPKT);
-        setMaNhanVien(maNhanVien);
-        setMaKhachHang(maKhachHang);
-        setVIN(VIN);
-        setNgayLap(ngayLap);
-        setNgayHetHan(ngayHetHan);
-        setThoiGianXacNhan(thoiGianXacNhan);
+        this.maBaoGia = maBaoGia;
+        this.maPKT = maPKT;
+        this.maNhanVien = maNhanVien;
+        this.maKhachHang = maKhachHang;
+        this.VIN = VIN;
+        this.ngayLap = ngayLap;
+        this.ngayHetHan = ngayHetHan;
+        this.thoiGianXacNhan = thoiGianXacNhan;
 
         this.trangThai = "Còn hiệu lực";
     }

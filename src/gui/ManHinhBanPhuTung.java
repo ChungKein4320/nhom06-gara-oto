@@ -2,7 +2,7 @@ package gui;
 
 import connectDB.KetNoiCSDL;
 import dao.ThuongMaiDAO;
-import dao.InvoiceMath;
+import entity.HoaDon;
 import java.awt.*;
 import java.math.BigDecimal;
 import java.sql.*;
@@ -52,7 +52,6 @@ public final class ManHinhBanPhuTung extends JPanel {
 
     public ManHinhBanPhuTung() { this(null,true); }
     public ManHinhBanPhuTung(String employeeId) { this(employeeId,true); }
-    ManHinhBanPhuTung(boolean fetch) { this(null,fetch); }
     private ManHinhBanPhuTung(String employeeId,boolean fetch) {
         super(new BorderLayout(0,8)); this.employeeId=employeeId; setBackground(GiaoDien.BG); setBorder(new EmptyBorder(12,14,12,14));
         JPanel pnlHeader=new JPanel(new BorderLayout()); pnlHeader.setOpaque(false);
@@ -298,7 +297,11 @@ public final class ManHinhBanPhuTung extends JPanel {
             valid &= !stale;
             cartModel.addRow(new Object[]{code,p==null ? "Không còn trong danh mục" : p.name()+(stale ? " (cần chọn lại)" : ""),entry.getValue(),format(price),format(amount)});
         }
-        BigDecimal vat=InvoiceMath.vat(subtotal);
+        HoaDon hoaDon=new HoaDon();
+        hoaDon.setTienPhuTung(subtotal);
+        hoaDon.setTienCong(BigDecimal.ZERO);
+        hoaDon.setDichVuKhac(BigDecimal.ZERO);
+        BigDecimal vat=hoaDon.tinhThueVAT();
         lblTotal.setText("<html>Tiền hàng: "+format(subtotal)+" &nbsp; | &nbsp; VAT 8%: "+format(vat)+"<br>Cộng: "+format(subtotal.add(vat))+"</html>");
         lblTotal.setToolTipText("Tiền hàng và VAT 8%; mã giảm giá được chọn trong chi tiết hóa đơn.");
         String customer=LuaChonDuLieu.id(cmbCustomers);

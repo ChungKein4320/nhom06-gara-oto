@@ -17,6 +17,8 @@ public class PhieuKiemTra {
     }
 
     public void setMaPKT(String value) {
+        if (value == null || !value.matches("PKT[0-9]{3}"))
+            throw new IllegalArgumentException("Mã phiếu kiểm tra không hợp lệ");
         this.maPKT = value;
     }
 
@@ -25,6 +27,8 @@ public class PhieuKiemTra {
     }
 
     public void setMaPTN(PhieuTiepNhan value) {
+        if (value == null || value.getMaPTN() == null || !value.getMaPTN().matches("PTN[0-9]{3}"))
+            throw new IllegalArgumentException("Mã phiếu tiếp nhận không hợp lệ");
         this.maPTN = value;
     }
 
@@ -33,6 +37,8 @@ public class PhieuKiemTra {
     }
 
     public void setMaNhanVien(NhanVien value) {
+        if (value == null || value.getMaNhanVien() == null || !value.getMaNhanVien().matches("NV[0-9]{3}"))
+            throw new IllegalArgumentException("Mã nhân viên không hợp lệ");
         this.maNhanVien = value;
     }
 
@@ -41,6 +47,8 @@ public class PhieuKiemTra {
     }
 
     public void setVIN(PhuongTien value) {
+        if (value == null || value.getVIN() == null || !value.getVIN().matches("[A-HJ-NPR-Z0-9]{17}"))
+            throw new IllegalArgumentException("Mã phương tiện không hợp lệ");
         this.VIN = value;
     }
 
@@ -49,6 +57,8 @@ public class PhieuKiemTra {
     }
 
     public void setNgayKiemTra(Timestamp value) {
+        if (value == null || value.after(new Timestamp(System.currentTimeMillis())))
+            throw new IllegalArgumentException("Ngày kiểm tra không hợp lệ");
         this.ngayKiemTra = value;
     }
 
@@ -57,6 +67,8 @@ public class PhieuKiemTra {
     }
 
     public void setMaKhachHang(KhachHang value) {
+        if (value == null || value.getMaKhachHang() == null || !value.getMaKhachHang().matches("KH[0-9]{3}"))
+            throw new IllegalArgumentException("Mã khách hàng không hợp lệ");
         this.maKhachHang = value;
     }
 
@@ -67,12 +79,12 @@ public class PhieuKiemTra {
                         PhuongTien VIN,
                         Timestamp ngayKiemTra) {
 
-        this.maPKT = getMaPKT();
-        setMaPTN(maPTN);
-        setMaNhanVien(maNhanVien);
-        setMaKhachHang(maKhachHang);
-        setVIN(VIN);
-        setNgayKiemTra(ngayKiemTra);
+        this.maPKT = maPKT;
+        this.maPTN = maPTN;
+        this.maNhanVien = maNhanVien;
+        this.maKhachHang = maKhachHang;
+        this.VIN = VIN;
+        this.ngayKiemTra = ngayKiemTra;
     }
 
     @Override
