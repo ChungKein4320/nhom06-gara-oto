@@ -331,6 +331,7 @@ public final class ManHinhHoaDon extends JPanel {
         invoiceInfoCard.repaint();
     }
 
+
     private void printInvoice() {
         if (!invoiceReady || invoiceId() == null || lblInfo[0].getText().equals("—")) {
             JOptionPane.showMessageDialog(this, "Vui lòng chọn hóa đơn đã tải thành công.");
@@ -338,24 +339,39 @@ public final class ManHinhHoaDon extends JPanel {
         }
         try {
             store = new ThongTinCuaHang();
-            if (!store.complete() && !store.edit(this)) return;
-            boolean printed = printAllPages();
-            if (!printed) return;
+
+            if (!store.complete() && !store.edit(this)) {
+                return;
+            }
+
+            printAllPages();
+
         } catch (PrinterException | java.io.IOException ex) {
             String message;
+
             if (ex instanceof java.awt.print.PrinterAbortException) {
-                message = "Quá trình in hóa đơn đã bị hủy hoặc gián đoạn.\n"
-                        + "Vui lòng kiểm tra máy in rồi thử in lại.";
+                message = """
+                        Quá trình in hóa đơn đã bị hủy hoặc gián đoạn.
+                        Vui lòng kiểm tra máy in rồi thử in lại.""";
+
             } else if (ex instanceof java.io.IOException) {
-                message = "Không thể đọc hoặc lưu thông tin cửa hàng để in hóa đơn.\n"
-                        + "Vui lòng kiểm tra thông tin cửa hàng và quyền truy cập tệp rồi thử lại.";
+                message = """
+                        Không thể đọc hoặc lưu thông tin cửa hàng để in hóa đơn.
+                        Vui lòng kiểm tra thông tin cửa hàng và quyền truy cập tệp rồi thử lại.""";
+
             } else {
-                message = "Không thể in hóa đơn.\n"
-                        + "Vui lòng kiểm tra máy in đã được kết nối và sẵn sàng,\n"
-                        + "hoặc chọn Microsoft Print to PDF để lưu hóa đơn rồi thử lại.";
+                message = """
+                        Không thể in hóa đơn.
+                        Vui lòng kiểm tra máy in đã được kết nối và sẵn sàng,
+                        hoặc chọn Microsoft Print to PDF để lưu hóa đơn rồi thử lại.""";
             }
+
             String detail = ex.getMessage();
-            if (detail != null && !detail.isBlank()) message += "\n\nChi tiết: " + detail;
+
+            if (detail != null && !detail.isBlank()) {
+                message += "\n\nChi tiết: " + detail;
+            }
+
             JTextArea content = new JTextArea(message);
             content.setEditable(false);
             content.setOpaque(false);
@@ -363,9 +379,16 @@ public final class ManHinhHoaDon extends JPanel {
             content.setLineWrap(true);
             content.setWrapStyleWord(true);
             content.setColumns(46);
-            JOptionPane.showMessageDialog(this, content, "Lỗi in hóa đơn", JOptionPane.ERROR_MESSAGE);
+
+            JOptionPane.showMessageDialog(
+                    this,
+                    content,
+                    "Lỗi in hóa đơn",
+                    JOptionPane.ERROR_MESSAGE
+            );
         }
     }
+
     private void changeCoupon() {
         String invoice=invoiceId();
         if(loadingCoupons || invoice==null || !cmbCoupon.isEnabled()) return;
@@ -518,24 +541,62 @@ public final class ManHinhHoaDon extends JPanel {
                 .append(": </b>").append(escapeHtml(right)).append("</td></tr>");
     }
 
-    private static void appendPrintTable(StringBuilder html, String title, DefaultTableModel model) {
-        html.append("<p><b>").append(escapeHtml(title)).append("</b></p><table border='1' cellspacing='0' cellpadding='3'><tr>");
-        String[] widths = {"5%", "10%", "35%", "10%", "19%", "21%"};
-        for (int column = 0; column < model.getColumnCount(); column++) {
-            html.append("<th width='").append(widths[column]).append("'>").append(escapeHtml(model.getColumnName(column))).append("</th>");
+
+    private static void appendPrintTable(
+            StringBuilder html,
+            String title,
+            DefaultTableModel model) {
+
+        html.append("<p><b>")
+            .append(escapeHtml(title))
+            .append("</b></p>")
+            .append("<table border='1' cellspacing='0' cellpadding='3'><tr>");
+
+        String[] widths;
+
+        if (model.getColumnCount() == 7) {
+            // Bảng phụ tùng: 7 cột
+            widths = new String[]{
+                "5%", "10%", "25%", "8%", "15%", "17%", "20%"
+            };
+        } else {
+            // Bảng dịch vụ: 6 cột
+            widths = new String[]{
+                "5%", "10%", "35%", "10%", "19%", "21%"
+        };
         }
+
+        for (int column = 0; column < model.getColumnCount(); column++) {
+            String width = column < widths.length ? widths[column] : "";
+
+            html.append("<th width='")
+                .append(width)
+                .append("'>")
+                .append(escapeHtml(model.getColumnName(column)))
+                .append("</th>");
+        }
+
         html.append("</tr>");
+
         for (int row = 0; row < model.getRowCount(); row++) {
             html.append("<tr>");
+
             for (int column = 0; column < model.getColumnCount(); column++) {
                 Object value = model.getValueAt(row, column);
-                html.append("<td align='").append(column >= 4 ? "right" : column == 2 ? "left" : "center").append("'>")
-                        .append(escapeHtml(value == null ? "" : value.toString())).append("</td>");
+
+                html.append("<td align='")
+                    .append(column >= 4 ? "right" : column == 2 ? "left" : "center")
+                    .append("'>")
+                    .append(escapeHtml(value == null ? "" : value.toString()))
+                    .append("</td>");
             }
+
             html.append("</tr>");
         }
+
         html.append("</table>");
     }
+
 
     private static String display(String text) {
         return text == null || text.isBlank() ? "Chưa cập nhật" : text;
