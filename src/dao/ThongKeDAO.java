@@ -27,8 +27,10 @@ public final class ThongKeDAO {
             source = " FROM dbo.PhieuTiepNhan WHERE ngayTiepNhan>=? AND ngayTiepNhan<?";
             value = "COUNT(DISTINCT maKhachHang)";
         } else if (category == 2) {
-            source = " FROM dbo.ChiTietHoaDon ct JOIN dbo.HoaDon h ON h.maHoaDon=ct.maHoaDon "
-                    + "JOIN dbo.DichVu d ON d.maDichVu=ct.maDichVu WHERE h.trangThaiThanhToan=N'Đã thanh toán' AND h.ngayLap>=? AND h.ngayLap<?";
+            source = " FROM dbo.ChiTietPhieuSuaChua ct JOIN dbo.PhieuSuaChua p ON p.maPSC=ct.maPSC "
+                    + "JOIN dbo.DichVu d ON d.maDichVu=ct.maDichVu "
+                    + "WHERE ct.trangThaiHangMuc=N'Hoàn thành' AND p.trangThai<>N'Đã hủy' "
+                    + "AND p.ngayLap>=? AND p.ngayLap<?";
             // Mỗi chi tiết có khóa (hóa đơn, dịch vụ); số lượng ở chi tiết có thể là số phụ tùng.
             value = "COUNT(*)";
             group = "d.maDichVu, d.tenDichVu";
@@ -38,7 +40,7 @@ public final class ThongKeDAO {
             String paid = "h.trangThaiThanhToan=N'Đã thanh toán'";
             switch (category) {
                 case 3, 4, 5, 6 -> {
-                    source = repair + "JOIN dbo.PhuTung pt ON pt.maPhuTung=ct.maPhuTung WHERE ct.maPhuTung<>'PT000' AND p.trangThai<>N'Đã hủy' AND p.ngayLap>=? AND p.ngayLap<?";
+                    source = repair + "JOIN dbo.PhuTung pt ON pt.maPhuTung=ct.maPhuTung WHERE ct.maPhuTung<>'PT000' AND ct.trangThaiHangMuc=N'Hoàn thành' AND p.trangThai<>N'Đã hủy' AND p.ngayLap>=? AND p.ngayLap<?";
                     String condition = category == 4 ? " AND (LOWER(pt.tenPhuTung) LIKE N'%lốp%' OR LOWER(pt.loaiPhuTung) LIKE N'%lốp%' OR LOWER(pt.tenPhuTung) LIKE N'%vỏ xe%')"
                             : category == 5 ? " AND (LOWER(pt.tenPhuTung) LIKE N'%nhớt%' OR LOWER(pt.tenPhuTung) LIKE N'%dầu động cơ%' OR LOWER(pt.loaiPhuTung) LIKE N'%nhớt%' OR LOWER(pt.loaiPhuTung) LIKE N'%dầu nhờn%')" : "";
                     source += condition;
