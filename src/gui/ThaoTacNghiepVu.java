@@ -1,5 +1,7 @@
 package gui;
 
+// THAO TÁC NGHIỆP VỤ TRÊN GIAO DIỆN
+
 import connectDB.KetNoiCSDL;
 import dao.CoSoDAO;
 import dao.QuyTrinhDAO;

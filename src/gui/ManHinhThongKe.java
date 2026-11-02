@@ -1,5 +1,7 @@
 package gui;
 
+// MÀN HÌNH THỐNG KÊ
+
 import dao.ThongKeDAO;
 import dao.ThongKeDAO.Bucket;
 import java.awt.*;

@@ -1,5 +1,7 @@
 package gui;
 
+// KIỂM TRA BIỂU MẪU
+
 import dao.Schema;
 import java.math.BigDecimal;
 import java.sql.SQLException;

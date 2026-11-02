@@ -1,5 +1,7 @@
 package gui;
 
+// HỘP THOẠI TIẾP NHẬN XE MỚI
+
 import dao.CoSoDAO;
 import dao.QuyTrinhDAO;
 import java.awt.*;

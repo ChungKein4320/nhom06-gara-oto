@@ -1,5 +1,7 @@
 package gui;
 
+// MÃ QR THANH TOÁN
+
 /** VietQR Quick Link: https://www.vietqr.io/qr-dong . */
 final class MaThanhToanNganHang {
     static final String ACCOUNT="123456789";

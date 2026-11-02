@@ -1,5 +1,7 @@
 package gui;
 
+// MÀN HÌNH DANH SÁCH VÀ BIỂU MẪU DỮ LIỆU
+
 import dao.CoSoDAO;
 import dao.QuyTrinhDAO;
 import dao.Schema;
@@ -195,6 +197,7 @@ public final class ManHinhDuLieu extends JPanel {
         btnAdd.setEnabled(canAdd);
         btnAdd.addActionListener(e -> edit(false));
 
+// nút Lập hóa đơn trên bảng HoaDon , Khởi động luồng tạo hóa đơn sửa chữa từ phiếu sửa đã hoàn thành.
         if (tableName.equals("HoaDon")) {
             JButton btnCreateInvoice = GiaoDien.button(
                     "Lập hóa đơn", GiaoDien.TEAL, Color.WHITE
@@ -204,7 +207,9 @@ public final class ManHinhDuLieu extends JPanel {
                 load();
             });
             pnlToolbar.add(btnCreateInvoice, BorderLayout.EAST);
-        } else if (!tableName.equals("TonKho") && !isManagerReview) {
+        } 
+        
+        else if (!tableName.equals("TonKho") && !isManagerReview) {
             pnlToolbar.add(btnAdd, BorderLayout.EAST);
         }
 
@@ -845,12 +850,14 @@ public final class ManHinhDuLieu extends JPanel {
             }
         }
 
+        // FORM THÊM/SỬA BẢN GHI
         JPanel pnlForm = new JPanel(new GridBagLayout());
         pnlForm.setBackground(Color.WHITE);
         pnlForm.setBorder(new EmptyBorder(20, 22, 12, 22));
 
         Map<String, JComponent> inputs = new LinkedHashMap<>();
 
+        // CÁC TRƯỜNG NHẬP TRÊN FORM
         for (int i = 0; i < fields.length; i++) {
             String field = fields[i];
             int column = Arrays.asList(displayFields).indexOf(field);
@@ -871,6 +878,7 @@ public final class ManHinhDuLieu extends JPanel {
                             tableName, field, value, existing
                     );
 
+            // ĐIỀU KHIỂN NHẬP LIỆU THEO LOẠI TRƯỜNG
             if (cmbReference != null) {
                 cmbReference.selectId(value);
                 input = cmbReference;
@@ -930,6 +938,7 @@ public final class ManHinhDuLieu extends JPanel {
 
             inputs.put(field, input);
 
+            // NHÃN VÀ Ô NHẬP
             JPanel pnlCell = new JPanel(new BorderLayout(0, 7));
             pnlCell.setOpaque(false);
             pnlCell.add(
@@ -945,6 +954,7 @@ public final class ManHinhDuLieu extends JPanel {
             input.setPreferredSize(new Dimension(250, 40));
             pnlCell.add(input, BorderLayout.CENTER);
 
+            // BỐ CỤC FORM HAI CỘT
             GridBagConstraints gbc = new GridBagConstraints();
             gbc.gridx = i % 2;
             gbc.gridy = i / 2;
@@ -957,6 +967,7 @@ public final class ManHinhDuLieu extends JPanel {
             pnlForm.add(pnlCell, gbc);
         }
 
+        // VÙNG CUỘN CỦA FORM
         TruongKeThua.Binding inherited =
                 TruongKeThua.bind(tableName, inputs);
 
@@ -971,6 +982,7 @@ public final class ManHinhDuLieu extends JPanel {
                 new Dimension(700, Math.min(540, formH))
         );
 
+        // CỬA SỔ THÊM/SỬA
         JDialog winDialog = new JDialog(
                 SwingUtilities.getWindowAncestor(this),
                 existing ? "Chỉnh sửa thông tin" : "Thêm thông tin mới",
@@ -980,6 +992,7 @@ public final class ManHinhDuLieu extends JPanel {
                 WindowConstants.DISPOSE_ON_CLOSE
         );
 
+        // BỐ CỤC CỬA SỔ VÀ CÁC NÚT
         JPanel pnlContent = new JPanel(new BorderLayout(0, 12));
         pnlContent.setBorder(new EmptyBorder(12, 12, 12, 12));
         pnlContent.add(scrSc, BorderLayout.CENTER);
@@ -1011,6 +1024,7 @@ public final class ManHinhDuLieu extends JPanel {
         );
         btnCancel.addActionListener(e -> winDialog.dispose());
 
+        // XỬ LÝ NÚT LƯU/HỦY
         String[] expectedId = {generatedId};
         Map<JComponent, javax.swing.border.Border> borders =
                 new LinkedHashMap<>();

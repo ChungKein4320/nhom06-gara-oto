@@ -1,5 +1,7 @@
 package gui;
 
+// BIỂU MẪU BẢN GHI
+
 import dao.Schema;
 import java.awt.*;
 import java.sql.SQLException;

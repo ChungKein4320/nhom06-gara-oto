@@ -1,5 +1,7 @@
 package gui;
 
+// HỘP THOẠI LẬP HÓA ĐƠN
+
 import connectDB.KetNoiCSDL;
 import dao.QuyTrinhDAO;
 import java.awt.*;
@@ -8,6 +10,7 @@ import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 
 final class HopThoaiLapHoaDon {
+    //chọn phiếu sửa đã hoàn tất để tạo hóa đơn sửa chữa.
     static void show(Component parent) {
         DefaultTableModel model=new DefaultTableModel(new String[]{"Mã phiếu sửa chữa","Khách hàng","Xe/VIN","Ngày hoàn thành"},0){@Override
         public boolean isCellEditable(int r,int c){return false;}};

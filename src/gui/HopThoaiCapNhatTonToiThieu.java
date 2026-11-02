@@ -1,5 +1,7 @@
 package gui;
 
+// HỘP THOẠI CẬP NHẬT TỒN TỐI THIỂU
+
 import dao.TonKhoDAO;
 import java.awt.*;
 import java.awt.event.KeyEvent;

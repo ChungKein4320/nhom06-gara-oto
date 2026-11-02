@@ -1,5 +1,7 @@
 package gui;
 
+// THÔNG TIN CỬA HÀNG TRÊN CHỨNG TỪ
+
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;

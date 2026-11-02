@@ -1,4 +1,6 @@
 package gui;
+
+// TRANG NHÓM CHỨC NĂNG
 import java.awt.BorderLayout;
 import javax.swing.JPanel;
 /** Trang nghiệp vụ dùng dữ liệu database. */

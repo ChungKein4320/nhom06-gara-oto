@@ -20,7 +20,7 @@ public class TaiKhoanDAO extends CoSoDAO {
             this.role = role;
         }
     }
-
+//Xác thực danh tính và xác định quyền ứng dụng từ dữ liệu tài khoản và nhân viên.
     public AuthResult authenticate(String user, String password) throws SQLException {
         String sql = "SELECT tk.maNhanVien, nv.hoTenNV, nv.vaiTro, tk.matKhau "
                 + "FROM dbo.TaiKhoan tk JOIN dbo.NhanVien nv ON nv.maNhanVien = tk.maNhanVien "
@@ -31,8 +31,7 @@ public class TaiKhoanDAO extends CoSoDAO {
             stmt.setString(1, user);
             try (ResultSet rs = stmt.executeQuery()) {
                 if (!rs.next()) return null;
-                // SQL của nhóm hiện lưu mật khẩu dạng văn bản thuần.
-                // Cần chuyển sang BCrypt/PBKDF2 trước khi sử dụng ngoài môi trường bài tập.
+                // SQL lưu mật khẩu dạng văn bản thuần.
                 if (!password.equals(rs.getString("matKhau"))) return null;
                 String id = rs.getString("maNhanVien");
                 String title = rs.getString("vaiTro");

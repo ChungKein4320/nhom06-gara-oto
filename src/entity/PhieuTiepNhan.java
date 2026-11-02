@@ -71,14 +71,14 @@ public class PhieuTiepNhan {
         this.soODO = value;
     }
 
-     public PhieuTiepNhan(String maPTN, KhachHang maKhachHang,
-                         NhanVien maNhanVien, PhuongTien VIN,
-                         Timestamp ngayTiepNhan, String soODO) {
+    
 
+     public PhieuTiepNhan(String maPTN, KhachHang maKhachHang, PhuongTien vIN, NhanVien maNhanVien,
+            Timestamp ngayTiepNhan, String soODO) {
         this.maPTN = maPTN;
         this.maKhachHang = maKhachHang;
+        VIN = vIN;
         this.maNhanVien = maNhanVien;
-        this.VIN = VIN;
         this.ngayTiepNhan = ngayTiepNhan;
         this.soODO = soODO;
     }

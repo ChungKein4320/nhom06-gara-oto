@@ -1,4 +1,6 @@
 package gui;
+
+// VAI TRÒ HIỂN THỊ TRÊN GIAO DIỆN
 public enum VaiTro {
     KY_THUAT("Nhân viên kỹ thuật"),
     KHO("Nhân viên kho"),

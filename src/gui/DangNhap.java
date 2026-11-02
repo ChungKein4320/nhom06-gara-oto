@@ -1,4 +1,6 @@
 package gui;
+
+// MÀN HÌNH ĐĂNG NHẬP
 import java.awt.*;
 import javax.swing.*;
 import javax.swing.border.*;
@@ -7,6 +9,7 @@ public final class DangNhap extends JFrame {
     private static final long serialVersionUID = 1L;
     private final JTextField txtUsername;
     private final JPasswordField txtPassword;
+    //Tạo giao diện Swing gồm ô tên đăng nhập, mật khẩu và nút đăng nhập.
     public DangNhap(){
         GiaoDien.init();
         setTitle("Thinking Auto • Đăng nhập");
@@ -76,6 +79,7 @@ public final class DangNhap extends JFrame {
         add(pnlRight);
         getRootPane().setDefaultButton(btnLogin);
     }
+    //Lấy thông tin người dùng, xử lý ô trống và chuyển sang màn hình chính nếu xác thực thành công.
     private void login() {
         String user = txtUsername.getText().trim();
         String pass = new String(txtPassword.getPassword());

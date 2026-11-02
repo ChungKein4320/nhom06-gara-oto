@@ -1,5 +1,7 @@
 package gui;
 
+// FORM LẬP VÀ SỬA PHIẾU
+
 import connectDB.KetNoiCSDL;
 import dao.*;
 import java.awt.*;

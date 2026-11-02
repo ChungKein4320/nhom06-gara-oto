@@ -1,5 +1,7 @@
 package gui;
 
+// HỘP THOẠI THANH TOÁN HÓA ĐƠN
+
 import connectDB.KetNoiCSDL;
 import dao.ThuongMaiDAO;
 import entity.HoaDon;
@@ -30,7 +32,10 @@ final class HopThoaiThanhToan extends JDialog {
     private SwingWorker<BufferedImage,Void> qrWorker;
     private BigDecimal total;
     private boolean busy,loading,qrReady;
+   
     record Method(String id,String label,boolean qr) { @Override public String toString() { return label; } }
+
+     // Mở hộp thoại thanh toán theo hóa đơn và mã khách đã quét (nếu có).
     static void show(Component parent,String invoice,Runnable refreshed,String scannedCustomer) {
         HopThoaiThanhToan winPayment=new HopThoaiThanhToan(parent,invoice,refreshed,scannedCustomer);
         if(winPayment.reload()) { winPayment.pack(); winPayment.setLocationRelativeTo(null); winPayment.setVisible(true); }
@@ -49,7 +54,7 @@ final class HopThoaiThanhToan extends JDialog {
         pnlRoot.add(pnlHeader,BorderLayout.NORTH);
         JPanel pnlTransfer=new JPanel(new BorderLayout(0,6)); pnlTransfer.setOpaque(false);
         lblQr.setPreferredSize(new Dimension(500,350)); pnlTransfer.add(lblQr,BorderLayout.CENTER);
-        // Reserve space before packing, including when cash is selected first.
+        
         lblInstruction.setPreferredSize(new Dimension(500,90));
         pnlTransfer.add(lblInstruction,BorderLayout.SOUTH); pnlRoot.add(pnlTransfer,BorderLayout.CENTER);
         JPanel pnlButtons = new JPanel(new GridLayout(1, 2, 8, 8));
@@ -61,6 +66,8 @@ final class HopThoaiThanhToan extends JDialog {
         cmbMethod.addActionListener(e -> { if(!loading) showMethod(); });
         btnClose.addActionListener(e -> close()); btnConfirm.addActionListener(e -> confirm());
     }
+    
+    //Tải lại dữ liệu tiền và phương thức mới nhất trước khi thu.
     private boolean reload() {
         cancelQr(); total=null; btnConfirm.setEnabled(false); loading=true;
         Method previous=(Method)cmbMethod.getSelectedItem(); cmbMethod.removeAllItems();
@@ -98,6 +105,7 @@ final class HopThoaiThanhToan extends JDialog {
         finally { loading=false; }
         showMethod(); return true;
     }
+    //Cập nhật hướng dẫn khi chọn tiền mặt hoặc chuyển khoản QR.
     private void showMethod() {
         cancelQr();
         qrReady = false;
@@ -178,6 +186,7 @@ final class HopThoaiThanhToan extends JDialog {
             error(ex);
         }
     }
+    //Nhân viên xác nhận đã nhận đủ tiền và chạy thanh toán nền.
     private void confirm() {
         Method method=(Method)cmbMethod.getSelectedItem();
         if(busy || total==null || method==null || (method.qr() && !qrReady)) return;

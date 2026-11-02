@@ -1,3 +1,6 @@
 {
-    "java.debug.settings.forceBuildBeforeLaunch": true
+    "java.debug.settings.forceBuildBeforeLaunch": true,
+    "java.project.referencedLibraries": [
+        "lib/**/*.jar"
+    ]
 }

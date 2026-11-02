@@ -1,5 +1,7 @@
 package gui;
 
+// TRƯỜNG KẾ THỪA TRÊN FORM
+
 import connectDB.KetNoiCSDL;
 import dao.CoSoDAO;
 import dao.Schema;
