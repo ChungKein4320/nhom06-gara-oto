@@ -87,23 +87,18 @@ public class ChiTietPhieuBaoGia {
         this.trangThai = value;
     }
 
+    
 
-    public ChiTietPhieuBaoGia(
-            PhieuBaoGia maBaoGia,
-            DichVu maDichVu,
-            PhuTung maPhuTung,
-            Integer soLuongPhuTung,
-            BigDecimal donGiaPhuTung,
-            BigDecimal chiPhiNhanCong) {
 
+    public ChiTietPhieuBaoGia(PhieuBaoGia maBaoGia, DichVu maDichVu, PhuTung maPhuTung, Integer soLuongPhuTung,
+            BigDecimal donGiaPhuTung, BigDecimal chiPhiNhanCong, String trangThai) {
         this.maBaoGia = maBaoGia;
         this.maDichVu = maDichVu;
         this.maPhuTung = maPhuTung;
         this.soLuongPhuTung = soLuongPhuTung;
         this.donGiaPhuTung = donGiaPhuTung;
         this.chiPhiNhanCong = chiPhiNhanCong;
-
-        this.trangThai = "Chờ xác nhận";
+        this.trangThai = trangThai;
     }
 
     @Override

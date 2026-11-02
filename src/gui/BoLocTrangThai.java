@@ -1,5 +1,7 @@
 package gui;
 
+// BỘ LỌC TRẠNG THÁI
+
 import java.awt.*;
 import java.util.*;
 import java.util.List;

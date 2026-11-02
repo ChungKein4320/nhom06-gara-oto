@@ -8,12 +8,14 @@ import java.util.*;
 /** Thanh toán, bán bổ sung và cấp phát đều nguyên tử và kiểm tra trạng thái mới nhất. */
 public final class ThuongMaiDAO {
     private ThuongMaiDAO() {}
+    //Ghi nhận thanh toán an toàn và hoàn tất nghiệp vụ hóa đơn trong một transaction.
     public static void pay(String invoice,String method) throws SQLException {
         pay(invoice,method,null);
     }
     public static void pay(String invoice,String method,BigDecimal expectedTotal) throws SQLException {
         pay(invoice,method,expectedTotal,null);
     }
+    //Ghi nhận thanh toán an toàn và hoàn tất nghiệp vụ hóa đơn trong một transaction.
     public static void pay(String invoice,String method,BigDecimal expectedTotal,String scannedCustomer) throws SQLException {
         QuyTrinhDAO.transaction(conn -> {
             Map<String,Object> initial=QuyTrinhDAO.one(conn,"SELECT maPSC FROM dbo.HoaDon WHERE maHoaDon=?",invoice);
@@ -66,7 +68,10 @@ public final class ThuongMaiDAO {
             return null;
         });
     }
+    //Lấy trường tiền trong Map kết quả truy vấn dưới dạng BigDecimal.
     private static BigDecimal amount(Map<String,Object> row,String field) { return (BigDecimal)row.get(field); }
+    
+// Áp/bỏ coupon trước khi thanh toán.
     public static void changeCoupon(String invoice,String coupon) throws SQLException {
         QuyTrinhDAO.transaction(conn -> {
             Map<String,Object> initial=QuyTrinhDAO.one(conn,"SELECT maPSC FROM dbo.HoaDon WHERE maHoaDon=?",invoice);
@@ -80,11 +85,15 @@ public final class ThuongMaiDAO {
             QuyTrinhDAO.execute(conn,"UPDATE dbo.HoaDon SET maGiamGia=?,giamGia=? WHERE maHoaDon=?",empty ? null : coupon,discount,invoice); return null;
         });
     }
+    
     public static void sell(String invoice,String service,String part,int quantity,BigDecimal expectedPrice) throws SQLException {
         sellBasket(invoice,service,List.of(new SaleItem(part,quantity,expectedPrice)));
     }
+    //Đóng gói một dòng hàng gửi từ giao diện sang tầng nghiệp vụ.
     public record SaleItem(String part,int quantity,BigDecimal expectedPrice) {}
+
     /** Bán lẻ độc lập: hóa đơn và ChiTietHoaDon là chứng từ bán hàng duy nhất. */
+    //Hai điểm gọi công khai cho khách đã tồn tại hoặc khách cần tạo mới.
     public static String createPartsInvoice(String customer,String employee,List<SaleItem> items) throws SQLException {
         return createPartsInvoice(customer,null,employee,items);
     }
@@ -92,6 +101,7 @@ public final class ThuongMaiDAO {
     public static String createPartsInvoice(Map<String,Object> newCustomer,String employee,List<SaleItem> items) throws SQLException {
         return createPartsInvoice(null,newCustomer,employee,items);
     }
+    //: Thực hiện toàn bộ kiểm tra và tạo hóa đơn bán lẻ trong một transaction SQL.
     private static String createPartsInvoice(String customer,Map<String,Object> newCustomer,String employee,List<SaleItem> items) throws SQLException {
         boolean existingCustomer=customer!=null && !customer.isBlank();
         QuyTrinhDAO.require((existingCustomer || newCustomer!=null) && employee!=null && !employee.isBlank(),"Vui lòng nhập thông tin khách hàng và nhân viên bán hàng.");
@@ -199,7 +209,7 @@ public final class ThuongMaiDAO {
             return null;
         });
     }
-
+//Phát một coupon cho mỗi mốc điểm đạt trong chu kỳ.
     private static void issueThresholdCoupons(Connection conn,String customer,Timestamp cycleStart,Timestamp expiration,Timestamp now) throws SQLException {
         int earned=((Number)QuyTrinhDAO.one(conn,"SELECT COALESCE(SUM(soDiem),0) AS points FROM dbo.LichSuTichDiem WHERE maKhachHang=? AND ngayTichDiem>=? AND ngayHetHan>=?",customer,cycleStart,now).get("points")).intValue();
         int[][] thresholds={{50,5},{100,10},{200,15},{500,30}};
@@ -208,7 +218,7 @@ public final class ThuongMaiDAO {
             new CoSoDAO("MaGiamGia").insert(conn,coupon);
         }
     }
-
+   //Xuất phụ tùng đã bán sau khi thu tiền.
     private static void fulfillPartsInvoice(Connection conn,String invoiceId) throws SQLException {
         List<Map<String,Object>> items=new ArrayList<>();
         String sql="SELECT maPhuTung,SUM(soLuong) AS soLuong FROM dbo.ChiTietHoaDon WHERE maHoaDon=? AND maPhuTung IS NOT NULL GROUP BY maPhuTung ORDER BY maPhuTung";

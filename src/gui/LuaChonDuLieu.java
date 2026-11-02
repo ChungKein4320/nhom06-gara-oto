@@ -1,4 +1,6 @@
 package gui;
+
+// DỮ LIỆU CHO CÁC Ô CHỌN
 import connectDB.KetNoiCSDL;
 import java.sql.*;
 import javax.swing.JComboBox;

@@ -72,19 +72,16 @@ public class PhieuKiemTra {
         this.maKhachHang = value;
     }
 
-    public PhieuKiemTra(String maPKT,
-                        PhieuTiepNhan maPTN,
-                        NhanVien maNhanVien,
-                        KhachHang maKhachHang,
-                        PhuongTien VIN,
-                        Timestamp ngayKiemTra) {
+    
 
+    public PhieuKiemTra(String maPKT, PhieuTiepNhan maPTN, NhanVien maNhanVien, PhuongTien vIN, Timestamp ngayKiemTra,
+            KhachHang maKhachHang) {
         this.maPKT = maPKT;
         this.maPTN = maPTN;
         this.maNhanVien = maNhanVien;
-        this.maKhachHang = maKhachHang;
-        this.VIN = VIN;
+        VIN = vIN;
         this.ngayKiemTra = ngayKiemTra;
+        this.maKhachHang = maKhachHang;
     }
 
     @Override

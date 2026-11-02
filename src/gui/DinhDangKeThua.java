@@ -1,5 +1,7 @@
 package gui;
 
+// ĐỊNH DẠNG TRƯỜNG KẾ THỪA
+
 import java.awt.*;
 import javax.swing.*;
 import javax.swing.text.JTextComponent;

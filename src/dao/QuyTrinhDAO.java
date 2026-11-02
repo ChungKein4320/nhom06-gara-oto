@@ -39,6 +39,7 @@ public final class QuyTrinhDAO {
             }
         }
     }
+
     static Map<String,Object> lock(Connection conn,String table,Object id) throws SQLException {
         String pk = Schema.PRIMARY.get(table);
         try (PreparedStatement ps = conn.prepareStatement("SELECT * FROM dbo.[" + table + "] WITH (UPDLOCK,HOLDLOCK) WHERE [" + pk + "]=?")) {
@@ -51,6 +52,7 @@ public final class QuyTrinhDAO {
             }
         }
     }
+
     static boolean exists(Connection conn,String sql,Object... params) throws SQLException {
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             for(int i=0;i<params.length;i++) ps.setObject(i+1,params[i]);
@@ -64,7 +66,9 @@ public final class QuyTrinhDAO {
         require(exists(conn, "SELECT 1 FROM dbo.NhanVien WHERE maNhanVien=? AND trangThai=N'Đang làm'", employeeId.trim()),
                 "Nhân viên " + roleDescription + " (" + employeeId + ") không tồn tại hoặc đã nghỉ việc.");
     }
+
     static void require(boolean ok,String message) throws SQLException { if(!ok) throw new SQLException(message); }
+
     static void equal(Map<String,Object> a,Map<String,Object> b,String... fields) throws SQLException {
         for(String field:fields) require(Objects.equals(a.get(field),b.get(field)),"Hồ sơ không khớp: "+field);
     }
@@ -184,7 +188,7 @@ public final class QuyTrinhDAO {
             default -> { }
         }
     }
-    /** UC009: Kiểm tra toàn vẹn phiếu nhập kho gắn với đơn duyệt và số lượng hợp lệ. */
+    /**Kiểm tra toàn vẹn phiếu nhập kho gắn với đơn duyệt và số lượng hợp lệ. */
     public static void validateReceiptIntegrity(Connection conn, Map<String,Object> header, List<? extends Map<String,Object>> details, String id, boolean isConfirming) throws SQLException {
         Object ycnId = header.get("maYCNK");
         require(ycnId != null && !String.valueOf(ycnId).isBlank(), "Phiếu nhập kho phải gắn với Yêu cầu nhập kho đã được duyệt.");
@@ -640,6 +644,7 @@ public final class QuyTrinhDAO {
             return null;
         });
     }
+    // Tính và tạo hóa đơn sửa chữa từ phiếu sửa đã hoàn thành.
     public static String createInvoice(String repairId,String employee,String method,String coupon) throws SQLException {
         return transaction(conn -> {
             // Khóa ngoại bắt buộc: giá trị dự kiến sẽ được thay bằng phương thức thực tế khi thu tiền.
@@ -685,10 +690,12 @@ public final class QuyTrinhDAO {
             execute(conn,"UPDATE dbo.PhieuSuaChua SET trangThai=N'Chờ thanh toán' WHERE maPSC=?",repairId); return id;
         });
     }
+    //Kiểm tra dữ liệu dòng rồi chèn ChiTietHoaDon.
     static void insertInvoiceLine(Connection conn,Map<String,Object> row) throws SQLException {
         DataRules.validate("ChiTietHoaDon",row,true);
         execute(conn,"INSERT INTO dbo.ChiTietHoaDon(maHoaDon,maDichVu,maPhuTung,soLuong,donGia) VALUES(?,?,?,?,?)",row.get("maHoaDon"),row.get("maDichVu"),row.get("maPhuTung"),row.get("soLuong"),row.get("donGia"));
     }
+    //Xác thực coupon và chuyển tỷ lệ giảm thành số tiền.
     static BigDecimal couponDiscount(Connection conn,String coupon,Object customer,BigDecimal subtotal) throws SQLException {
         Map<String,Object> value=lock(conn,"MaGiamGia",coupon);
         require(Objects.equals(value.get("maKhachHang"),customer),"Mã giảm giá không thuộc khách hàng này.");
@@ -746,6 +753,8 @@ public final class QuyTrinhDAO {
             return null;
         });
     }
+
+
     static Map<String,Object> one(Connection conn,String sql,Object... params) throws SQLException {
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             for(int i=0;i<params.length;i++) ps.setObject(i+1,params[i]);
@@ -757,6 +766,8 @@ public final class QuyTrinhDAO {
             }
         }
     }
+
+    
     static int execute(Connection conn,String sql,Object... params) throws SQLException {
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             for(int i=0;i<params.length;i++) ps.setObject(i+1,params[i]);

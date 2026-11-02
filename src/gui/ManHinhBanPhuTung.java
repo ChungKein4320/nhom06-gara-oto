@@ -1,5 +1,7 @@
 package gui;
 
+// MÀN HÌNH BÁN PHỤ TÙNG
+
 import connectDB.KetNoiCSDL;
 import dao.ThuongMaiDAO;
 import entity.HoaDon;
@@ -16,6 +18,7 @@ import javax.swing.table.DefaultTableModel;
 /** Quầy bán phụ tùng: giỏ hàng, nhập mã và bàn phím bên trái, danh mục bên phải. */
 public final class ManHinhBanPhuTung extends JPanel {
     @java.io.Serial private static final long serialVersionUID=1L;
+
     record Product(String code,String name,String category,BigDecimal price,int stock) {}
     private final Map<String,Product> products=new LinkedHashMap<>();
     private final Map<String,Integer> quantities=new LinkedHashMap<>();
@@ -71,6 +74,7 @@ public final class ManHinhBanPhuTung extends JPanel {
         tblCart.getColumnModel().getColumn(1).setPreferredWidth(180);
         tblCart.getColumnModel().getColumn(2).setPreferredWidth(40);
         pnlCart.add(scrCart,BorderLayout.CENTER);
+
         JPanel pnlEdit=new JPanel(new FlowLayout(FlowLayout.LEFT,6,0)); pnlEdit.setOpaque(false);
         pnlEdit.add(new JLabel("Số lượng")); spnQuantity.setPreferredSize(new Dimension(75,32)); pnlEdit.add(spnQuantity);
         JButton btnUpdate=GiaoDien.button("Cập nhật",GiaoDien.CREAM,GiaoDien.NAV);
@@ -108,6 +112,8 @@ public final class ManHinhBanPhuTung extends JPanel {
         pnlSale.add(pnlLeft,BorderLayout.CENTER); pnlSale.add(pnlRight,BorderLayout.EAST);
         add(pnlSale,BorderLayout.CENTER);
 
+        //Form nhập thông tin khách hàng
+        
         JPanel pnlFooter=GiaoDien.card(new BorderLayout(10,6));
         pnlFooter.setBorder(new EmptyBorder(8,12,8,12));
         JPanel pnlChoices=new JPanel(new GridBagLayout()); pnlChoices.setOpaque(false);
@@ -140,6 +146,7 @@ public final class ManHinhBanPhuTung extends JPanel {
         btnConfirm.addActionListener(e -> sell()); refreshCart();
         if(fetch) load();
     }
+    //Cung cấp bàn phím nhập mã trong giao diện.
     private JPanel keyboard() {
         JPanel pnlKeyboard=GiaoDien.card(new GridLayout(0,10,5,5));
         pnlKeyboard.setBorder(new EmptyBorder(8,12,8,12));
@@ -161,6 +168,7 @@ public final class ManHinhBanPhuTung extends JPanel {
         }
         return pnlKeyboard;
     }
+    // Đưa bộ lọc/ô mã/giỏ chọn về trạng thái ban đầu và tải lại dữ liệu.
     private void lamMoi() {
         txtCode.setText(""); category="Tất cả";
         if(cmbCustomers.getItemCount()>0) cmbCustomers.setSelectedIndex(0);
@@ -169,6 +177,7 @@ public final class ManHinhBanPhuTung extends JPanel {
         spnQuantity.setValue(1);
         load();
     }
+    //Đọc danh mục hàng, tồn kho và khách hàng từ SQL Server.
     private void load() {
         String oldInvoice=LuaChonDuLieu.id(cmbCustomers); loading=true; btnConfirm.setEnabled(false);
         try {
@@ -185,6 +194,7 @@ public final class ManHinhBanPhuTung extends JPanel {
         finally { loading=false; }
         loadCustomerForm(); loadInvoiceContext(); refreshCart();
     }
+    //Đổ dữ liệu khách được chọn vào form hoặc mở form nhập khách mới.
     private void loadCustomerForm() {
         String customer=LuaChonDuLieu.id(cmbCustomers);
         updatingCustomerFields=true;
@@ -210,6 +220,7 @@ public final class ManHinhBanPhuTung extends JPanel {
         finally { updatingCustomerFields=false; }
         refreshCart();
     }
+    //Kiểm tra/đóng gói hồ sơ khách mới để DAO thêm cùng giao dịch lập hóa đơn.
     private boolean newCustomerFormValid() {
         String name=txtCustomerName.getText().trim(), phone=txtCustomerPhone.getText().trim();
         String email=txtCustomerEmail.getText().trim(), address=txtCustomerAddress.getText().trim();
@@ -228,11 +239,13 @@ public final class ManHinhBanPhuTung extends JPanel {
         if(!address.isBlank()) customer.put("diaChi",address);
         return customer;
     }
+    //Đặt ngữ cảnh hóa đơn bán lẻ mới.
     private void loadInvoiceContext() {
         blockedParts=new HashSet<>();
         lblStatus.setText("Chọn khách hàng, xác nhận bán rồi thanh toán hóa đơn.");
         renderProducts(); refreshCart();
     }
+    //Dựng bộ lọc danh mục và các thẻ phụ tùng.
     private void buildCategories() {
         pnlCategories.removeAll(); Set<String> categories=new LinkedHashSet<>(); categories.add("Tất cả");
         for(Product p:products.values()) categories.add(p.category());
@@ -271,7 +284,9 @@ public final class ManHinhBanPhuTung extends JPanel {
         if(count==0) pnlProducts.add(GiaoDien.label("Không có phụ tùng trong nhóm này.",13,false,GiaoDien.MUTED));
         pnlProducts.revalidate(); pnlProducts.repaint();
     }
+    //Nhận mã gõ/quét hoặc nút +, đưa một đơn vị hàng vào giỏ.
     private void addCode() { if(addProduct(txtCode.getText().trim().toUpperCase(Locale.ROOT))) txtCode.setText(""); }
+
     private boolean addProduct(String code) {
         Product p=products.get(code);
         if(p==null) { lblStatus.setText("Không tìm thấy mã phụ tùng: "+code); return false; }
@@ -280,7 +295,9 @@ public final class ManHinhBanPhuTung extends JPanel {
         if(old>=p.stock()) { lblStatus.setText("Không đủ tồn kho cho "+code+"."); return false; }
         quantities.put(code,old+1); cartPrices.putIfAbsent(code,p.price()); refreshCart(); lblStatus.setText("Đã thêm "+code+" vào giỏ."); return true;
     }
+    //Chọn hàng trong bảng đúng cả khi bảng đang sắp xếp; sửa số lượng hoặc bỏ dòng.
     private int selectedRow() { int row=tblCart.getSelectedRow(); return row<0 ? -1 : tblCart.convertRowIndexToModel(row); }
+
     private void updateQuantity() {
         int row=selectedRow(); if(row<0) { lblStatus.setText("Chọn dòng cần sửa số lượng."); return; }
         try { spnQuantity.commitEdit(); } catch(java.text.ParseException ex) { lblStatus.setText("Số lượng phải là số nguyên dương."); return; }
@@ -289,6 +306,8 @@ public final class ManHinhBanPhuTung extends JPanel {
         quantities.put(code,quantity); refreshCart();
     }
     private void removeSelected() { int row=selectedRow(); if(row>=0) { String code=cartModel.getValueAt(row,0).toString(); quantities.remove(code); cartPrices.remove(code); refreshCart(); } }
+    
+    //Tính lại thành tiền, VAT, tổng tiền dự kiến và điều kiện bật nút bán.
     private void refreshCart() {
         cartModel.setRowCount(0); BigDecimal subtotal=BigDecimal.ZERO; boolean valid=!quantities.isEmpty();
         for(var entry:quantities.entrySet()) {
@@ -312,6 +331,7 @@ public final class ManHinhBanPhuTung extends JPanel {
         else if(!quantities.isEmpty() && !valid) lblStatus.setText("Có dòng đổi giá, thiếu tồn hoặc đã có trong hóa đơn. Bỏ dòng và chọn lại.");
     }
     private String format(BigDecimal amount) { return money.format(amount)+" đ"; }
+    //Xác nhận giỏ và bắt đầu luồng lập rồi mở hóa đơn.
     private void sell() {
         if(!btnConfirm.isEnabled()) return;
         String customer=LuaChonDuLieu.id(cmbCustomers);
@@ -327,6 +347,7 @@ public final class ManHinhBanPhuTung extends JPanel {
             showSaleInvoice(invoice);
         } catch(SQLException ex) { error(ex); load(); }
     }
+    //mở hóa đơn
     private void showSaleInvoice(String invoice) {
         JDialog winInvoice=new JDialog(SwingUtilities.getWindowAncestor(this),"Hóa đơn bán phụ tùng "+invoice,Dialog.ModalityType.APPLICATION_MODAL);
         ManHinhHoaDon pnlInvoice=new ManHinhHoaDon(invoice);

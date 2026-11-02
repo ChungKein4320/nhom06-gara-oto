@@ -1,5 +1,7 @@
 package gui;
 
+// GIÁ DANH MỤC TRÊN BIỂU MẪU BÁO GIÁ
+
 import connectDB.KetNoiCSDL;
 import java.math.BigDecimal;
 import java.sql.*;

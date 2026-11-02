@@ -1,5 +1,7 @@
 package gui;
 
+// BỐ CỤC BẢNG DỮ LIỆU
+
 import java.awt.Component;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;

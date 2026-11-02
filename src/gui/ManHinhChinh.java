@@ -1,4 +1,6 @@
 package gui;
+
+// CỬA SỔ CHÍNH
 import java.awt.*;
 import javax.swing.*;
 import javax.swing.border.*;
@@ -282,6 +284,7 @@ public final class ManHinhChinh extends JFrame {
             SwingUtilities.invokeLater(() -> targetBtn.scrollRectToVisible(new Rectangle(0,0,targetBtn.getWidth(),targetBtn.getHeight())));
         }
     }
+    //Tạo nội dung trang được chọn và giữ đúng mã nhân viên hiện đăng nhập.
     public void open(String page){
         java.util.Objects.requireNonNull(page,"Phải xác định trang cần mở.");
         if(page.equals("Tìm kiếm")) {

@@ -105,25 +105,19 @@ public class PhieuBaoGia {
         this.trangThai = value;
     }
 
-    public PhieuBaoGia(String maBaoGia,
-                       PhieuKiemTra maPKT,
-                       NhanVien maNhanVien,
-                       KhachHang maKhachHang,
-                       PhuongTien VIN,
-                       Timestamp ngayLap,
-                       Timestamp ngayHetHan,
-                       Timestamp thoiGianXacNhan) {
+    
 
+    public PhieuBaoGia(String maBaoGia, PhieuKiemTra maPKT, KhachHang maKhachHang, NhanVien maNhanVien, PhuongTien vIN,
+            Timestamp ngayLap, Timestamp ngayHetHan, Timestamp thoiGianXacNhan, String trangThai) {
         this.maBaoGia = maBaoGia;
         this.maPKT = maPKT;
-        this.maNhanVien = maNhanVien;
         this.maKhachHang = maKhachHang;
-        this.VIN = VIN;
+        this.maNhanVien = maNhanVien;
+        VIN = vIN;
         this.ngayLap = ngayLap;
         this.ngayHetHan = ngayHetHan;
         this.thoiGianXacNhan = thoiGianXacNhan;
-
-        this.trangThai = "Còn hiệu lực";
+        this.trangThai = trangThai;
     }
 
     @Override

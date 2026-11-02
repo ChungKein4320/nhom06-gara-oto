@@ -107,27 +107,20 @@ public class LichBaoHanh {
         this.ghiChu = value;
     }
 
-
-    public LichBaoHanh(
-            String maLBH,
-            PhieuSuaChua maPSC,
-            NhanVien maNhanVien,
-            KhachHang maKhachHang,
-            PhuongTien VIN,
-            Timestamp ngayXuLy,
-            String ketQuaXuLy,
-            String ghiChu) {
-
+    
+    public LichBaoHanh(String maLBH, PhieuSuaChua maPSC, DichVu maDichVu, PhuTung maPhuTung, NhanVien maNhanVien,
+            KhachHang maKhachHang, PhuongTien vIN, Timestamp ngayXuLy, String ketQuaXuLy, String ghiChu) {
         this.maLBH = maLBH;
         this.maPSC = maPSC;
+        this.maDichVu = maDichVu;
+        this.maPhuTung = maPhuTung;
         this.maNhanVien = maNhanVien;
         this.maKhachHang = maKhachHang;
-        this.VIN = VIN;
+        VIN = vIN;
         this.ngayXuLy = ngayXuLy;
         this.ketQuaXuLy = ketQuaXuLy;
         this.ghiChu = ghiChu;
     }
-
 
     @Override
     public String toString() {

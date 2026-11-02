@@ -1,5 +1,7 @@
 package gui;
 
+// DANH MỤC MENU THEO VAI TRÒ
+
 import java.util.Arrays;
 import java.util.LinkedHashSet;
 
@@ -22,7 +24,7 @@ public final class DuLieuTrinhDon {
         "Khách hàng", "Phương tiện", "Danh mục dịch vụ", "Danh mục phụ tùng",
         "Tài khoản", "Khuyến mãi", "Danh sách yêu cầu nhập", "Thống kê"
     };
-
+//Lấy các trang được phép hiển thị theo vai trò.
     public static String[] forRole(VaiTro role) {
         if (role == VaiTro.ADMIN) {
             LinkedHashSet<String> all = new LinkedHashSet<>();

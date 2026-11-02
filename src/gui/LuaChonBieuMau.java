@@ -1,5 +1,7 @@
 package gui;
 
+// DANH SÁCH LỰA CHỌN TRÊN BIỂU MẪU
+
 import java.util.LinkedHashMap;
 import java.util.Map;
 import javax.swing.JComboBox;

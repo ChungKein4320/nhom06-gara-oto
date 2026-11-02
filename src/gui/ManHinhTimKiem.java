@@ -1,5 +1,7 @@
 package gui;
 
+// MÀN HÌNH TÌM KIẾM
+
 import dao.CoSoDAO;
 import dao.KhachHangDAO;
 import dao.Schema;

@@ -180,29 +180,27 @@ public class ChiTietPhieuSuaChua {
                 && !now.before(ngayBatDauBaoHanh) && !now.after(ngayHetHanBaoHanh);
     }
 
-
-    public ChiTietPhieuSuaChua(
-            PhieuSuaChua maPSC,
-            DichVu maDichVu,
-            PhuTung maPhuTung,
-            String trangThaiHangMuc,
-            Integer soLuongPhuTung,
-            String ketQuaNghiemThu,
-            Timestamp ngayBatDauBaoHanh,
-            Integer thoiHanBaoHanh,
-            Timestamp ngayHetHanBaoHanh) {
-
+    public ChiTietPhieuSuaChua(PhieuSuaChua maPSC, DichVu maDichVu, PhuTung maPhuTung, String trangThaiHangMuc,
+            Integer soLuongPhuTung, Integer soLuongCapPhat, Integer soLuongSuDung, Integer soLuongHoanTra,
+            Timestamp ngayCapPhat, NhanVien maNhanVienCapPhat, Timestamp ngayHoanTra, NhanVien maNhanVienXacNhanHoanTra,
+            String ketQuaNghiemThu, Timestamp ngayBatDauBaoHanh, Integer thoiHanBaoHanh, Timestamp ngayHetHanBaoHanh) {
         this.maPSC = maPSC;
         this.maDichVu = maDichVu;
         this.maPhuTung = maPhuTung;
         this.trangThaiHangMuc = trangThaiHangMuc;
         this.soLuongPhuTung = soLuongPhuTung;
+        this.soLuongCapPhat = soLuongCapPhat;
+        this.soLuongSuDung = soLuongSuDung;
+        this.soLuongHoanTra = soLuongHoanTra;
+        this.ngayCapPhat = ngayCapPhat;
+        this.maNhanVienCapPhat = maNhanVienCapPhat;
+        this.ngayHoanTra = ngayHoanTra;
+        this.maNhanVienXacNhanHoanTra = maNhanVienXacNhanHoanTra;
         this.ketQuaNghiemThu = ketQuaNghiemThu;
-        this.thoiHanBaoHanh = thoiHanBaoHanh;
         this.ngayBatDauBaoHanh = ngayBatDauBaoHanh;
+        this.thoiHanBaoHanh = thoiHanBaoHanh;
         this.ngayHetHanBaoHanh = ngayHetHanBaoHanh;
     }
-
 
     @Override
     public String toString() {

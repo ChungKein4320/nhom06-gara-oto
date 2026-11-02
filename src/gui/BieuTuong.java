@@ -1,4 +1,6 @@
 package gui;
+
+// BIỂU TƯỢNG GIAO DIỆN
 import java.awt.*;
 import java.awt.image.*;
 import java.io.IOException;

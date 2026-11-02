@@ -110,19 +110,19 @@ public class PhieuSuaChua {
         this.maNguoiDuyetHuy = value;
     }
 
-    public PhieuSuaChua(String maPSC, PhieuBaoGia maBaoGia,
-            KhachHang maKhachHang, PhuongTien VIN,
-            NhanVien maNhanVien, Timestamp ngayLap,
-            Timestamp ngayHoanThanh, String trangThai) {
-
+    
+    public PhieuSuaChua(String maPSC, PhieuBaoGia maBaoGia, KhachHang maKhachHang, PhuongTien vIN, NhanVien maNhanVien,
+            Timestamp ngayLap, Timestamp ngayHoanThanh, String trangThai, String lyDoHuy, NhanVien maNguoiDuyetHuy) {
         this.maPSC = maPSC;
         this.maBaoGia = maBaoGia;
         this.maKhachHang = maKhachHang;
-        this.VIN = VIN;
+        VIN = vIN;
         this.maNhanVien = maNhanVien;
         this.ngayLap = ngayLap;
         this.ngayHoanThanh = ngayHoanThanh;
         this.trangThai = trangThai;
+        this.lyDoHuy = lyDoHuy;
+        this.maNguoiDuyetHuy = maNguoiDuyetHuy;
     }
 
     @Override

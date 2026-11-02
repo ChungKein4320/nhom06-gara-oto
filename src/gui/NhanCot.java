@@ -1,5 +1,7 @@
 package gui;
 
+// NHÃN TRƯỜNG TRÊN FORM VÀ BẢNG
+
 import java.util.HashMap;
 import java.util.Map;
 

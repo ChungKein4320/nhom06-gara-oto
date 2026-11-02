@@ -1,5 +1,7 @@
 package gui;
 
+// MÀN HÌNH HÓA ĐƠN
+
 import connectDB.KetNoiCSDL;
 import dao.ThuongMaiDAO;
 import entity.HoaDon;
@@ -137,6 +139,8 @@ public final class ManHinhHoaDon extends JPanel {
         return d;
     }
     private String invoiceId() { return fixedInvoice!=null ? fixedInvoice : (String)cmbInvoices.getSelectedItem(); }
+
+    //Mở HopThoaiThanhToan cho hóa đơn cố định; tải lại dữ liệu sau thanh toán.
     void openPayment() {
         if(btnPay.isEnabled()) HopThoaiThanhToan.show(this,invoiceId(),() -> {
             loadSelected();
@@ -165,7 +169,7 @@ public final class ManHinhHoaDon extends JPanel {
     private String format(double value) {
         return money.format(value) + " đ";
     }
-
+//Đọc mã hóa đơn và giữ lại lựa chọn trước đó khi tải lại.
     private void loadInvoices() {
         String old = (String) cmbInvoices.getSelectedItem();
         loadingInvoices = true;
@@ -187,7 +191,7 @@ public final class ManHinhHoaDon extends JPanel {
         loadingInvoices = false;
         loadSelected();
     }
-
+//Đọc toàn bộ đầu hóa đơn và chi tiết để hiển thị.
     private void loadSelected() {
         if (loadingInvoices) return;
         invoiceReady = false;
@@ -338,7 +342,7 @@ public final class ManHinhHoaDon extends JPanel {
         invoiceInfoCard.repaint();
     }
 
-
+//Chuẩn bị nội dung và in hóa đơn. 
     private void printInvoice() {
         if (!invoiceReady || invoiceId() == null || lblInfo[0].getText().equals("—")) {
             JOptionPane.showMessageDialog(this, "Vui lòng chọn hóa đơn đã tải thành công.");
@@ -394,7 +398,7 @@ public final class ManHinhHoaDon extends JPanel {
             );
         }
     }
-
+//Gửi mã giảm giá đang chọn xuống DAO nếu hóa đơn còn mở.
     private void changeCoupon() {
         String invoice=invoiceId();
         if(loadingCoupons || invoice==null || !cmbCoupon.isEnabled()) return;
@@ -404,6 +408,7 @@ public final class ManHinhHoaDon extends JPanel {
         try { ThuongMaiDAO.changeCoupon(invoice,choice.id()); loadSelected(); }
         catch(SQLException ex) { JOptionPane.showMessageDialog(this,ex.getMessage(),"Không thể áp dụng mã giảm giá",JOptionPane.ERROR_MESSAGE); loadSelected(); }
     }
+    // Nhận diện khách quét mã trên hóa đơn dịch vụ.
     private void scanCustomer() {
         String code = txtLoyalty.getText().trim().toUpperCase(Locale.ROOT);
         scannedCustomer = null;
@@ -455,6 +460,7 @@ public final class ManHinhHoaDon extends JPanel {
             );
         }
     }
+    //Tải coupon của khách để chọn cho hóa đơn.
     private void loadCoupons(Connection connection,String customer,String applied) throws SQLException {
         loadingCoupons=true;
         try {
@@ -469,7 +475,7 @@ public final class ManHinhHoaDon extends JPanel {
             for(int i=0;i<cmbCoupon.getItemCount();i++) if(cmbCoupon.getItemAt(i).id().equals(currentCoupon)) { cmbCoupon.setSelectedIndex(i); break; }
         } finally { loadingCoupons=false; }
     }
-
+// Chuẩn bị nội dung và in hóa đơn.
     private boolean printAllPages() throws PrinterException {
         // Print a separate document so controls and scroll viewports never enter the output.
         JEditorPane document = new JEditorPane("text/html", invoicePrintHtml());

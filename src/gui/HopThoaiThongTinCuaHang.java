@@ -1,5 +1,7 @@
 package gui;
 
+// HỘP THOẠI THÔNG TIN CỬA HÀNG
+
 import java.awt.*;
 import java.awt.event.*;
 import java.io.IOException;
