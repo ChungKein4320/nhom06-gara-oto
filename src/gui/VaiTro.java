@@ -1,13 +1,22 @@
 package gui;
 
-// VAI TRÒ HIỂN THỊ TRÊN GIAO DIỆN
+// ===== GUI: VAI TRÒ NGƯỜI DÙNG =====
+
 public enum VaiTro {
-    KY_THUAT("Nhân viên kỹ thuật"),
-    KHO("Nhân viên kho"),
-    THU_NGAN("Nhân viên bán hàng"),
-    QUAN_LY("Nhân viên quản lý"),
-    ADMIN("Quản trị viên");
+    // ===== THÀNH PHẦN GIAO DIỆN =====
+    KY_THUAT("Nhân viên kỹ thuật"), KHO("Nhân viên kho"), THU_NGAN("Nhân viên bán hàng"),
+    QUAN_LY("Nhân viên quản lý"), ADMIN("Quản trị viên");
+
     public final String title;
-    VaiTro(String title) { this.title = title; }
-    @Override public String toString() { return title; }
+
+    // ===== KHỞI TẠO ĐỐI TƯỢNG: VaiTro(String) — Khởi tạo đối tượng và thiết lập trạng thái ban đầu. =====
+    VaiTro(String title) {
+        this.title = title;
+    }
+
+    // ===== PHƯƠNG THỨC: toString() — Chuyển thông tin đối tượng thành chuỗi. =====
+    @Override
+    public String toString() {
+        return title;
+    }
 }
