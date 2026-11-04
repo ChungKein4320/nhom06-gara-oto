@@ -2,7 +2,10 @@ package entity;
 
 import java.sql.Timestamp;
 
+// ===== ENTITY: PHIẾU SỬA CHỮA =====
+
 public class PhieuSuaChua {
+    // ===== THUỘC TÍNH =====
     private String maPSC;
     private PhieuBaoGia maBaoGia;
     private KhachHang maKhachHang;
@@ -14,82 +17,104 @@ public class PhieuSuaChua {
     private String lyDoHuy;
     private NhanVien maNguoiDuyetHuy;
 
-    public PhieuSuaChua() { }
+    // ===== KHỞI TẠO ĐỐI TƯỢNG =====
 
+    // ===== KHỞI TẠO ĐỐI TƯỢNG: PhieuSuaChua() — Khởi tạo đối tượng và thiết lập trạng thái ban đầu. =====
+    public PhieuSuaChua() {
+    }
+
+    // ===== GETTER VÀ SETTER =====
+
+    // ===== PHƯƠNG THỨC: getMaPSC() — Lấy mã psc. =====
     public String getMaPSC() {
         return maPSC;
     }
 
+    // ===== PHƯƠNG THỨC: setMaPSC(String) — Gán mã psc. =====
     public void setMaPSC(String value) {
         if (value == null || !value.matches("PSC[0-9]{3}"))
             throw new IllegalArgumentException("Mã phiếu sửa chữa không hợp lệ");
         this.maPSC = value;
     }
 
+    // ===== PHƯƠNG THỨC: getMaBaoGia() — Lấy mã báo giá. =====
     public PhieuBaoGia getMaBaoGia() {
         return maBaoGia;
     }
 
+    // ===== PHƯƠNG THỨC: setMaBaoGia(PhieuBaoGia) — Gán mã báo giá. =====
     public void setMaBaoGia(PhieuBaoGia value) {
         if (value == null || value.getMaBaoGia() == null || !value.getMaBaoGia().matches("PBG[0-9]{3}"))
             throw new IllegalArgumentException("Mã phiếu báo giá không hợp lệ");
         this.maBaoGia = value;
     }
 
+    // ===== PHƯƠNG THỨC: getMaKhachHang() — Lấy mã khách hàng. =====
     public KhachHang getMaKhachHang() {
         return maKhachHang;
     }
 
+    // ===== PHƯƠNG THỨC: setMaKhachHang(KhachHang) — Gán mã khách hàng. =====
     public void setMaKhachHang(KhachHang value) {
         if (value == null || value.getMaKhachHang() == null || !value.getMaKhachHang().matches("KH[0-9]{3}"))
             throw new IllegalArgumentException("Mã khách hàng không hợp lệ");
         this.maKhachHang = value;
     }
 
+    // ===== PHƯƠNG THỨC: getVIN() — Lấy vin. =====
     public PhuongTien getVIN() {
         return VIN;
     }
 
+    // ===== PHƯƠNG THỨC: setVIN(PhuongTien) — Gán vin. =====
     public void setVIN(PhuongTien value) {
         if (value == null || value.getVIN() == null || !value.getVIN().matches("[A-HJ-NPR-Z0-9]{17}"))
             throw new IllegalArgumentException("Mã VIN không hợp lệ");
         this.VIN = value;
     }
 
+    // ===== PHƯƠNG THỨC: getMaNhanVien() — Lấy mã nhân viên. =====
     public NhanVien getMaNhanVien() {
         return maNhanVien;
     }
 
+    // ===== PHƯƠNG THỨC: setMaNhanVien(NhanVien) — Gán mã nhân viên. =====
     public void setMaNhanVien(NhanVien value) {
         if (value == null || value.getMaNhanVien() == null || !value.getMaNhanVien().matches("NV[0-9]{3}"))
             throw new IllegalArgumentException("Mã nhân viên không hợp lệ");
         this.maNhanVien = value;
     }
 
+    // ===== PHƯƠNG THỨC: getNgayLap() — Lấy ngày lap. =====
     public Timestamp getNgayLap() {
         return ngayLap;
     }
 
+    // ===== PHƯƠNG THỨC: setNgayLap(Timestamp) — Gán ngày lap. =====
     public void setNgayLap(Timestamp value) {
         if (value == null || value.after(new Timestamp(System.currentTimeMillis())))
             throw new IllegalArgumentException("Ngày lập không hợp lệ");
         this.ngayLap = value;
     }
 
+    // ===== PHƯƠNG THỨC: getNgayHoanThanh() — Lấy ngày hoan thành. =====
     public Timestamp getNgayHoanThanh() {
         return ngayHoanThanh;
     }
 
+    // ===== PHƯƠNG THỨC: setNgayHoanThanh(Timestamp) — Gán ngày hoan thành. =====
     public void setNgayHoanThanh(Timestamp value) {
         if (value != null && (ngayLap == null || value.before(ngayLap)))
             throw new IllegalArgumentException("Ngày hoàn thành không hợp lệ, phải >= ngayLap");
         this.ngayHoanThanh = value;
     }
 
+    // ===== PHƯƠNG THỨC: getTrangThai() — Lấy trạng thái. =====
     public String getTrangThai() {
         return trangThai;
     }
 
+    // ===== PHƯƠNG THỨC: setTrangThai(String) — Gán trạng thái. =====
     public void setTrangThai(String value) {
         if (value == null || !java.util.Set.of("Chờ sửa chữa", "Đang sửa chữa", "Đã sửa xong",
                 "Chờ thanh toán", "Đã thanh toán", "Hoàn tất", "Đã hủy").contains(value))
@@ -97,47 +122,50 @@ public class PhieuSuaChua {
         this.trangThai = value;
     }
 
-    public String getLyDoHuy() { return lyDoHuy; }
+    // ===== PHƯƠNG THỨC: getLyDoHuy() — Lấy ly do huy. =====
+    public String getLyDoHuy() {
+        return lyDoHuy;
+    }
+
+    // ===== PHƯƠNG THỨC: setLyDoHuy(String) — Gán ly do huy. =====
     public void setLyDoHuy(String value) {
         if (value != null && value.length() > 500)
             throw new IllegalArgumentException("Lý do hủy không được quá 500 ký tự");
         this.lyDoHuy = value;
     }
-    public NhanVien getMaNguoiDuyetHuy() { return maNguoiDuyetHuy; }
+
+    // ===== PHƯƠNG THỨC: getMaNguoiDuyetHuy() — Lấy mã nguoi duyet huy. =====
+    public NhanVien getMaNguoiDuyetHuy() {
+        return maNguoiDuyetHuy;
+    }
+
+    // ===== PHƯƠNG THỨC: setMaNguoiDuyetHuy(NhanVien) — Gán mã nguoi duyet huy. =====
     public void setMaNguoiDuyetHuy(NhanVien value) {
         if (value != null && (value.getMaNhanVien() == null || !value.getMaNhanVien().matches("NV[0-9]{3}")))
             throw new IllegalArgumentException("Mã người duyệt hủy không hợp lệ");
         this.maNguoiDuyetHuy = value;
     }
 
-    
-    public PhieuSuaChua(String maPSC, PhieuBaoGia maBaoGia, KhachHang maKhachHang, PhuongTien vIN, NhanVien maNhanVien,
-            Timestamp ngayLap, Timestamp ngayHoanThanh, String trangThai, String lyDoHuy, NhanVien maNguoiDuyetHuy) {
+    // ===== KHỞI TẠO ĐỐI TƯỢNG: PhieuSuaChua(String, PhieuBaoGia, KhachHang, PhuongTien, NhanVien, Timestamp, Timestamp, String) — Khởi tạo đối tượng và thiết lập trạng thái ban đầu. =====
+    public PhieuSuaChua(String maPSC, PhieuBaoGia maBaoGia, KhachHang maKhachHang, PhuongTien VIN,
+            NhanVien maNhanVien, Timestamp ngayLap, Timestamp ngayHoanThanh, String trangThai) {
+
         this.maPSC = maPSC;
         this.maBaoGia = maBaoGia;
         this.maKhachHang = maKhachHang;
-        VIN = vIN;
+        this.VIN = VIN;
         this.maNhanVien = maNhanVien;
         this.ngayLap = ngayLap;
         this.ngayHoanThanh = ngayHoanThanh;
         this.trangThai = trangThai;
-        this.lyDoHuy = lyDoHuy;
-        this.maNguoiDuyetHuy = maNguoiDuyetHuy;
     }
 
+    // ===== PHƯƠNG THỨC: toString() — Chuyển thông tin đối tượng thành chuỗi. =====
     @Override
     public String toString() {
-        return "PhieuSuaChua{"
-                + "maPSC='" + maPSC + '\''
-                + ", maBaoGia=" + maBaoGia
-                + ", maKhachHang=" + maKhachHang
-                + ", VIN=" + VIN
-                + ", maNhanVien=" + maNhanVien
-                + ", maNguoiDuyetHuy='" + maNguoiDuyetHuy + '\''
-                + ", ngayLap=" + ngayLap
-                + ", ngayHoanThanh=" + ngayHoanThanh
-                + ", trangThai='" + trangThai + '\''
-                + ", lyDoHuy='" + lyDoHuy + '\''
-                + '}';
+        return "PhieuSuaChua{" + "maPSC='" + maPSC + '\'' + ", maBaoGia=" + maBaoGia + ", maKhachHang="
+                + maKhachHang + ", VIN=" + VIN + ", maNhanVien=" + maNhanVien + ", maNguoiDuyetHuy='"
+                + maNguoiDuyetHuy + '\'' + ", ngayLap=" + ngayLap + ", ngayHoanThanh=" + ngayHoanThanh
+                + ", trangThai='" + trangThai + '\'' + ", lyDoHuy='" + lyDoHuy + '\'' + '}';
     }
 }
