@@ -160,15 +160,11 @@ public final class FormPhieuBaoGia extends JPanel {
 
         JButton btnRefresh = GiaoDien.button("Làm mới", GiaoDien.CREAM, GiaoDien.NAV);
         JButton btnEdit = GiaoDien.button("Chỉnh sửa", GiaoDien.TEAL, Color.WHITE);
-        JButton btnDelete = GiaoDien.button("Xóa", GiaoDien.ORANGE, Color.WHITE);
-
         final boolean canEdit = true;
         btnEdit.setEnabled(false);
-        btnDelete.setEnabled(false);
 
         btnRefresh.addActionListener(e -> lamMoi());
         btnEdit.addActionListener(e -> edit(true));
-        btnDelete.addActionListener(e -> hideRecord());
 
         pnlButtons.add(btnRefresh);
 
@@ -370,30 +366,7 @@ public final class FormPhieuBaoGia extends JPanel {
         }
     }
 
-    // ===== PHƯƠNG THỨC: hideRecord() — Ẩn bản ghi đã chọn khỏi danh sách. =====
-    private void hideRecord() {
-        int row = tblTable.getSelectedRow();
-        if (row < 0) {
-            JOptionPane.showMessageDialog(this, "Vui lòng chọn một bản ghi để xóa.", "Chưa chọn bản ghi",
-                    JOptionPane.WARNING_MESSAGE);
-            return;
-        }
-
-        if (JOptionPane.showConfirmDialog(this,
-                "Bạn chắc chắn muốn xoá dòng này" + " ra khỏi danh sách hiển thị?", "Xác nhận",
-                JOptionPane.YES_NO_OPTION) != JOptionPane.YES_OPTION) {
-            return;
-        }
-
-        try {
-            dao.softDelete(model.getValueAt(tblTable.convertRowIndexToModel(row), 0).toString());
-            load();
-        } catch (SQLException ex) {
-            JOptionPane.showMessageDialog(this, ex.getMessage(), "Lỗi SQL", JOptionPane.ERROR_MESSAGE);
-        }
-    }
-
-    // ===== PHƯƠNG THỨC: getStatusFilterCombo() — Lấy trạng thái bộ lọc combo. =====
+   // ===== PHƯƠNG THỨC: getStatusFilterCombo() — Lấy trạng thái bộ lọc combo. =====
     public JComboBox<String> getStatusFilterCombo() {
         String statusField = "trangThai";
         int column = Arrays.asList(displayFields).indexOf(statusField);
@@ -482,7 +455,6 @@ public final class FormPhieuBaoGia extends JPanel {
         private static final Color NAV = new Color(0x13272E);
         private static final Color TEAL = new Color(0x487674);
         private static final Color CREAM = new Color(0xE8C69B);
-        private static final Color ORANGE = new Color(0xCB6330);
         private static final Color BG = new Color(0xF4F7F6);
         private static final Color WHITE = Color.WHITE;
         private static final Color TEXT = new Color(0x21383C);
