@@ -349,16 +349,13 @@ public final class FormPhuongTien extends JPanel {
 
             inputs.put(field, input);
 
-            JPanel pnlCell = new JPanel(new BorderLayout(8, 7));
+            JPanel pnlCell = new JPanel(new BorderLayout(0, 7));
             pnlCell.setOpaque(false);
             pnlCell.add(GiaoDien.label(nhanCot(field) + (COT_BAT_BUOC.contains(field) ? " *" : ""), 12, true,
                     GiaoDien.TEXT), BorderLayout.NORTH);
 
             input.setPreferredSize(new Dimension(250, 40));
             pnlCell.add(input, BorderLayout.CENTER);
-            if (cmbDanhMuc != null && Set.of("hangXe", "dongXe", "mauXe").contains(field)) {
-                pnlCell.add(OChonTimKiem.nutThemGiaTri(cmbDanhMuc, nhanCot(field)), BorderLayout.EAST);
-            }
 
             GridBagConstraints gbc = new GridBagConstraints();
             gbc.gridx = i % 2;
@@ -374,7 +371,7 @@ public final class FormPhuongTien extends JPanel {
         scrSc.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
 
         int formH = pnlForm.getPreferredSize().height + 8;
-        scrSc.setPreferredSize(new Dimension(900, Math.min(540, formH)));
+        scrSc.setPreferredSize(new Dimension(700, Math.min(540, formH)));
 
         JDialog winDialog = new JDialog(SwingUtilities.getWindowAncestor(this),
                 existing ? "Chỉnh sửa thông tin" : "Thêm thông tin mới",
@@ -484,9 +481,8 @@ public final class FormPhuongTien extends JPanel {
             }
         });
 
-        winDialog.setResizable(true);
         winDialog.pack();
-        winDialog.setLocationRelativeTo(getTopLevelAncestor());
+        winDialog.setLocationRelativeTo(null);
         winDialog.setVisible(true);
     }
 

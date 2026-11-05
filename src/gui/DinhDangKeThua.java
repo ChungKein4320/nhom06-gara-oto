@@ -1,18 +1,23 @@
 package gui;
 
-// ĐỊNH DẠNG TRƯỜNG KẾ THỪA
-
 import java.awt.*;
 import javax.swing.*;
 import javax.swing.text.JTextComponent;
 
+// ===== GUI: ĐỊNH DẠNG GIAO DIỆN DÙNG CHUNG =====
+
 /** Định dạng chung cho thông tin kế thừa và trường chỉ đọc. */
 final class DinhDangKeThua {
+    // ===== THÀNH PHẦN GIAO DIỆN =====
     static final Color TEXT = new Color(0x145A75);
     static final Color BACKGROUND = new Color(0xEAF5FA);
+    // ===== KHỞI TẠO VÀ XỬ LÝ GIAO DIỆN =====
 
-    private DinhDangKeThua() {}
+    // ===== KHỞI TẠO ĐỐI TƯỢNG: DinhDangKeThua() — Khởi tạo đối tượng và thiết lập trạng thái ban đầu. =====
+    private DinhDangKeThua() {
+    }
 
+    // ===== PHƯƠNG THỨC: lock(JComponent) — Lọc nghiệp vụ tương ứng. =====
     static void lock(JComponent control) {
         if (control instanceof JTextComponent text) {
             text.setEditable(false);
@@ -33,6 +38,7 @@ final class DinhDangKeThua {
         disableDeep(control);
     }
 
+    // ===== PHƯƠNG THỨC: applyStyle(Component) — Áp dụng kiểu giao diện cho thành phần. =====
     static void applyStyle(Component component) {
         component.setBackground(BACKGROUND);
         component.setForeground(TEXT);
@@ -53,6 +59,7 @@ final class DinhDangKeThua {
         component.repaint();
     }
 
+    // ===== PHƯƠNG THỨC: disableDeep(Component) — Vô hiệu hóa thành phần và các thành phần con. =====
     private static void disableDeep(Component component) {
         component.setEnabled(false);
 
@@ -63,5 +70,13 @@ final class DinhDangKeThua {
         }
 
         applyStyle(component);
+    }
+
+    private static final class GiaoDien {
+
+        // ===== PHƯƠNG THỨC: font(int, boolean) — Tạo phông chữ theo cỡ và kiểu chữ. =====
+        public static Font font(int size, boolean bold) {
+            return new Font("Segoe UI", bold ? Font.BOLD : Font.PLAIN, size);
+        }
     }
 }
