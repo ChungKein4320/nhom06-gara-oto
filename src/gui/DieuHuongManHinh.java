@@ -2,14 +2,11 @@ package gui;
 
 import javax.swing.JComponent;
 
-// ===== GUI: DieuHuongManHinh =====
-/** Chọn màn hình riêng theo mục menu; không xây dựng giao diện tại đây. */
 public final class DieuHuongManHinh {
-    // ===== KHỞI TẠO ĐỐI TƯỢNG: DieuHuongManHinh() — Khởi tạo đối tượng và thiết lập trạng thái ban đầu. =====
     private DieuHuongManHinh() {
     }
 
-    // ===== PHƯƠNG THỨC: tableFor(String) — Ánh xạ màn hình nghiệp vụ sang bảng dữ liệu. =====
+    // Màn hình nghiệp vụ tương ứng bảng dữ liệu.
     public static String tableFor(String page) {
         return switch (page) {
         case "Phiếu tiếp nhận" -> "PhieuTiepNhan";
@@ -41,12 +38,11 @@ public final class DieuHuongManHinh {
         };
     }
 
-    // ===== PHƯƠNG THỨC: tao(String) — Tạo nghiệp vụ tương ứng. =====
+    
     public static JComponent tao(String page) {
         return tao(page, null, null);
     }
 
-    // ===== PHƯƠNG THỨC: tao(String, VaiTro, String) — Tạo nghiệp vụ tương ứng. =====
     public static JComponent tao(String page, VaiTro role, String employeeId) {
         return switch (page) {
         case "Phiếu tiếp nhận" -> new FormPhieuTiepNhan(page, role, employeeId);
