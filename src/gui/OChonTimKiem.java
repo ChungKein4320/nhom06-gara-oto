@@ -10,6 +10,7 @@ import javax.swing.*;
 import javax.swing.border.*;
 import javax.swing.event.*;
 import javax.swing.plaf.basic.BasicComboBoxUI;
+import javax.swing.plaf.basic.BasicComboBoxEditor;
 
 // ===== GUI: Ô CHỌN CÓ TÌM KIẾM =====
 
@@ -17,25 +18,71 @@ class OChonTimKiem<T> extends JComboBox<T> {
     // ===== THÀNH PHẦN GIAO DIỆN =====
     // ===== Tạo ô chọn danh mục từ dữ liệu đang có trong cơ sở dữ liệu =====
     static JComboBox<String> chonDanhMuc(String table, String field, String value) {
-        if (!Set.of("PhuongTien", "PhuTung", "MaGiamGia").contains(table)
-                || !Set.of("hangXe", "dongXe", "mauXe", "namSanXuat", "loaiPhuTung", "mucGiam", "mocDiem").contains(field))
-            return null;
-        java.util.LinkedHashSet<String> choices = new java.util.LinkedHashSet<>();
-        choices.add("");
-        if (field.equals("namSanXuat")) {
-            for (int year = java.time.Year.now().getValue(); year >= 1886; year--) choices.add(String.valueOf(year));
-        } else {
-            try (java.sql.Connection conn = connectDB.KetNoiCSDL.getConnection();
-                    java.sql.PreparedStatement stmt = conn.prepareStatement("SELECT DISTINCT [" + field + "] FROM dbo.[" + table + "] WHERE [" + field + "] IS NOT NULL ORDER BY [" + field + "]");
-                    java.sql.ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) choices.add(rs.getString(1).trim());
-            } catch (java.sql.SQLException ex) { throw new IllegalStateException("Không tải được danh mục " + field, ex); }
+            if (!Set.of("PhuongTien", "PhuTung", "MaGiamGia").contains(table)
+                    || !Set.of("hangXe", "dongXe", "mauXe", "namSanXuat", "loaiPhuTung", "mucGiam", "mocDiem").contains(field))
+                return null;
+            java.util.LinkedHashSet<String> choices = new java.util.LinkedHashSet<>();
+            choices.add("");
+            if (field.equals("namSanXuat")) {
+                for (int year = java.time.Year.now().getValue(); year >= 1886; year--) choices.add(String.valueOf(year));
+            } else {
+                try (java.sql.Connection conn = connectDB.KetNoiCSDL.getConnection();
+                        java.sql.PreparedStatement stmt = conn.prepareStatement("SELECT DISTINCT [" + field + "] FROM dbo.[" + table + "] WHERE [" + field + "] IS NOT NULL ORDER BY [" + field + "]");
+                        java.sql.ResultSet rs = stmt.executeQuery()) {
+                    while (rs.next()) choices.add(rs.getString(1).trim());
+                } catch (java.sql.SQLException ex) { throw new IllegalStateException("Không tải được danh mục " + field, ex); }
+            }
+            if (value != null && !value.isBlank()) choices.add(value);
+            String placeholder = switch (field) {
+                case "hangXe" -> "— Chọn hãng xe —";
+                case "dongXe" -> "— Chọn dòng xe —";
+                case "mauXe" -> "— Chọn màu xe —";
+                default -> "";
+            };
+            JComboBox<String> combo = new OChonTimKiem<>(choices.toArray(new String[0]), placeholder);
+            combo.setSelectedItem(value == null ? "" : value);
+            return combo;
         }
-        if (value != null && !value.isBlank()) choices.add(value);
-        JComboBox<String> combo = new OChonTimKiem<>(choices.toArray(new String[0]));
-        combo.setSelectedItem(value == null ? "" : value);
-        return combo;
-    }
+
+        static JButton nutThemGiaTri(JComboBox<String> combo, String tenTruong) {
+            JButton button = new JButton("+") {
+                @Override
+                protected void paintComponent(Graphics graphics) {
+                    Graphics2D shape = (Graphics2D) graphics.create();
+                    shape.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                    shape.setColor(getModel().isRollover() ? GiaoDien.TEAL.brighter() : GiaoDien.TEAL);
+                    shape.fillRoundRect(0, 0, getWidth(), getHeight(), 13, 13);
+                    shape.dispose();
+                    super.paintComponent(graphics);
+                }
+            };
+            button.setFont(GiaoDien.font(20, true));
+            button.setForeground(Color.WHITE);
+            button.setContentAreaFilled(false);
+            button.setOpaque(false);
+            button.setBorder(BorderFactory.createEmptyBorder(0, 17, 0, 17));
+            button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            button.addActionListener(e -> {
+                String value = JOptionPane.showInputDialog(button, "Nhập " + tenTruong +" mới");
+                if (value == null || value.isBlank()) {
+                    return;
+                }
+
+                value = value.trim();
+                for (int i = 0; i < combo.getItemCount(); i++) {
+                    String item = combo.getItemAt(i);
+                    if (value.equalsIgnoreCase(item)) {
+                        combo.setSelectedItem(item);
+                        return;
+                    }
+                }
+
+                combo.addItem(value);
+                combo.setSelectedItem(value);
+            });
+            return button;
+        }
+
     private static final long serialVersionUID = 1L;
     private static final int CELL_HEIGHT = 34;
     private JTextField txtEditor;
@@ -121,7 +168,36 @@ class OChonTimKiem<T> extends JComboBox<T> {
 
     // ===== KHỞI TẠO ĐỐI TƯỢNG: OChonTimKiem(T[]) — Khởi tạo đối tượng và thiết lập trạng thái ban đầu. =====
     OChonTimKiem(T[] values) {
+        this(values, "");
+    }
+
+    private OChonTimKiem(T[] values, String placeholder) {
         super(values);
+        if (!placeholder.isEmpty()) {
+            setEditor(new BasicComboBoxEditor() {
+                @Override
+                protected JTextField createEditorComponent() {
+                    return new JTextField() {
+                        private final JLabel hintLabel = new JLabel(placeholder);
+                        private final CellRendererPane hintRenderer = new CellRendererPane();
+
+                        @Override
+                        protected void paintComponent(Graphics graphics) {
+                            super.paintComponent(graphics);
+                            if (!getText().isEmpty() || isFocusOwner()) {
+                                return;
+                            }
+                            hintLabel.setFont(getFont());
+                            hintLabel.setForeground(getForeground());
+                            Insets insets = getInsets();
+                            hintRenderer.paintComponent(graphics, hintLabel, this,
+                                    insets.left, insets.top, getWidth() - insets.left - insets.right,
+                                    getHeight() - insets.top - insets.bottom);
+                        }
+                    };
+                }
+            });
+        }
         setup();
     }
 
