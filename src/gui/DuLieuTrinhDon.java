@@ -1,7 +1,5 @@
 package gui;
 
-// DANH MỤC MENU THEO VAI TRÒ
-
 import java.util.Arrays;
 import java.util.LinkedHashSet;
 
