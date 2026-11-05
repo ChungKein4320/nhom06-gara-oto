@@ -62,7 +62,7 @@ final class HopThoaiTienDoSuaChua {
                 var lines = new dao.ChiTietPhieuSuaChuaDAO().getAll(conn, Map.of("maPSC", id));
 
                 pnlRows.removeAll();
-                pnlRows.add(new BieuMauChiTietPhieuSuaChua("PhieuSuaChua", header, Set.of(), true));
+                pnlRows.add(new BieuMauPhieuSuaChua("PhieuSuaChua", header, Set.of(), true));
 
                 boolean all = !lines.isEmpty();
                 boolean pending = false;
