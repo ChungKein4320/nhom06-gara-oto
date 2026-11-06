@@ -217,7 +217,7 @@ final class BieuMauChiTietPhieuKiemTra extends JPanel {
     // ===== PHƯƠNG THỨC: taoLuaChon(String, String, boolean) — Tạo lua chon. =====
     private static JComboBox<String> taoLuaChon(String field, String value, boolean existing) {
         String[] choices = switch (field) {
-        case "ketQuaKiemTra" -> new String[] { "", "Đạt", "Không đạt" };
+        case "ketQuaKiemTra" -> new String[] { "— Chọn kết quả kiểm tra —", "Đạt", "Không đạt" };
         default -> null;
         };
         if (choices == null)
@@ -293,8 +293,11 @@ final class BieuMauChiTietPhieuKiemTra extends JPanel {
             return pnlPicker.getDateText();
         if (control instanceof OChonThamChieu cmbCombo)
             return cmbCombo.selectedId();
-        if (control instanceof javax.swing.JComboBox<?> cmbCombo)
-            return cmbCombo.getSelectedItem() == null ? "" : cmbCombo.getSelectedItem().toString().trim();
+        if (control instanceof JComboBox<?> cmbCombo) {
+            Object selected = cmbCombo.getSelectedItem();
+            String text = selected == null ? "" : selected.toString().trim();
+            return text.equals("— Chọn kết quả kiểm tra —") ? "" : text;
+        }
         if (control instanceof javax.swing.JTextField txtField)
             return txtField.getText().trim();
         if (control instanceof javax.swing.JPanel pnlPanel) {
