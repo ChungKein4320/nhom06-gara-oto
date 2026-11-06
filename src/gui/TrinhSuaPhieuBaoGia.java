@@ -170,7 +170,6 @@ final class TrinhSuaPhieuBaoGia {
         JScrollPane scrDetails = new JScrollPane(tblDetails);
         scrDetails.setPreferredSize(new Dimension(840, 240));
         JPanel pnlDetailList = new JPanel(new BorderLayout(0, 6));
-        pnlDetailList.add(new BoLocTrangThai(tblDetails), BorderLayout.NORTH);
         pnlDetailList.add(scrDetails, BorderLayout.CENTER);
         pnlContent.add(pnlDetailList, BorderLayout.CENTER);
         BoCucBang.install(tblDetails, scrDetails);
