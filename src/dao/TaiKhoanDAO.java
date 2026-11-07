@@ -247,8 +247,10 @@ public class TaiKhoanDAO implements DuLieuDAO {
     // Kiểm tra dữ liệu.
     private static void kiemTraDuLieu(Map<String, Object> row, boolean creating) throws SQLException {
         if (creating) {
-            Set<String> required = COT_BAT_BUOC;
-            for (String field : required) {
+        	// Kiểm tra trường bắt buộc theo thứ tự cột
+        	for (String field : CAC_COT) {
+        	    if (!COT_BAT_BUOC.contains(field))
+        	        continue;
                 Object val = row.get(field);
                 if (val == null || (val instanceof String s && s.trim().isEmpty()))
                     fail(field, "Bắt buộc nhập: " + field);

@@ -1,11 +1,9 @@
 package dao;
 
-import java.time.LocalDate;
-
-import java.math.BigDecimal;
-
 import connectDB.KetNoiCSDL;
+import java.math.BigDecimal;
 import java.sql.*;
+import java.time.LocalDate;
 import java.util.*;
 
 // ===== DAO: TRA CỨU PHƯƠNG TIỆN =====
@@ -207,63 +205,122 @@ public class PhuongTienDAO implements DuLieuDAO {
         return COT_BAT_BUOC;
     }
 
-    // ===== PHƯƠNG THỨC: kiemTraDuLieu(Map<String,Object>, boolean) — Kiểm tra dữ liệu. =====
-    private static void kiemTraDuLieu(Map<String, Object> row, boolean creating) throws SQLException {
-        if (creating) {
-            Set<String> required = COT_BAT_BUOC;
-            for (String field : required) {
-                Object val = row.get(field);
-                if (val == null || (val instanceof String s && s.trim().isEmpty()))
-                    fail(field, "Bắt buộc nhập: " + field);
-            }
-        }
-        for (Map.Entry<String, Object> e : row.entrySet()) {
-            String field = e.getKey();
-            Object value = e.getValue();
-            if (value == null)
-                continue;
-            String raw = value.toString().trim();
-            String[] spec = KIEU_COT.get(field).split(":", 2);
-            if ((spec[0].equals("varchar") || spec[0].equals("nvarchar"))
-                    && raw.length() > Integer.parseInt(spec[1]))
-                fail(field, "Vượt quá độ dài cho phép: " + field);
-            if (spec[0].equals("bit") && !(value instanceof Boolean))
-                fail(field, "Giới tính phải là Nam hoặc Nữ.");
-            if (value instanceof Number number) {
-                BigDecimal n = new BigDecimal(number.toString());
-                if (n.signum() < 0)
-                    fail(field, "Giá trị không được âm: " + field);
+    // Kiểm tra dữ liệu.
+	
+	private static void kiemTraDuLieu(
+	        Map<String, Object> row, boolean creating)
+	        throws SQLException {
+	
+	    // Duyệt theo đúng thứ tự các ô trên Form.
+	    for (String field : CAC_COT) {
+	
+	        // Khi sửa, chỉ kiểm tra các cột được gửi xuống.
+	        if (!creating && !row.containsKey(field))
+	            continue;
+	
+	        Object value = row.get(field);
+	
+	        // Kiểm tra trường bắt buộc.
+	        if (COT_BAT_BUOC.contains(field)
+	                && (value == null
+	                    || (value instanceof String s && s.isBlank()))) {
+	            fail(field, "Vui lòng nhập " + switch (field) {
+	                case "VIN" -> "số khung (VIN)";
+	                case "maKhachHang" -> "mã khách hàng";
+	                case "bienSo" -> "biển số";
+	                case "hangXe" -> "hãng xe";
+	                case "dongXe" -> "dòng xe";
+	                case "mauXe" -> "màu xe";
+	                case "namSanXuat" -> "năm sản xuất";
+	                case "soMay" -> "số máy";
+	                case "soKM" -> "số km";
+	                default -> field;
+	            } + ".");
+	        }
+	
+	        if (value == null)
+	            continue;
+	
+	        String raw = value.toString().trim();
+	        String[] spec = KIEU_COT.get(field).split(":", 2);
+	
+	        // Kiểm tra độ dài chuỗi.
+	        if ((spec[0].equals("varchar") || spec[0].equals("nvarchar"))
+	                && raw.length() > Integer.parseInt(spec[1].trim())) {
+	            fail(field, "Giá trị " + field + " vượt quá "
+	                    + spec[1].trim() + " ký tự.");
+	        }
+	
+	        // Kiểm tra kiểu dữ liệu số.
+	        if (spec[0].equals("int") && !(value instanceof Integer)) {
+	            fail(field, "Năm sản xuất phải là số nguyên hợp lệ.");
+	        }
+	
+	        if (spec[0].equals("decimal")
+	                && !(value instanceof BigDecimal)) {
+	            fail(field, "Số km phải là số hợp lệ.");
+	        }
+	
+	        if (value instanceof Number number) {
+	            BigDecimal n = new BigDecimal(number.toString());
+	
+	            if (n.signum() < 0) {
+	                fail(field, "Giá trị " + field + " không được âm.");
+	            }
+	
+	            if (spec[0].equals("decimal")) {
+	                String[] size = spec[1].split(",");
+	                int precision = Integer.parseInt(size[0].trim());
+	                int scale = Integer.parseInt(size[1].trim());
+	
+	                BigDecimal normalized = n.stripTrailingZeros();
+	
+	                if (Math.max(0, normalized.scale()) > scale
+	                        || Math.max(0, normalized.precision()
+	                                - normalized.scale()) > precision - scale) {
+	                    fail(field,
+	                            "Số km chỉ nhận tối đa 10 chữ số phần nguyên "
+	                            + "và 2 chữ số thập phân.");
+	                }
+	            }
+	        }
+	
+	        // Kiểm tra định dạng riêng ngay tại từng cột.
+	        switch (field) {
+	            case "VIN" -> {
+	                if (!raw.matches("[A-HJ-NPR-Z0-9]{17}")) {
+	                    fail(field,
+	                            "Số khung (VIN) phải gồm 17 ký tự hợp lệ, "
+	                            + "không chứa I, O, Q.");
+	                }
+	            }
+	
+	            case "maKhachHang" -> {
+	                if (!raw.matches("KH[0-9]{3}")) {
+	                    fail(field, "Mã khách hàng phải có dạng KH001.");
+	                }
+	            }
+	
+	            case "bienSo" -> {
+	                if (!raw.matches("[0-9]{2}[A-Z][0-9]{5}")) {
+	                    fail(field, "Biển số phải theo dạng 51A12345.");
+	                }
+	            }
+	
+	            case "namSanXuat" -> {
+	                int nam = (Integer) value;
+	                if (nam < 1886 || nam > LocalDate.now().getYear()) {
+	                    fail(field,
+	                            "Năm sản xuất phải từ 1886 đến năm hiện tại.");
+	                }
+	            }
+	
+	            default -> {
+	            }
+	        }
+	    }
+	}
 
-                if (spec[0].equals("decimal")) {
-                    String[] size = spec[1].split(",");
-                    BigDecimal normalized = n.stripTrailingZeros();
-                    if (Math.max(0, normalized.scale()) > Integer.parseInt(size[1].trim()) || Math.max(0,
-                            normalized.precision() - normalized.scale()) > Integer.parseInt(size[0].trim())
-                                    - Integer.parseInt(size[1].trim()))
-                        fail(field, "Số tiền vượt độ chính xác cho phép: " + field);
-                }
-            }
-
-            if (field.equals("maKhachHang") && !raw.matches("KH[0-9]{3}"))
-                fail(field, "Mã khách hàng phải có dạng KH001.");
-
-            if (field.equals("VIN") && !raw.matches("[A-HJ-NPR-Z0-9]{17}"))
-                fail(field, "VIN phải gồm 17 ký tự hợp lệ.");
-            if (field.equals("bienSo") && !raw.matches("[0-9]{2}[A-Z][0-9]{5}"))
-                fail(field, "Biển số phải theo dạng 51A12345.");
-
-            if (field.equals("namSanXuat")
-                    && (Integer.parseInt(raw) < 1886 || Integer.parseInt(raw) > LocalDate.now().getYear()))
-                fail(field, "Năm sản xuất không hợp lệ.");
-
-            // CHECK của SQL Server kiểm tra ngày tương lai bằng SYSDATETIME().
-            // Không so ngày do server sinh với đồng hồ máy chạy Java.
-        }
-
-        if ((row.get("maKhachHang") == null || row.get("maKhachHang").toString().isBlank()))
-            fail("maKhachHang", "Vui lòng chọn khách hàng là chủ sở hữu phương tiện.");
-
-    }
 
     // ===== PHƯƠNG THỨC: fail(String, String) — Tạo lỗi truy vấn khi thao tác nghiệp vụ không hợp lệ. =====
     private static void fail(String field, String message) throws SQLException {

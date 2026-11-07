@@ -1,8 +1,7 @@
 package dao;
 
-import java.math.BigDecimal;
-
 import connectDB.KetNoiCSDL;
+import java.math.BigDecimal;
 import java.sql.*;
 import java.util.*;
 
@@ -202,58 +201,89 @@ public class DichVuDAO implements DuLieuDAO {
         return COT_BAT_BUOC;
     }
 
-    // ===== PHƯƠNG THỨC: kiemTraDuLieu(Map<String,Object>, boolean) — Kiểm tra dữ liệu. =====
-    private static void kiemTraDuLieu(Map<String, Object> row, boolean creating) throws SQLException {
-        if (creating) {
-            Set<String> required = COT_BAT_BUOC;
-            for (String field : required) {
-                Object val = row.get(field);
-                if (val == null || (val instanceof String s && s.trim().isEmpty()))
-                    fail(field, "Bắt buộc nhập: " + field);
-            }
-        }
-        for (Map.Entry<String, Object> e : row.entrySet()) {
-            String field = e.getKey();
-            Object value = e.getValue();
-            if (value == null)
-                continue;
-            String raw = value.toString().trim();
-            String[] spec = KIEU_COT.get(field).split(":", 2);
-            if ((spec[0].equals("varchar") || spec[0].equals("nvarchar"))
-                    && raw.length() > Integer.parseInt(spec[1]))
-                fail(field, "Vượt quá độ dài cho phép: " + field);
-            if (spec[0].equals("bit") && !(value instanceof Boolean))
-                fail(field, "Giới tính phải là Nam hoặc Nữ.");
-            if (value instanceof Number number) {
-                BigDecimal n = new BigDecimal(number.toString());
-                if (n.signum() < 0)
-                    fail(field, "Giá trị không được âm: " + field);
+    // Kiểm tra dữ liệu.
+	
+	private static void kiemTraDuLieu(
+	        Map<String, Object> row, boolean creating) throws SQLException {
+	
+	    // 1. Kiểm tra các trường bắt buộc theo thứ tự cột
+	    if (creating) {
+	        for (String field : CAC_COT) {
+	            if (!COT_BAT_BUOC.contains(field))
+	                continue;
+	
+	            Object val = row.get(field);
+	
+	            if (val == null
+	                    || (val instanceof String s && s.trim().isEmpty())) {
+	                fail(field, "Bắt buộc nhập: " + field);
+	            }
+	        }
+	    }
+	
+	    for (String field : CAC_COT) {
+	        if (!row.containsKey(field))
+	            continue;
+	
+	        Object value = row.get(field);
+	
+	        if (value == null)
+	            continue;
+	
+	        String raw = value.toString().trim();
+	        String[] spec = KIEU_COT.get(field).split(":", 2);
+	
+	        // Kiểm tra độ dài chuỗi
+	        if ((spec[0].equals("varchar")
+	                || spec[0].equals("nvarchar"))
+	                && raw.length() > Integer.parseInt(spec[1])) {
+	            fail(field, "Vượt quá độ dài cho phép: " + field);
+	        }
+	
+	        // Kiểm tra giá trị số
+	        if (value instanceof Number number) {
+	            BigDecimal n = new BigDecimal(number.toString());
+	
+	            if (n.signum() < 0) {
+	                fail(field, "Giá trị không được âm: " + field);
+	            }
+	
+	            if (spec[0].equals("decimal")) {
+	                String[] size = spec[1].split(",");
+	                BigDecimal normalized = n.stripTrailingZeros();
+	
+	                int precision = Integer.parseInt(size[0].trim());
+	                int scale = Integer.parseInt(size[1].trim());
+	
+	                if (Math.max(0, normalized.scale()) > scale
+	                        || Math.max(0, normalized.precision()
+	                                - normalized.scale()) > precision - scale) {
+	                    fail(field,
+	                            "Số tiền vượt độ chính xác cho phép: " + field);
+	                }
+	            }
+	        }
+	
+	        if (field.equals("maDichVu")
+	                && !raw.matches("DV[0-9]{3}")) {
+	            fail(field, "Mã dịch vụ phải có dạng DV001.");
+	        }
+	
+	        if (field.equals("tenDichVu")
+	                && !raw.matches("(?s).*[\\p{L}].*")) {
+	            fail(field,
+	                    "Tên dịch vụ phải chứa ít nhất một chữ cái.");
+	        }
+	
+	        if (field.equals("trangThai")
+	                && !java.util.Set.of(
+	                        "Hoạt động",
+	                        "Ngừng hoạt động").contains(raw)) {
+	            fail(field, "Trạng thái dịch vụ không hợp lệ.");
+	        }
+	    }
+	}
 
-                if (spec[0].equals("decimal")) {
-                    String[] size = spec[1].split(",");
-                    BigDecimal normalized = n.stripTrailingZeros();
-                    if (Math.max(0, normalized.scale()) > Integer.parseInt(size[1].trim()) || Math.max(0,
-                            normalized.precision() - normalized.scale()) > Integer.parseInt(size[0].trim())
-                                    - Integer.parseInt(size[1].trim()))
-                        fail(field, "Số tiền vượt độ chính xác cho phép: " + field);
-                }
-            }
-
-            if (field.equals("maDichVu") && !raw.matches("DV[0-9]{3}"))
-                fail(field, "Mã dịch vụ phải có dạng DV001.");
-
-            if ((field.equals("tenDichVu"))) {
-
-                if (!raw.matches("(?s).*[\\p{L}].*"))
-                    fail(field, "Tên dịch vụ hoặc phụ tùng phải chứa ít nhất một chữ cái.");
-            }
-
-            if (field.equals("trangThai") && !java.util.Set.of("Hoạt động", "Ngừng hoạt động").contains(raw))
-                fail(field, "Trạng thái dịch vụ chỉ được chọn Hoạt động hoặc Ngừng hoạt động.");
-
-        }
-
-    }
 
     // ===== PHƯƠNG THỨC: fail(String, String) — Tạo lỗi truy vấn khi thao tác nghiệp vụ không hợp lệ. =====
     private static void fail(String field, String message) throws SQLException {

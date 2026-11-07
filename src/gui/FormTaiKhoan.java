@@ -1,28 +1,17 @@
 package gui;
 
-import java.util.Locale;
-import java.time.format.DateTimeFormatter;
-import java.text.*;
-import javax.swing.table.*;
-import javax.swing.border.*;
-import javax.swing.table.TableColumn;
-import javax.swing.JScrollPane;
-import javax.swing.JTable;
-import javax.swing.SwingUtilities;
-import java.awt.event.ComponentEvent;
-import java.awt.event.ComponentAdapter;
-import java.awt.Component;
-
 import java.awt.*;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.sql.SQLException;
+import java.text.*;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.List;
 import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-import javax.swing.table.DefaultTableModel;
+import javax.swing.border.*;
+import javax.swing.table.*;
 
-// ===== GUI: FormTaiKhoan =====
-/** Danh sách và biểu mẫu sử dụng dữ liệu SQL Server thực tế. */
 public final class FormTaiKhoan extends JPanel {
     private static final String[] CAC_COT = new String[] { "maTaiKhoan", "maNhanVien", "tenDangNhap",
             "matKhau", "trangThai", "ngayTao" };
@@ -46,7 +35,7 @@ public final class FormTaiKhoan extends JPanel {
     private final String[] displayFields;
     private final BoLocTrangThai statusFilters;
 
-    // ===== PHƯƠNG THỨC: readObject(java.io.ObjectInputStream) — Khôi phục trạng thái đối tượng sau khi đọc từ luồng lưu. =====
+    // Khôi phục trạng thái đối tượng sau khi đọc từ luồng lưu. 
     @java.io.Serial
     private void readObject(java.io.ObjectInputStream input)
             throws java.io.IOException, ClassNotFoundException {
@@ -54,17 +43,14 @@ public final class FormTaiKhoan extends JPanel {
         dao = new dao.TaiKhoanDAO();
     }
 
-    // ===== KHỞI TẠO ĐỐI TƯỢNG: FormTaiKhoan(String) — Khởi tạo đối tượng và thiết lập trạng thái ban đầu. =====
     public FormTaiKhoan(String page) {
         this(page, null, null);
     }
 
-    // ===== KHỞI TẠO ĐỐI TƯỢNG: FormTaiKhoan(String, String) — Khởi tạo đối tượng và thiết lập trạng thái ban đầu. =====
     public FormTaiKhoan(String page, String employeeId) {
         this(page, null, employeeId);
     }
 
-    // ===== KHỞI TẠO ĐỐI TƯỢNG: FormTaiKhoan(String, VaiTro, String) — Khởi tạo đối tượng và thiết lập trạng thái ban đầu. =====
     public FormTaiKhoan(String page, VaiTro role, String employeeId) {
         setLayout(new BorderLayout(0, 18));
         setBackground(GiaoDien.BG);
@@ -76,7 +62,7 @@ public final class FormTaiKhoan extends JPanel {
 
         fields = CAC_COT;
         displayFields = fields;
-
+        // Tiêu đề
         JPanel pnlHeading = new JPanel(new GridLayout(2, 1, 0, 5));
         pnlHeading.setOpaque(false);
 
@@ -118,27 +104,31 @@ public final class FormTaiKhoan extends JPanel {
         }
 
         pnlCard.add(pnlToolbar, BorderLayout.NORTH);
-
+        // Tạo model chứa dữ liệu.
         model = new DefaultTableModel(new String[] { "Mã tài khoản", "Mã nhân viên", "Tên đăng nhập",
                 "Mật khẩu", "Trạng thái", "Ngày tạo" }, 0) {
-            // ===== PHƯƠNG THỨC: isCellEditable(int, int) — Kiểm tra ô bảng có cho phép chỉnh sửa không. =====
+					private static final long serialVersionUID = 1L;
+
+            // Không sửa trực tiếp phải bấm nút Chỉnh sửa
             @Override
             public boolean isCellEditable(int row, int col) {
                 return false;
             }
         };
-
+        // Tạo table từ model
         tblTable = GiaoDien.table(model);
         tblTable.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
         {
             tblTable.setAutoCreateRowSorter(true);
         }
-
+        // Bộ lọc trạng thái dựa trên cột của bảng
         statusFilters = new BoLocTrangThai(tblTable);
+        // Cập nhật số dòng
         statusFilters.onChange(() -> {
             updateCount();
         });
         statusFilters.setBorder(new EmptyBorder(6, 0, 0, 0));
+        // Đưa bộ lọc xuống dưới ô tìm kiếm
         pnlToolbar.add(statusFilters, BorderLayout.SOUTH);
 
         tblTable.setRowHeight(40);
@@ -177,7 +167,7 @@ public final class FormTaiKhoan extends JPanel {
 
             pnlButtons.add(btnDelete);
         }
-
+        // Phải chọn 1 dòng thì nút Chỉnh được bật
         tblTable.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
                 int selected = tblTable.getSelectedRow();
@@ -206,28 +196,28 @@ public final class FormTaiKhoan extends JPanel {
         pnlActions.add(scrActions, BorderLayout.SOUTH);
         pnlCard.add(pnlActions, BorderLayout.SOUTH);
         add(pnlCard, BorderLayout.CENTER);
-
+        // Lấy nội dung nhập, theo dõi khi nd thay đổi
         txtSearch.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
-            // ===== PHƯƠNG THỨC: insertUpdate(javax.swing.event.DocumentEvent) — Xử lý khi nội dung được thêm vào. =====
+            // Khi gõ thêm chữ.
             @Override
             public void insertUpdate(javax.swing.event.DocumentEvent e) {
                 filter();
             }
 
-            // ===== PHƯƠNG THỨC: removeUpdate(javax.swing.event.DocumentEvent) — Xử lý khi nội dung bị xóa. =====
+            //  Khi xóa chữ.
             @Override
             public void removeUpdate(javax.swing.event.DocumentEvent e) {
                 filter();
             }
 
-            // ===== PHƯƠNG THỨC: changedUpdate(javax.swing.event.DocumentEvent) — Cập nhật giao diện khi nội dung thay đổi. =====
+            // Cập nhật giao diện khi nội dung thay đổi.
             @Override
             public void changedUpdate(javax.swing.event.DocumentEvent e) {
                 filter();
             }
         });
 
-        // Khởi tạo các lựa chọn lọc cố định theo quy định nghiệp vụ và trạng thái mặc định
+        // tải dữ liệu lên bảng
 
         load();
     }
@@ -241,23 +231,25 @@ public final class FormTaiKhoan extends JPanel {
         tblTable.scrollRectToVisible(new Rectangle(0, 0, 1, 1));
     }
 
-    // ===== PHƯƠNG THỨC: load() — Tải dữ liệu cho bảng hiện tại. =====
+    // Tải dữ liệu cho bảng hiện tại.
     private void load() {
         try {
-
+            // Xóa data tải lại, tránh trùng
             model.setRowCount(0);
             List<LinkedHashMap<String, Object>> rows = dao.getAll();
 
             for (Map<String, Object> row : rows) {
 
                 Object[] values = new Object[displayFields.length];
+                // duyệt từng hàng
                 for (int i = 0; i < displayFields.length; i++) {
+                    // Lấy tên trường theo đúng thứ tự cột hiển thị.
                     String field = displayFields[i];
                     {
                         values[i] = row.get(field);
                     }
                 }
-
+                // Thêm dữ liệu vào bảng
                 model.addRow(values);
             }
 
@@ -269,7 +261,7 @@ public final class FormTaiKhoan extends JPanel {
         }
     }
 
-    // ===== PHƯƠNG THỨC: filter() — Lọc dữ liệu theo tiêu chí đang chọn. =====
+    // Lọc dữ liệu theo tiêu chí đang chọn.
     private void filter() {
         statusFilters.search(txtSearch.getText());
     }
@@ -279,9 +271,9 @@ public final class FormTaiKhoan extends JPanel {
         lblCount.setText("Hiển thị: " + tblTable.getRowCount() + " / " + model.getRowCount() + " bản ghi");
     }
 
-    // ===== PHƯƠNG THỨC: edit(boolean) — Mở biểu mẫu để chỉnh sửa dữ liệu. =====
+    // Mở ô nhập thêm và sửa
     private void edit(boolean existing) {
-
+        // Kiểm tra có bản ghi khi chọn sửa chưa
         if (existing) {
             Map<String, Object> record = requireSelectedRecord("chỉnh sửa");
             if (record == null)
@@ -294,7 +286,7 @@ public final class FormTaiKhoan extends JPanel {
             JOptionPane.showMessageDialog(this, "Vui lòng chọn bản ghi.");
             return;
         }
-
+        // Xác định dòng dữ liệu hoặc sinh mã mới
         int source = existing ? tblTable.convertRowIndexToModel(row) : -1;
         String generatedId = null;
 
@@ -307,13 +299,13 @@ public final class FormTaiKhoan extends JPanel {
                 return;
             }
         }
-
+        // Tạo các ô nhập
         JPanel pnlForm = new JPanel(new GridBagLayout());
         pnlForm.setBackground(Color.WHITE);
         pnlForm.setBorder(new EmptyBorder(20, 22, 12, 22));
-
+        // nơi lưu các thành phần nhập
         Map<String, JComponent> inputs = new LinkedHashMap<>();
-
+        // Vòng lặp duyệt qua các cột tạo từng ô nhập, nếu sửa thì đổ data vào ô
         for (int i = 0; i < fields.length; i++) {
             String field = fields[i];
             int column = Arrays.asList(displayFields).indexOf(field);
@@ -322,9 +314,9 @@ public final class FormTaiKhoan extends JPanel {
                     : "";
 
             String type = KIEU_COT.get(field);
-
+            // Tạo ô nhập hoặc ô chọn
             JComponent input;
-
+            // Ô cmb có tham chiếu thông tin bảng khác
             OChonThamChieu cmbReference = OChonThamChieu.create(tableName, field, value);
             JComboBox<String> cmbOptions = taoLuaChon(field, value, existing);
 
@@ -336,9 +328,11 @@ public final class FormTaiKhoan extends JPanel {
             } else if (type.equals("datetime2")) {
                 input = new OChonNgay(value);
             } else {
+                // Tạo ô nhập
                 JTextField txtInput = GiaoDien.field(value);
+                // Đưa dữ liệu lên ô nhập
                 txtInput.setText(value);
-
+                // Ô mã mà thêm thì auto = true
                 boolean auto = i == 0 && !existing;
 
                 if (auto)
@@ -349,22 +343,24 @@ public final class FormTaiKhoan extends JPanel {
                 }
 
                 if (auto || (i == 0 && existing)) {
+                    // Khóa ô mã nền xanh nhạt
                     DinhDangKeThua.lock(txtInput);
                 }
 
                 input = txtInput;
             }
-
+            // Lưu từng ô vào inputs
             inputs.put(field, input);
-
+            // Tạo nhãn và đặt ô nhập dưới nhãn
             JPanel pnlCell = new JPanel(new BorderLayout(0, 7));
             pnlCell.setOpaque(false);
+            // Tạo nhãn
             pnlCell.add(GiaoDien.label(nhanCot(field) + (COT_BAT_BUOC.contains(field) ? " *" : ""), 12, true,
                     GiaoDien.TEXT), BorderLayout.NORTH);
-
+            //Ô nhập dưới nhãn
             input.setPreferredSize(new Dimension(250, 40));
             pnlCell.add(input, BorderLayout.CENTER);
-
+            // Chia bô cục
             GridBagConstraints gbc = new GridBagConstraints();
             gbc.gridx = i % 2;
             gbc.gridy = i / 2;
@@ -380,7 +376,7 @@ public final class FormTaiKhoan extends JPanel {
 
         int formH = pnlForm.getPreferredSize().height + 8;
         scrSc.setPreferredSize(new Dimension(700, Math.min(540, formH)));
-
+        // Tiêu đề cửa sổ
         JDialog winDialog = new JDialog(SwingUtilities.getWindowAncestor(this),
                 existing ? "Chỉnh sửa thông tin" : "Thêm thông tin mới",
                 Dialog.ModalityType.APPLICATION_MODAL);
@@ -402,6 +398,7 @@ public final class FormTaiKhoan extends JPanel {
 
         winDialog.setContentPane(pnlContent);
         winDialog.getRootPane().setDefaultButton(btnSave);
+        // Nhấn Esc = Hủy
         winDialog.getRootPane().registerKeyboardAction(e -> winDialog.dispose(),
                 KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_ESCAPE, 0),
                 JComponent.WHEN_IN_FOCUSED_WINDOW);
@@ -413,7 +410,7 @@ public final class FormTaiKhoan extends JPanel {
         for (JComponent input : inputs.values()) {
             borders.put(input, input.getBorder());
         }
-
+        // Nhấn lưu
         btnSave.addActionListener(e -> {
             btnSave.setEnabled(false);
             borders.forEach(JComponent::setBorder);
@@ -428,8 +425,8 @@ public final class FormTaiKhoan extends JPanel {
                     dao.insert(values, expectedId[0]);
                 }
 
-                winDialog.dispose();
-                load();
+                winDialog.dispose(); // đóng cửa sổ thêm/sửa
+                load(); // tải lại data
             } catch (SQLException ex) {
                 String field = ThongBaoLoiSQL.errorField(ex, tableName);
                 String message = ex.getMessage();
@@ -558,45 +555,56 @@ public final class FormTaiKhoan extends JPanel {
         return tblTable;
     }
 
-    // ===== PHƯƠNG THỨC: kiemTraDuLieu(Map<String,JComponent>) — Kiểm tra dữ liệu. =====
-    private static Map<String, Object> kiemTraDuLieu(Map<String, JComponent> inputs)
-            throws java.sql.SQLException {
-        Map<String, Object> values = new LinkedHashMap<>();
-        docCot(inputs, values, "maNhanVien", "Mã nhân viên", "varchar:5", true);
-        docCot(inputs, values, "tenDangNhap", "Tên đăng nhập", "varchar:50", true);
-        docCot(inputs, values, "matKhau", "Mật khẩu", "varchar:255", true);
-        docCot(inputs, values, "trangThai", "Trạng thái", "nvarchar:30", true);
-        docCot(inputs, values, "ngayTao", "Ngày tạo", "datetime2:0", true);
-        for (Map.Entry<String, Object> e : values.entrySet()) {
-            String field = e.getKey();
-            Object value = e.getValue();
-            if (value == null)
-                continue;
-            String raw = value.toString().trim();
+    // Kiểm tra dữ liệu. 
+	private static Map<String, Object> kiemTraDuLieu(
+	        Map<String, JComponent> inputs) throws SQLException {
+	
+	    Map<String, Object> values = new LinkedHashMap<>();
+	
+	    docCot(inputs, values, "maNhanVien",
+	            "Mã nhân viên", "varchar:5", true);
+	
+	    String maNV = (String) values.get("maNhanVien");
+	    if (!maNV.matches("NV[0-9]{3}")) {
+	        throw new ThongBaoLoiSQL.Issue("maNhanVien",
+	                "Mã nhân viên phải có dạng NV001.");
+	    }
+	
+	    docCot(inputs, values, "tenDangNhap",
+	            "Tên đăng nhập", "varchar:50", true);
+	
+	    docCot(inputs, values, "matKhau",
+	            "Mật khẩu", "varchar:255", true);
+	
+	    docCot(inputs, values, "trangThai",
+	            "Trạng thái", "nvarchar:30", true);
+	
+	    String trangThai = (String) values.get("trangThai");
+	    if (!Set.of("Đang hoạt động", "Ngừng hoạt động")
+	            .contains(trangThai)) {
+	        throw new ThongBaoLoiSQL.Issue("trangThai",
+	                "Trạng thái tài khoản không hợp lệ.");
+	    }
+	
+	    docCot(inputs, values, "ngayTao",
+	            "Ngày tạo", "datetime2:0", true);
+	
+	    return values;
+	}
 
-            if (field.equals("maNhanVien") && !raw.matches("NV[0-9]{3}"))
-                throw new ThongBaoLoiSQL.Issue(field, "Mã nhân viên phải có dạng NV001.");
-
-            if (field.equals("maTaiKhoan") && !raw.matches("TK[0-9]{3}"))
-                throw new ThongBaoLoiSQL.Issue(field, "Mã tài khoản phải có dạng TK001.");
-
-            if (field.equals("trangThai")
-                    && !java.util.Set.of("Đang hoạt động", "Ngừng hoạt động").contains(raw))
-                throw new ThongBaoLoiSQL.Issue(field, "Trạng thái tài khoản không hợp lệ.");
-
-        }
-        return values;
-    }
 
     // ===== PHƯƠNG THỨC: docCot(Map<String,JComponent>, Map<String,Object>, String, String, String, boolean) — Đọc, kiểm tra và chuyển giá trị của một cột biểu mẫu. =====
     private static void docCot(Map<String, JComponent> inputs, Map<String, Object> values,
             String field, String label, String specification, boolean required) throws ThongBaoLoiSQL.Issue {
+        // inputs: ô nhập, values: dữ liệu
         if (!inputs.containsKey(field)) return;
+        // Kiểm tra data đặc biệt
         if (inputs.get(field) instanceof OChonThamChieu cmbCombo) cmbCombo.validateSelection();
         if(inputs.get(field) instanceof JCheckBox checkBox) {
             values.put(field,checkBox.isSelected());
             return;
         }
+        // đọc nội dung nhập
         String raw = docVanBan(inputs.get(field));
         if (raw.isEmpty()) {
             if (required) throw new ThongBaoLoiSQL.Issue(field, "Vui lòng nhập " + label.toLowerCase() + ".");
@@ -641,6 +649,7 @@ public final class FormTaiKhoan extends JPanel {
                 }
             }
         }
+        // Lưu giá trị gửi DAO
         values.put(field, value);
     }
 
@@ -766,7 +775,9 @@ public final class FormTaiKhoan extends JPanel {
         // ===== PHƯƠNG THỨC: rounded(Color, int) — Tạo đường viền bo góc cho thành phần. =====
         public static JPanel rounded(Color c, int r) {
             return new JPanel() {
-                // ===== PHƯƠNG THỨC: paintComponent(Graphics) — Vẽ nội dung và trạng thái hiện tại của thành phần. =====
+				private static final long serialVersionUID = 1L;
+
+				// ===== PHƯƠNG THỨC: paintComponent(Graphics) — Vẽ nội dung và trạng thái hiện tại của thành phần. =====
                 @Override
                 protected void paintComponent(Graphics g) {
                     Graphics2D q = (Graphics2D) g.create();
@@ -781,7 +792,9 @@ public final class FormTaiKhoan extends JPanel {
         // ===== PHƯƠNG THỨC: button(String, Color, Color) — Tạo nút giao diện theo kiểu chỉ định. =====
         public static JButton button(String s, Color bg, Color fg) {
             JButton btnB = new JButton(s) {
-                // ===== PHƯƠNG THỨC: paintComponent(Graphics) — Vẽ nội dung và trạng thái hiện tại của thành phần. =====
+				private static final long serialVersionUID = 1L;
+
+				// ===== PHƯƠNG THỨC: paintComponent(Graphics) — Vẽ nội dung và trạng thái hiện tại của thành phần. =====
                 @Override
                 protected void paintComponent(Graphics g) {
                     Graphics2D q = (Graphics2D) g.create();
@@ -809,21 +822,49 @@ public final class FormTaiKhoan extends JPanel {
             return lblL;
         }
 
-        // ===== PHƯƠNG THỨC: field(String) — Tạo thành phần nhập liệu cho một trường. =====
+        //  Tạo ô có hiển thị gợi ý nhập
         public static JTextField field(String hint) {
-            JTextField txtT = new JTextField();
-            txtT.putClientProperty("JTextField.placeholderText", hint);
+            JTextField txtT = new JTextField() {
+				private static final long serialVersionUID = 1L;
+
+				@Override
+                protected void paintComponent(Graphics g) {
+		            // Vẽ ô nhập liệu bình thường.
+					super.paintComponent(g);
+                    // ô chưa nhập chữ thì hiện gợi ý
+                    if (getText().isEmpty() && hint != null && !hint.isEmpty()) {
+                        Graphics2D g2 = (Graphics2D) g.create();
+                        g2.setFont(getFont());
+                        // xám nhạt
+                        g2.setColor(new Color(0x9AA7A9));
+                        // xác định vị trí chữ trong ô
+                        Insets insets = getInsets();
+                        int y = (getHeight() - g2.getFontMetrics().getHeight()) / 2
+                                + g2.getFontMetrics().getAscent();
+
+                        g2.drawString(hint, insets.left, y);
+                        g2.dispose();
+                    }
+                }
+            };
+
             txtT.setFont(font(13, false));
             txtT.setForeground(TEXT);
             txtT.setBorder(
-                    new CompoundBorder(new LineBorder(LINE, 1, true), new EmptyBorder(10, 12, 10, 12)));
+                new CompoundBorder(
+                    new LineBorder(LINE, 1, true),
+                    new EmptyBorder(10, 12, 10, 12)
+                )
+            );
+
             return txtT;
         }
 
         // ===== PHƯƠNG THỨC: table(DefaultTableModel) — Lấy bảng dữ liệu tương ứng với màn hình. =====
         public static JTable table(DefaultTableModel m) {
             JTable tblT = new JTable(m) {
-                private final TableCellRenderer cells = new DinhDangBang();
+				private static final long serialVersionUID = 1L;
+				private final TableCellRenderer cells = new DinhDangBang();
 
                 // ===== PHƯƠNG THỨC: getCellRenderer(int, int) — Lấy ô renderer. =====
                 @Override

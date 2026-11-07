@@ -48,13 +48,17 @@ final class BoLocTrangThai extends JPanel {
         this.table = table;
         setOpaque(false);
         for (int i = 0; i < table.getModel().getColumnCount(); i++) {
+            // Đọc tên cột của bảng
             String name = table.getModel().getColumnName(i);
+            // Chỉ tạo combobox cho cột Trạng thái
             if (!OChonTimKiem.normalize(nhanCot(name)).contains("trang thai"))
                 continue;
             JComboBox<String> cmbStatus = new OChonTimKiem<>();
             cmbStatus.setEditable(false);
             cmbStatus.setPreferredSize(new Dimension(190, 30));
+            // Tạo nhãn trạng thái
             add(GiaoDien.label(nhanCot(name), 12, true, GiaoDien.NAV));
+            // Tạo ô chọn
             add(cmbStatus);
             filters.put(i, cmbStatus);
             cmbStatus.addActionListener(e -> {
@@ -83,7 +87,7 @@ final class BoLocTrangThai extends JPanel {
         this.changed = changed;
     }
 
-    // ===== PHƯƠNG THỨC: search(String) — Tìm kiếm nghiệp vụ tương ứng. =====
+    // Tìm kiếm tương ứng.
     void search(String value) {
         search = OChonTimKiem.normalize(value.trim());
         apply();
@@ -204,7 +208,7 @@ final class BoLocTrangThai extends JPanel {
         apply();
     }
 
-    // ===== PHƯƠNG THỨC: apply() — Áp dụng các tùy chọn đã chọn. =====
+    // Áp dụng các tùy chọn đã chọn.
     @SuppressWarnings("unchecked")
     private void apply() {
         try {
@@ -216,9 +220,10 @@ final class BoLocTrangThai extends JPanel {
                 table.setRowSorter(sorter);
             }
             sorter.setRowFilter(new RowFilter<>() {
-                // ===== PHƯƠNG THỨC: include(Entry<? extends TableModel,? extends Integer>) — Quyết định có đưa bản ghi vào kết quả lọc. =====
+                // Quyết định có đưa bản ghi vào kết quả lọc.
                 @Override
                 public boolean include(Entry<? extends TableModel, ? extends Integer> row) {
+                    //Có trạng thái thì lọc theo trạng thái
                     for (var filter : filters.entrySet()) {
                         Object state = filter.getValue().getSelectedItem();
                         if (state != null && !state.equals("Tất cả")
@@ -226,14 +231,16 @@ final class BoLocTrangThai extends JPanel {
                             return false;
                         }
                     }
+                    // Không nhập thì hiển thị tất cả
                     if (search.isEmpty())
                         return true;
                     for (int col = 0; col < row.getValueCount(); col++) {
+                        // Duyệt số cột của dòng, lấy dữ liệu kiểm tra có từ khóa
                         if (OChonTimKiem.normalize(row.getStringValue(col)).contains(search)) {
-                            return true;
+                            return true; // giữ dòng
                         }
                     }
-                    return false;
+                    return false; //ẩn dòng
                 }
             });
         } catch (Exception ignored) {

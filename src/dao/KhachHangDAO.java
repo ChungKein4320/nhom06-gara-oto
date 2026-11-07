@@ -1,22 +1,14 @@
 package dao;
 
-import java.math.BigDecimal;
-
 import connectDB.KetNoiCSDL;
+import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.*;
 
-// ===== DAO: TRUY VẤN VÀ GHI KHÁCH HÀNG =====
-
-/** SQL và thao tác dữ liệu riêng của KhachHang. */
 public class KhachHangDAO implements DuLieuDAO {
-    // ===== CẤU HÌNH VÀ TÊN BẢNG/CỘT =====
     private static final String KHOA_CHINH = "maKhachHang";
     private static final String[] CAC_COT = new String[] { "maKhachHang", "hoTenKH", "soDienThoai",
             "gioiTinh", "email", "diaChi" };
@@ -31,9 +23,8 @@ public class KhachHangDAO implements DuLieuDAO {
     private final String table = "KhachHang";
     private final String primary = KHOA_CHINH;
 
-    // ===== TRUY VẤN VÀ THAO TÁC DỮ LIỆU =====
 
-    // ===== PHƯƠNG THỨC: getAll(Connection, Map<String,Object>) — Lấy danh sách bản ghi từ cơ sở dữ liệu. =====
+    // Thực hiện truy vấn SQL, có thể lọc theo điều kiện
     @Override
     public List<LinkedHashMap<String, Object>> getAll(Connection conn, Map<String, Object> filter)
             throws SQLException {
@@ -54,8 +45,41 @@ public class KhachHangDAO implements DuLieuDAO {
             }
         }
     }
+    
+ // ===== PHƯƠNG THỨC: getAll() — Lấy danh sách bản ghi từ cơ sở dữ liệu. =====
+    @Override
+    public List<LinkedHashMap<String, Object>> getAll() throws SQLException {
+    	// COALESCE xử lý trường hợp chưa có xe hoặc điểm.
+    	// LEFT JOIN lấy điểm theo mã không có điểm thì là 0.
+    	// OUTER APPLY ghép nhiều biển số của một khách hàng, (STUFF ghép thành chuỗi có , ).
+    	String sql = "SELECT k.*, COALESCE(d.tongDiemTichLuy, CONVERT(bigint,0)) AS tongDiemTichLuy, "
+                + "COALESCE(vehicles.bienSoXe, N'Chưa có xe đăng ký') AS bienSoXe "
+                + "FROM dbo.KhachHang k LEFT JOIN dbo.vw_KhachHangDiemTichLuy d "
+                + "ON d.maKhachHang=k.maKhachHang "
+                + "OUTER APPLY (SELECT STUFF((SELECT N', ' + p.bienSo FROM dbo.PhuongTien p "
+                + "WHERE p.maKhachHang=k.maKhachHang ORDER BY p.bienSo FOR XML PATH(''), TYPE)"
+                + ".value('.', 'nvarchar(max)'),1,2,N'') AS bienSoXe) vehicles " + "ORDER BY k.maKhachHang";
+        List<LinkedHashMap<String, Object>> rows = new ArrayList<>();
+        try (Connection connection = KetNoiCSDL.getConnection();
+                PreparedStatement statement = connection.prepareStatement(sql);
+                ResultSet result = statement.executeQuery()) {
+            while (result.next()) {
+                LinkedHashMap<String, Object> row = new LinkedHashMap<>();
+                for (String field : CAC_COT) {
+                    row.put(field, result.getObject(field));
+                }
+                // Thêm biển, điểm
+                row.put("bienSoXe", result.getString("bienSoXe"));
+                row.put("tongDiemTichLuy", result.getLong("tongDiemTichLuy"));
+                String customerId = String.valueOf(row.get("maKhachHang"));
+                if (!HiddenRecords.isHidden("KhachHang", customerId))
+                    rows.add(row);
+            }
+        }
+        return rows;
+    }
 
-    // ===== PHƯƠNG THỨC: previewNextId() — Tạo mã tiếp theo để xem trước khi lưu. =====
+    // Tìm số mã KH nhỏ nhất chưa được sử dụng để xem trước.
     @Override
     public String previewNextId() throws SQLException {
         if (CAC_KHOA.length != 1 || primary.equals("VIN"))
@@ -63,12 +87,12 @@ public class KhachHangDAO implements DuLieuDAO {
         return prefix() + String.format(Locale.ROOT, "%03d", nextAvailableNumber());
     }
 
-    // ===== PHƯƠNG THỨC: prefix() — Xử lý prefix. =====
+    // Xử lý tiền tố
     private String prefix() {
         return "KH";
     }
 
-    // ===== PHƯƠNG THỨC: nextAvailableNumber() — Tìm số mã kế tiếp chưa được sử dụng. =====
+    // Tìm số mã kế tiếp chưa được sử dụng.
     private int nextAvailableNumber() throws SQLException {
         String sql = ";WITH Numbers(n) AS (SELECT CONVERT(int,1) UNION ALL SELECT n+1 FROM Numbers WHERE n<999) "
                 + "SELECT MIN(n) FROM Numbers WHERE NOT EXISTS (SELECT 1 FROM dbo.[" + table + "]"
@@ -102,13 +126,13 @@ public class KhachHangDAO implements DuLieuDAO {
         }
     }
 
-    // ===== PHƯƠNG THỨC: insert(Map<String,Object>) — Thêm bản ghi vào cơ sở dữ liệu. =====
+    // Thêm đơn giản
     @Override
     public void insert(Map<String, Object> row) throws SQLException {
         insert(row, null);
     }
 
-    // ===== PHƯƠNG THỨC: insert(Map<String,Object>, String) — Thêm bản ghi vào cơ sở dữ liệu. =====
+    // Tạo transaction rồi gọi phương thức thêm thực tế
     @Override
     public void insert(Map<String, Object> row, String preview) throws SQLException {
         QuyTrinhDAO.transaction(conn -> {
@@ -117,13 +141,14 @@ public class KhachHangDAO implements DuLieuDAO {
         });
     }
 
-    // ===== PHƯƠNG THỨC: insert(Connection, Map<String,Object>) — Thêm bản ghi vào cơ sở dữ liệu. =====
-    /** Dùng connection của phiếu để lưu đầu phiếu và chi tiết cùng giao dịch. */
+    // Sinh mã, kiểm tra và thực hiện SQL INSERT
     @Override
     public String insert(Connection conn, Map<String, Object> values) throws SQLException {
-        Map<String, Object> row = new LinkedHashMap<>(values);
+        // Sao chép value thành row để bổ sung mã
+    	Map<String, Object> row = new LinkedHashMap<>(values);
         if (CAC_KHOA.length == 1 && !primary.equals("VIN")) {
             {
+            	// Ghép mã với 3 số
                 row.put(primary, prefix() + String.format(Locale.ROOT, "%03d", nextAvailableNumber(conn)));
             }
         }
@@ -138,7 +163,7 @@ public class KhachHangDAO implements DuLieuDAO {
         return String.valueOf(row.get(primary));
     }
 
-    // ===== PHƯƠNG THỨC: update(String, Map<String,Object>) — Cập nhật bản ghi trong cơ sở dữ liệu. =====
+    // Nhận mã cần sửa, mở transaction
     @Override
     public void update(String id, Map<String, Object> row) throws SQLException {
         if (CAC_KHOA.length != 1)
@@ -149,14 +174,16 @@ public class KhachHangDAO implements DuLieuDAO {
         });
     }
 
-    // ===== PHƯƠNG THỨC: update(Connection, Map<String,Object>, Map<String,Object>) — Cập nhật bản ghi trong cơ sở dữ liệu. =====
+    // Kiểm tra và thực hiện SQL UPDATE 
     @Override
     public void update(Connection conn, Map<String, Object> key, Map<String, Object> values)
             throws SQLException {
         Map<String, Object> row = new LinkedHashMap<>(values);
         for (String field : CAC_KHOA)
+        	//Không thay đổi khóa chính
             row.remove(field);
         kiemTraDuLieu(row, false);
+        // Kiểm tra ràng buộc
         QuyTrinhDAO.guardWrite(conn, table, row, key);
         if (row.isEmpty())
             return;
@@ -171,13 +198,13 @@ public class KhachHangDAO implements DuLieuDAO {
         }
     }
 
-    // ===== PHƯƠNG THỨC: softDelete(String) — Đánh dấu bản ghi đã xóa mà vẫn giữ dữ liệu. =====
+    // Đánh dấu bản ghi đã xóa mà vẫn giữ dữ liệu. 
     @Override
     public void softDelete(String id) throws SQLException {
         HiddenRecords.hide(table, id);
     }
 
-    // ===== PHƯƠNG THỨC: conditions(Map<String,Object>) — Tạo điều kiện truy vấn theo tiêu chí lọc. =====
+    // Tạo điều kiện truy vấn theo tiêu chí lọc. (tạo ở chỗ WHERE) 
     private String conditions(Map<String, Object> values) throws SQLException {
         for (String field : values.keySet())
             if (!KIEU_COT.containsKey(field))
@@ -185,73 +212,40 @@ public class KhachHangDAO implements DuLieuDAO {
         return String.join(" AND ", values.keySet().stream().map(s -> "[" + s + "]=?").toList());
     }
 
-    // ===== PHƯƠNG THỨC: bind(PreparedStatement, Collection<?>) — Gán giá trị tham số cho câu lệnh SQL. =====
+    // Gán giá trị tham số vào dấu ? cho câu SQL.
     private static void bind(PreparedStatement ps, Collection<?> values) throws SQLException {
         int i = 1;
         for (Object value : values)
             ps.setObject(i++, value);
     }
 
-    // ===== PHƯƠNG THỨC: getAll() — Lấy danh sách bản ghi từ cơ sở dữ liệu. =====
-    @Override
-    public List<LinkedHashMap<String, Object>> getAll() throws SQLException {
-        String sql = "SELECT k.*, COALESCE(d.tongDiemTichLuy, CONVERT(bigint,0)) AS tongDiemTichLuy, "
-                + "COALESCE(vehicles.bienSoXe, N'Chưa có xe đăng ký') AS bienSoXe "
-                + "FROM dbo.KhachHang k LEFT JOIN dbo.vw_KhachHangDiemTichLuy d "
-                + "ON d.maKhachHang=k.maKhachHang "
-                + "OUTER APPLY (SELECT STUFF((SELECT N', ' + p.bienSo FROM dbo.PhuongTien p "
-                + "WHERE p.maKhachHang=k.maKhachHang ORDER BY p.bienSo FOR XML PATH(''), TYPE)"
-                + ".value('.', 'nvarchar(max)'),1,2,N'') AS bienSoXe) vehicles " + "ORDER BY k.maKhachHang";
-        List<LinkedHashMap<String, Object>> rows = new ArrayList<>();
-        try (Connection connection = KetNoiCSDL.getConnection();
-                PreparedStatement statement = connection.prepareStatement(sql);
-                ResultSet result = statement.executeQuery()) {
-            while (result.next()) {
-                LinkedHashMap<String, Object> row = new LinkedHashMap<>();
-                for (String field : CAC_COT) {
-                    row.put(field, result.getObject(field));
-                }
-                row.put("bienSoXe", result.getString("bienSoXe"));
-                row.put("tongDiemTichLuy", result.getLong("tongDiemTichLuy"));
-                String customerId = String.valueOf(row.get("maKhachHang"));
-                if (!HiddenRecords.isHidden("KhachHang", customerId))
-                    rows.add(row);
-            }
-        }
-        return rows;
-    }
 
-    // ===== PHƯƠNG THỨC: cacKhoa() — Liệt kê các cột khóa của bản ghi. =====
     @Override
     public String[] cacKhoa() {
         return CAC_KHOA.clone();
     }
 
-    // ===== PHƯƠNG THỨC: khoaChinh() — Xác định cột khóa chính của bảng dữ liệu. =====
     @Override
     public String khoaChinh() {
         return KHOA_CHINH;
     }
 
-    // ===== PHƯƠNG THỨC: cacCot() — Liệt kê các cột dữ liệu của đối tượng. =====
     @Override
     public String[] cacCot() {
         return CAC_COT.clone();
     }
 
-    // ===== PHƯƠNG THỨC: kieuCot() — Khai báo kiểu dữ liệu của từng cột. =====
     @Override
     public Map<String, String> kieuCot() {
         return KIEU_COT;
     }
 
-    // ===== PHƯƠNG THỨC: cotBatBuoc() — Liệt kê các cột bắt buộc nhập. =====
     @Override
     public Set<String> cotBatBuoc() {
         return COT_BAT_BUOC;
     }
 
-    // ===== PHƯƠNG THỨC: kiemTraDuLieu(Map<String,Object>, boolean) — Kiểm tra dữ liệu. =====
+    // Kiểm tra dữ liệu. 
     private static void kiemTraDuLieu(Map<String, Object> row, boolean creating) throws SQLException {
         if (creating) {
             Set<String> required = COT_BAT_BUOC;
@@ -261,6 +255,7 @@ public class KhachHangDAO implements DuLieuDAO {
                     fail(field, "Bắt buộc nhập: " + field);
             }
         }
+    	//Kiểm tra từng giá trị
         for (Map.Entry<String, Object> e : row.entrySet()) {
             String field = e.getKey();
             Object value = e.getValue();
@@ -299,19 +294,21 @@ public class KhachHangDAO implements DuLieuDAO {
 
             if (field.equals("soDienThoai") && !raw.matches("0[35789][0-9]{8}"))
                 fail(field, "Số điện thoại gồm 10 chữ số, đầu số 03, 05, 07, 08 hoặc 09.");
-            if (field.equals("email") && !raw.matches("[^\\s@]+@[^\\s@]+\\.[^\\s@]+"))
-                fail(field, "Email không hợp lệ.");
+            if (field.equals("email")
+                    && !raw.matches("[A-Za-z0-9._%+-]+@gmail\\.com")) {
+                fail(field, "Email phải đúng định dạng và kết thúc bằng @gmail.com.");
+            }
 
         }
 
     }
 
-    // ===== PHƯƠNG THỨC: fail(String, String) — Tạo lỗi truy vấn khi thao tác nghiệp vụ không hợp lệ. =====
+    // Tạo lỗi truy vấn khi thao tác nghiệp vụ không hợp lệ. 
     private static void fail(String field, String message) throws SQLException {
         throw new LoiDuLieu(field, message);
     }
 
-    // ===== PHƯƠNG THỨC: layKhachHangChoManHinhBanPhuTung() — Lấy khách hàng cho man hinh ban phụ tùng. =====
+    // Lấy khách hàng cho man hinh ban phụ tùng.
     public Map<String, String> layKhachHangChoManHinhBanPhuTung() throws SQLException {
         String sql = "SELECT maKhachHang,maKhachHang+N' — '+hoTenKH FROM dbo.KhachHang ORDER BY maKhachHang";
         Map<String, String> choices = new LinkedHashMap<>();
@@ -323,5 +320,6 @@ public class KhachHangDAO implements DuLieuDAO {
             }
         }
         return choices;
+        // hiển thị KH001 - Nguyễn Văn An
     }
 }

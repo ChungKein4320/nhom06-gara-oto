@@ -1,11 +1,10 @@
 package dao;
 
+import connectDB.KetNoiCSDL;
 import static dao.QuyTrinhDAO.*;
 import entity.HoaDon;
 import entity.MaGiamGia;
 import java.math.BigDecimal;
-
-import connectDB.KetNoiCSDL;
 import java.sql.*;
 import java.util.*;
 
@@ -119,6 +118,7 @@ public class MaGiamGiaDAO implements DuLieuDAO {
         try (PreparedStatement ps = conn.prepareStatement("INSERT INTO dbo.[" + table + "](" + fields
                 + ") VALUES(" + String.join(",", Collections.nCopies(row.size(), "?")) + ")")) {
             bind(ps, row.values());
+            // Ghi bản ghi vào sql
             ps.executeUpdate();
         }
         return String.valueOf(row.get(primary));
@@ -178,8 +178,7 @@ public class MaGiamGiaDAO implements DuLieuDAO {
             ps.setObject(i++, value);
     }
 
-    // Các thao tác nghiệp vụ của đối tượng, giữ nguyên giao dịch SQL.
-    // ===== PHƯƠNG THỨC: couponDiscount(Connection, String, Object, BigDecimal) — Tính mức giảm giá áp dụng từ mã ưu đãi. =====
+    // Tính mức giảm giá áp dụng từ mã ưu đãi.
     static BigDecimal couponDiscount(Connection conn, String coupon, Object customer, BigDecimal subtotal)
             throws SQLException {
         Map<String, Object> value = lock(conn, "MaGiamGia", coupon);
@@ -202,10 +201,12 @@ public class MaGiamGiaDAO implements DuLieuDAO {
         return hoaDonTinhToan.tinhGiamGia();
     }
 
-    // ===== PHƯƠNG THỨC: issueThresholdCoupons(Connection, String, Timestamp, Timestamp, Timestamp) — Tạo mã giảm giá khi khách đạt ngưỡng tích điểm. =====
+    // Tạo mã giảm giá khi khách đạt ngưỡng tích điểm.
     static void issueThresholdCoupons(Connection conn, String customer, Timestamp cycleStart,
             Timestamp expiration, Timestamp now) throws SQLException {
-        int earned = ((Number) QuyTrinhDAO.one(conn,
+    	// Tính tổng điểm chưa hết hạn của khách hàng
+    	// phát sinh từ ngày bắt đầu chu kỳ tích điểm.
+    	int earned = ((Number) QuyTrinhDAO.one(conn,
                 "SELECT COALESCE(SUM(soDiem),0) AS points FROM dbo.LichSuTichDiem WHERE maKhachHang=? AND ngayTichDiem>=? AND ngayHetHan>=?",
                 customer, cycleStart, now).get("points")).intValue();
         int[][] thresholds = { { 50, 5 }, { 100, 10 }, { 200, 15 }, { 500, 30 } };
@@ -305,7 +306,7 @@ public class MaGiamGiaDAO implements DuLieuDAO {
 
     }
 
-    // ===== PHƯƠNG THỨC: dates(Map<String,Object>, String, String, boolean) — Đọc và kiểm tra các mốc ngày. =====
+    // Đọc và kiểm tra các mốc ngày.
     private static void dates(Map<String, Object> row, String start, String end, boolean strict)
             throws SQLException {
         if (row.get(start) instanceof java.util.Date a && row.get(end) instanceof java.util.Date b

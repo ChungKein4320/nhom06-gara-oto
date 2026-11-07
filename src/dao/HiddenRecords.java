@@ -46,7 +46,7 @@ public final class HiddenRecords {
             return false;
         }
     }
-
+    // Ẩn bản ghi theo quy tắc xóa mềm.
     public static synchronized void hide(String table, String id)
             throws java.sql.SQLException {
         try {

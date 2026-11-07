@@ -1,25 +1,16 @@
 package gui;
 
-import java.util.Locale;
-import java.time.format.DateTimeFormatter;
-import java.text.*;
-import javax.swing.table.*;
-import javax.swing.border.*;
-import javax.swing.table.TableColumn;
-import javax.swing.JScrollPane;
-import javax.swing.JTable;
-import javax.swing.SwingUtilities;
-import java.awt.event.ComponentEvent;
-import java.awt.event.ComponentAdapter;
-import java.awt.Component;
-
 import java.awt.*;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.sql.SQLException;
+import java.text.*;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.List;
 import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-import javax.swing.table.DefaultTableModel;
+import javax.swing.border.*;
+import javax.swing.table.*;
 
 // ===== GUI: FormMaGiamGia =====
 /** Danh sách và biểu mẫu sử dụng dữ liệu SQL Server thực tế. */
@@ -122,7 +113,9 @@ public final class FormMaGiamGia extends JPanel {
 
         model = new DefaultTableModel(new String[] { "Mã giảm giá", "Mã khách hàng", "Mức giảm", "Ngày tạo",
                 "Ngày hết hạn", "Trạng thái", "Mốc điểm", "Ngày đầu chu kỳ" }, 0) {
-            // ===== PHƯƠNG THỨC: isCellEditable(int, int) — Kiểm tra ô bảng có cho phép chỉnh sửa không. =====
+					private static final long serialVersionUID = 1L;
+
+			// ===== PHƯƠNG THỨC: isCellEditable(int, int) — Kiểm tra ô bảng có cho phép chỉnh sửa không. =====
             @Override
             public boolean isCellEditable(int row, int col) {
                 return false;
@@ -824,14 +817,41 @@ public final class FormMaGiamGia extends JPanel {
             return lblL;
         }
 
-        // ===== PHƯƠNG THỨC: field(String) — Tạo thành phần nhập liệu cho một trường. =====
+        //  Tạo ô có hiển thị gợi ý nhập
         public static JTextField field(String hint) {
-            JTextField txtT = new JTextField();
-            txtT.putClientProperty("JTextField.placeholderText", hint);
+            JTextField txtT = new JTextField() {
+				private static final long serialVersionUID = 1L;
+
+				@Override
+                protected void paintComponent(Graphics g) {
+		            // Vẽ ô nhập liệu bình thường.
+					super.paintComponent(g);
+                    // ô chưa nhập chữ thì hiện gợi ý
+                    if (getText().isEmpty() && hint != null && !hint.isEmpty()) {
+                        Graphics2D g2 = (Graphics2D) g.create();
+                        g2.setFont(getFont());
+                        // xám nhạt
+                        g2.setColor(new Color(0x9AA7A9));
+                        // xác định vị trí chữ trong ô
+                        Insets insets = getInsets();
+                        int y = (getHeight() - g2.getFontMetrics().getHeight()) / 2
+                                + g2.getFontMetrics().getAscent();
+
+                        g2.drawString(hint, insets.left, y);
+                        g2.dispose();
+                    }
+                }
+            };
+
             txtT.setFont(font(13, false));
             txtT.setForeground(TEXT);
             txtT.setBorder(
-                    new CompoundBorder(new LineBorder(LINE, 1, true), new EmptyBorder(10, 12, 10, 12)));
+                new CompoundBorder(
+                    new LineBorder(LINE, 1, true),
+                    new EmptyBorder(10, 12, 10, 12)
+                )
+            );
+
             return txtT;
         }
 

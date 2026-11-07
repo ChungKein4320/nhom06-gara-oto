@@ -1,11 +1,9 @@
 package gui;
 
-import java.awt.*;
-
-import dao.ChonDAO;
-
-import java.sql.*;
 import connectDB.KetNoiCSDL;
+import dao.ChonDAO;
+import java.awt.*;
+import java.sql.*;
 import java.util.Map;
 import java.util.Set;
 import javax.swing.*;
@@ -394,6 +392,7 @@ final class OChonThamChieu extends OChonTimKiem<OChonThamChieu.MucThamChieu> {
             for (int i = 0; i < queryParams.length; i++)
                 ps.setString(i + 1, queryParams[i]);
             try (ResultSet rs = ps.executeQuery()) {
+                // Mỗi KH được đưa vào cmb dưới dạng MucThamChieu
                 while (rs.next()) {
                     String id = rs.getString(1);
                     String label = rs.getString(2);

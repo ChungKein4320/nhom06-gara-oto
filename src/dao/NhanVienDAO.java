@@ -1,11 +1,8 @@
 package dao;
 
-import java.time.LocalDate;
-
-import java.math.BigDecimal;
-import static dao.QuyTrinhDAO.*;
-
 import connectDB.KetNoiCSDL;
+import static dao.QuyTrinhDAO.*;
+import java.math.BigDecimal;
 import java.sql.*;
 import java.util.*;
 
@@ -155,6 +152,17 @@ public class NhanVienDAO implements DuLieuDAO {
             if (ps.executeUpdate() != 1)
                 throw new SQLException("Bản ghi đã thay đổi hoặc không còn tồn tại.");
         }
+        // Nhân viên đã nghỉ thì tự động ngừng hoạt động tài khoản
+        if ("Đã nghỉ".equals(row.get("trangThai"))) {
+            String sql = "UPDATE dbo.TaiKhoan "
+                       + "SET trangThai = N'Ngừng hoạt động' "
+                       + "WHERE maNhanVien = ?";
+
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setString(1, String.valueOf(key.get("maNhanVien")));
+                ps.executeUpdate();
+            }
+        }
     }
 
     // ===== PHƯƠNG THỨC: softDelete(String) — Đánh dấu bản ghi đã xóa mà vẫn giữ dữ liệu. =====
@@ -224,8 +232,10 @@ public class NhanVienDAO implements DuLieuDAO {
     // ===== PHƯƠNG THỨC: kiemTraDuLieu(Map<String,Object>, boolean) — Kiểm tra dữ liệu. =====
     private static void kiemTraDuLieu(Map<String, Object> row, boolean creating) throws SQLException {
         if (creating) {
-            Set<String> required = COT_BAT_BUOC;
-            for (String field : required) {
+        	// Kiểm tra bắt buộc theo thứ tự cột
+        	for (String field : CAC_COT) {
+        	    if (!COT_BAT_BUOC.contains(field))
+        	        continue;
                 Object val = row.get(field);
                 if (val == null || (val instanceof String s && s.trim().isEmpty()))
                     fail(field, "Bắt buộc nhập: " + field);
@@ -269,22 +279,29 @@ public class NhanVienDAO implements DuLieuDAO {
             if (field.equals("trangThai") && !java.util.Set.of("Đang làm", "Đã nghỉ").contains(raw))
                 fail(field, "Trạng thái nhân viên không hợp lệ.");
 
-            if ((field.equals("hoTenNV"))) {
-
-                if (!raw.matches("[\\p{L}\\p{M}]+(?:[ ]+[\\p{L}\\p{M}]+)*"))
-                    fail(field, "Họ tên chỉ được chứa chữ cái và khoảng trắng.");
+            if (field.equals("hoTenNV")
+                    && !raw.matches("\\p{Lu}[\\p{Ll}\\p{M}]*(?: +\\p{Lu}[\\p{Ll}\\p{M}]*)+")) {
+                fail(field, "Họ tên phải có ít nhất 2 từ, mỗi từ viết hoa chữ cái đầu.");
             }
 
             if (field.equals("soDienThoai") && !raw.matches("0[35789][0-9]{8}"))
                 fail(field, "Số điện thoại gồm 10 chữ số, đầu số 03, 05, 07, 08 hoặc 09.");
-            if (field.equals("email") && !raw.matches("[^\\s@]+@[^\\s@]+\\.[^\\s@]+"))
-                fail(field, "Email không hợp lệ.");
+
+			if (field.equals("email")
+			        && !raw.matches("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")) {
+			    fail(field, "Email không đúng định dạng.");
+			}
+
 
             if (field.equals("ngaySinh")) {
-                LocalDate date = LocalDate.parse(raw.substring(0, 10));
-                LocalDate today = LocalDate.now();
-                if (date.isAfter(today.minusYears(18)) || !date.isAfter(today.minusYears(66)))
-                    fail(field, "Nhân viên phải từ 18 đến dưới 66 tuổi.");
+                java.time.LocalDate ngaySinh =
+                        java.time.LocalDate.parse(raw.substring(0, 10));
+                java.time.LocalDate homNay = java.time.LocalDate.now();
+
+                if (ngaySinh.isAfter(homNay.minusYears(18))
+                        || !ngaySinh.isAfter(homNay.minusYears(63))) {
+                    fail(field, "Nhân viên phải từ 18 đến 62 tuổi.");
+                }
             }
             // CHECK của SQL Server kiểm tra ngày tương lai bằng SYSDATETIME().
             // Không so ngày do server sinh với đồng hồ máy chạy Java.
