@@ -1,28 +1,17 @@
 package gui;
 
-import java.util.Locale;
-import java.time.format.DateTimeFormatter;
-import java.text.*;
-import javax.swing.table.*;
-import javax.swing.border.*;
-import javax.swing.table.TableColumn;
-import javax.swing.JScrollPane;
-import javax.swing.JTable;
-import javax.swing.SwingUtilities;
-import java.awt.event.ComponentEvent;
-import java.awt.event.ComponentAdapter;
-import java.awt.Component;
-
 import java.awt.*;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.sql.SQLException;
+import java.text.*;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.List;
 import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-import javax.swing.table.DefaultTableModel;
+import javax.swing.border.*;
+import javax.swing.table.*;
 
-// ===== GUI: FormDichVu =====
-/** Danh sách và biểu mẫu sử dụng dữ liệu SQL Server thực tế. */
 public final class FormDichVu extends JPanel {
     private static final String[] CAC_COT = new String[] { "maDichVu", "tenDichVu", "moTa", "donGia",
             "trangThai" };
@@ -41,7 +30,6 @@ public final class FormDichVu extends JPanel {
     private final String[] displayFields;
     private final BoLocTrangThai statusFilters;
 
-    // ===== PHƯƠNG THỨC: readObject(java.io.ObjectInputStream) — Khôi phục trạng thái đối tượng sau khi đọc từ luồng lưu. =====
     @java.io.Serial
     private void readObject(java.io.ObjectInputStream input)
             throws java.io.IOException, ClassNotFoundException {
@@ -49,17 +37,14 @@ public final class FormDichVu extends JPanel {
         dao = new dao.DichVuDAO();
     }
 
-    // ===== KHỞI TẠO ĐỐI TƯỢNG: FormDichVu(String) — Khởi tạo đối tượng và thiết lập trạng thái ban đầu. =====
     public FormDichVu(String page) {
         this(page, null, null);
     }
 
-    // ===== KHỞI TẠO ĐỐI TƯỢNG: FormDichVu(String, String) — Khởi tạo đối tượng và thiết lập trạng thái ban đầu. =====
     public FormDichVu(String page, String employeeId) {
         this(page, null, employeeId);
     }
 
-    // ===== KHỞI TẠO ĐỐI TƯỢNG: FormDichVu(String, VaiTro, String) — Khởi tạo đối tượng và thiết lập trạng thái ban đầu. =====
     public FormDichVu(String page, VaiTro role, String employeeId) {
         setLayout(new BorderLayout(0, 18));
         setBackground(GiaoDien.BG);
@@ -116,7 +101,9 @@ public final class FormDichVu extends JPanel {
 
         model = new DefaultTableModel(
                 new String[] { "Mã dịch vụ", "Tên dịch vụ", "Mô tả", "Đơn giá", "Trạng thái" }, 0) {
-            // ===== PHƯƠNG THỨC: isCellEditable(int, int) — Kiểm tra ô bảng có cho phép chỉnh sửa không. =====
+					private static final long serialVersionUID = 1L;
+
+			// ===== PHƯƠNG THỨC: isCellEditable(int, int) — Kiểm tra ô bảng có cho phép chỉnh sửa không. =====
             @Override
             public boolean isCellEditable(int row, int col) {
                 return false;
@@ -549,38 +536,42 @@ public final class FormDichVu extends JPanel {
         return tblTable;
     }
 
-    // ===== PHƯƠNG THỨC: kiemTraDuLieu(Map<String,JComponent>) — Kiểm tra dữ liệu. =====
-    private static Map<String, Object> kiemTraDuLieu(Map<String, JComponent> inputs)
-            throws java.sql.SQLException {
-        Map<String, Object> values = new LinkedHashMap<>();
-        docCot(inputs, values, "tenDichVu", "Tên dịch vụ", "nvarchar:150", true);
-        docCot(inputs, values, "moTa", "Mô tả", "nvarchar:500", false);
-        docCot(inputs, values, "donGia", "Đơn giá", "decimal:18,2", true);
-        docCot(inputs, values, "trangThai", "Trạng thái", "nvarchar:50", true);
-        for (Map.Entry<String, Object> e : values.entrySet()) {
-            String field = e.getKey();
-            Object value = e.getValue();
-            if (value == null)
-                continue;
-            String raw = value.toString().trim();
+    // Kiểm tra dữ liệu. 
 
-            if (field.equals("maDichVu") && !raw.matches("DV[0-9]{3}"))
-                throw new ThongBaoLoiSQL.Issue(field, "Mã dịch vụ phải có dạng DV001.");
+	private static Map<String, Object> kiemTraDuLieu(
+	        Map<String, JComponent> inputs) throws java.sql.SQLException {
+	
+	    Map<String, Object> values = new LinkedHashMap<>();
+	
+	    docCot(inputs, values, "tenDichVu", "Tên dịch vụ",
+	            "nvarchar:150", true);
+	
+	    if (values.get("tenDichVu") instanceof String tenDichVu
+	            && !tenDichVu.matches("(?s).*[\\p{L}].*")) {
+	        throw new ThongBaoLoiSQL.Issue("tenDichVu",
+	                "Tên dịch vụ phải chứa ít nhất một chữ cái.");
+	    }
+	
+	    docCot(inputs, values, "moTa", "Mô tả",
+	            "nvarchar:500", false);
+	
+	    docCot(inputs, values, "donGia", "Đơn giá",
+	            "decimal:18,2", true);
+	
+	    docCot(inputs, values, "trangThai", "Trạng thái",
+	            "nvarchar:50", true);
+	
+	    if (values.get("trangThai") instanceof String trangThai
+	            && !java.util.Set.of(
+	                    "Hoạt động",
+	                    "Ngừng hoạt động").contains(trangThai)) {
+	        throw new ThongBaoLoiSQL.Issue("trangThai",
+	                "Trạng thái dịch vụ không hợp lệ.");
+	    }
+	
+	    return values;
+	}
 
-            if ((field.equals("tenDichVu"))) {
-
-                if (!raw.matches("(?s).*[\\p{L}].*"))
-                    throw new ThongBaoLoiSQL.Issue(field,
-                            "Tên dịch vụ hoặc phụ tùng phải chứa ít nhất một chữ cái.");
-            }
-
-            if (field.equals("trangThai") && !java.util.Set.of("Hoạt động", "Ngừng hoạt động").contains(raw))
-                throw new ThongBaoLoiSQL.Issue(field,
-                        "Trạng thái dịch vụ chỉ được chọn Hoạt động hoặc Ngừng hoạt động.");
-
-        }
-        return values;
-    }
 
     // ===== PHƯƠNG THỨC: docCot(Map<String,JComponent>, Map<String,Object>, String, String, String, boolean) — Đọc, kiểm tra và chuyển giá trị của một cột biểu mẫu. =====
     private static void docCot(Map<String, JComponent> inputs, Map<String, Object> values,
@@ -592,6 +583,7 @@ public final class FormDichVu extends JPanel {
             return;
         }
         String raw = docVanBan(inputs.get(field));
+        // Nếu chưa nhập thì yêu cầu nhập 
         if (raw.isEmpty()) {
             if (required) throw new ThongBaoLoiSQL.Issue(field, "Vui lòng nhập " + label.toLowerCase() + ".");
             values.put(field, null);
@@ -760,7 +752,9 @@ public final class FormDichVu extends JPanel {
         // ===== PHƯƠNG THỨC: rounded(Color, int) — Tạo đường viền bo góc cho thành phần. =====
         public static JPanel rounded(Color c, int r) {
             return new JPanel() {
-                // ===== PHƯƠNG THỨC: paintComponent(Graphics) — Vẽ nội dung và trạng thái hiện tại của thành phần. =====
+				private static final long serialVersionUID = 1L;
+
+				// ===== PHƯƠNG THỨC: paintComponent(Graphics) — Vẽ nội dung và trạng thái hiện tại của thành phần. =====
                 @Override
                 protected void paintComponent(Graphics g) {
                     Graphics2D q = (Graphics2D) g.create();
@@ -775,7 +769,9 @@ public final class FormDichVu extends JPanel {
         // ===== PHƯƠNG THỨC: button(String, Color, Color) — Tạo nút giao diện theo kiểu chỉ định. =====
         public static JButton button(String s, Color bg, Color fg) {
             JButton btnB = new JButton(s) {
-                // ===== PHƯƠNG THỨC: paintComponent(Graphics) — Vẽ nội dung và trạng thái hiện tại của thành phần. =====
+				private static final long serialVersionUID = 1L;
+
+				// ===== PHƯƠNG THỨC: paintComponent(Graphics) — Vẽ nội dung và trạng thái hiện tại của thành phần. =====
                 @Override
                 protected void paintComponent(Graphics g) {
                     Graphics2D q = (Graphics2D) g.create();
@@ -803,21 +799,49 @@ public final class FormDichVu extends JPanel {
             return lblL;
         }
 
-        // ===== PHƯƠNG THỨC: field(String) — Tạo thành phần nhập liệu cho một trường. =====
+        //  Tạo ô có hiển thị gợi ý nhập
         public static JTextField field(String hint) {
-            JTextField txtT = new JTextField();
-            txtT.putClientProperty("JTextField.placeholderText", hint);
+            JTextField txtT = new JTextField() {
+				private static final long serialVersionUID = 1L;
+
+				@Override
+                protected void paintComponent(Graphics g) {
+		            // Vẽ ô nhập liệu bình thường.
+					super.paintComponent(g);
+                    // ô chưa nhập chữ thì hiện gợi ý
+                    if (getText().isEmpty() && hint != null && !hint.isEmpty()) {
+                        Graphics2D g2 = (Graphics2D) g.create();
+                        g2.setFont(getFont());
+                        // xám nhạt
+                        g2.setColor(new Color(0x9AA7A9));
+                        // xác định vị trí chữ trong ô
+                        Insets insets = getInsets();
+                        int y = (getHeight() - g2.getFontMetrics().getHeight()) / 2
+                                + g2.getFontMetrics().getAscent();
+
+                        g2.drawString(hint, insets.left, y);
+                        g2.dispose();
+                    }
+                }
+            };
+
             txtT.setFont(font(13, false));
             txtT.setForeground(TEXT);
             txtT.setBorder(
-                    new CompoundBorder(new LineBorder(LINE, 1, true), new EmptyBorder(10, 12, 10, 12)));
+                new CompoundBorder(
+                    new LineBorder(LINE, 1, true),
+                    new EmptyBorder(10, 12, 10, 12)
+                )
+            );
+
             return txtT;
         }
 
         // ===== PHƯƠNG THỨC: table(DefaultTableModel) — Lấy bảng dữ liệu tương ứng với màn hình. =====
         public static JTable table(DefaultTableModel m) {
             JTable tblT = new JTable(m) {
-                private final TableCellRenderer cells = new DinhDangBang();
+				private static final long serialVersionUID = 1L;
+				private final TableCellRenderer cells = new DinhDangBang();
 
                 // ===== PHƯƠNG THỨC: getCellRenderer(int, int) — Lấy ô renderer. =====
                 @Override

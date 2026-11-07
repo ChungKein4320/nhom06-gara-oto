@@ -1,31 +1,18 @@
 package gui;
 
-import java.util.Locale;
-import java.time.format.DateTimeFormatter;
-import java.text.*;
-import javax.swing.table.*;
-import javax.swing.border.*;
-import javax.swing.table.TableColumn;
-import javax.swing.JScrollPane;
-import javax.swing.JTable;
-import javax.swing.SwingUtilities;
-import java.awt.event.ComponentEvent;
-import java.awt.event.ComponentAdapter;
-import java.awt.Component;
-
 import java.awt.*;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.sql.SQLException;
+import java.text.*;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.List;
 import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-import javax.swing.table.DefaultTableModel;
+import javax.swing.border.*;
+import javax.swing.table.*;
 
-// ===== GUI: DANH SÁCH VÀ FORM KHÁCH HÀNG =====
-
-/** Danh sách và biểu mẫu sử dụng dữ liệu SQL Server thực tế. */
 public final class FormKhachHang extends JPanel {
-    // ===== THÀNH PHẦN GIAO DIỆN =====
     private static final String[] CAC_COT = new String[] { "maKhachHang", "hoTenKH", "soDienThoai",
             "gioiTinh", "email", "diaChi" };
     private static final Set<String> COT_BAT_BUOC = Set.of("maKhachHang", "hoTenKH", "soDienThoai",
@@ -44,26 +31,22 @@ public final class FormKhachHang extends JPanel {
     private final String[] displayFields;
     private final BoLocTrangThai statusFilters;
 
-    // ===== PHƯƠNG THỨC: readObject(java.io.ObjectInputStream) — Khôi phục trạng thái đối tượng sau khi đọc từ luồng lưu. =====
+    //  Khôi phục trạng thái đối tượng sau khi đọc từ luồng lưu. 
     @java.io.Serial
     private void readObject(java.io.ObjectInputStream input)
             throws java.io.IOException, ClassNotFoundException {
         input.defaultReadObject();
         dao = new dao.KhachHangDAO();
     }
-    // ===== KHỞI TẠO VÀ XỬ LÝ GIAO DIỆN =====
 
-    // ===== KHỞI TẠO ĐỐI TƯỢNG: FormKhachHang(String) — Khởi tạo đối tượng và thiết lập trạng thái ban đầu. =====
     public FormKhachHang(String page) {
         this(page, null, null);
     }
 
-    // ===== KHỞI TẠO ĐỐI TƯỢNG: FormKhachHang(String, String) — Khởi tạo đối tượng và thiết lập trạng thái ban đầu. =====
     public FormKhachHang(String page, String employeeId) {
         this(page, null, employeeId);
     }
 
-    // ===== KHỞI TẠO ĐỐI TƯỢNG: FormKhachHang(String, VaiTro, String) — Khởi tạo đối tượng và thiết lập trạng thái ban đầu. =====
     public FormKhachHang(String page, VaiTro role, String employeeId) {
         setLayout(new BorderLayout(0, 18));
         setBackground(GiaoDien.BG);
@@ -74,9 +57,10 @@ public final class FormKhachHang extends JPanel {
         dao = new dao.KhachHangDAO();
 
         fields = CAC_COT;
+        // Có thêm cột biển số xe và tổng điểm tích lũy
         displayFields = new String[] { "maKhachHang", "hoTenKH", "soDienThoai", "bienSoXe", "gioiTinh",
                 "email", "diaChi", "tongDiemTichLuy" };
-
+        // Tiêu đề
         JPanel pnlHeading = new JPanel(new GridLayout(2, 1, 0, 5));
         pnlHeading.setOpaque(false);
 
@@ -118,23 +102,26 @@ public final class FormKhachHang extends JPanel {
         }
 
         pnlCard.add(pnlToolbar, BorderLayout.NORTH);
-
+        // Tạo model chứa dữ liệu.
         model = new DefaultTableModel(new String[] { "Mã khách hàng", "Họ tên khách hàng", "Số điện thoại",
                 "Biển số xe", "Giới tính", "Email", "Địa chỉ", "Tổng điểm tích lũy" }, 0) {
-            // ===== PHƯƠNG THỨC: isCellEditable(int, int) — Kiểm tra ô bảng có cho phép chỉnh sửa không. =====
+					private static final long serialVersionUID = 1L;
+
+			// Không sửa trực tiếp phải bấm nút Chỉnh sửa
             @Override
             public boolean isCellEditable(int row, int col) {
                 return false;
             }
         };
-
+        // Tạo table từ model 
         tblTable = GiaoDien.table(model);
         tblTable.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
         {
-            tblTable.setAutoCreateRowSorter(true);
+            tblTable.setAutoCreateRowSorter(true); //cho phép sắp xếp theo cột
         }
 
         statusFilters = new BoLocTrangThai(tblTable);
+        // Cập nhật số dòng hiển thị
         statusFilters.onChange(() -> {
             updateCount();
         });
@@ -177,7 +164,7 @@ public final class FormKhachHang extends JPanel {
 
             pnlButtons.add(btnDelete);
         }
-
+        // Phải chọn 1 dòng thì nút Chỉnh được bật
         tblTable.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
                 int selected = tblTable.getSelectedRow();
@@ -206,33 +193,32 @@ public final class FormKhachHang extends JPanel {
         pnlActions.add(scrActions, BorderLayout.SOUTH);
         pnlCard.add(pnlActions, BorderLayout.SOUTH);
         add(pnlCard, BorderLayout.CENTER);
-
+        // Lấy nội dung nhập, theo dõi khi nd thay đổi
         txtSearch.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
-            // ===== PHƯƠNG THỨC: insertUpdate(javax.swing.event.DocumentEvent) — Xử lý khi nội dung được thêm vào. =====
+            // Khi gõ thêm chữ. 
             @Override
             public void insertUpdate(javax.swing.event.DocumentEvent e) {
                 filter();
             }
 
-            // ===== PHƯƠNG THỨC: removeUpdate(javax.swing.event.DocumentEvent) — Xử lý khi nội dung bị xóa. =====
+            //  Khi xóa chữ.
             @Override
             public void removeUpdate(javax.swing.event.DocumentEvent e) {
                 filter();
             }
 
-            // ===== PHƯƠNG THỨC: changedUpdate(javax.swing.event.DocumentEvent) — Cập nhật giao diện khi nội dung thay đổi. =====
+            // Cập nhật giao diện khi nội dung thay đổi.
             @Override
             public void changedUpdate(javax.swing.event.DocumentEvent e) {
                 filter();
             }
         });
 
-        // Khởi tạo các lựa chọn lọc cố định theo quy định nghiệp vụ và trạng thái mặc định
-
+        // tải dữ liệu lên bảng
         load();
     }
 
-    // ===== PHƯƠNG THỨC: lamMoi() — Tải lại dữ liệu và cập nhật nội dung đang hiển thị. =====
+    //Tải lại dữ liệu và cập nhật nội dung đang hiển thị
     private void lamMoi() {
         txtSearch.setText("");
         statusFilters.reset();
@@ -241,26 +227,29 @@ public final class FormKhachHang extends JPanel {
         tblTable.scrollRectToVisible(new Rectangle(0, 0, 1, 1));
     }
 
-    // ===== PHƯƠNG THỨC: load() — Tải dữ liệu cho bảng hiện tại. =====
+    // Tải dữ liệu cho bảng hiện tại. 
     private void load() {
         try {
-
+        	// Xóa data tải lại, tránh trùng
             model.setRowCount(0);
             List<LinkedHashMap<String, Object>> rows = dao.getAll();
 
             for (Map<String, Object> row : rows) {
 
                 Object[] values = new Object[displayFields.length];
+            	// duyệt từng hàng
                 for (int i = 0; i < displayFields.length; i++) {
-                    String field = displayFields[i];
-                    if (field.equals("gioiTinh")) {
+                    // Lấy tên trường theo đúng thứ tự cột hiển thị.
+                	String field = displayFields[i];
+                    // Giới tính từ bit = 1 thành Nam, ngc lại
+                	if (field.equals("gioiTinh")) {
                         values[i] = Boolean.TRUE.equals(row.get(field))
                                 || "1".equals(String.valueOf(row.get(field))) ? "Nam" : "Nữ";
                     } else {
                         values[i] = row.get(field);
                     }
                 }
-
+                // Thêm dữ liệu vào bảng
                 model.addRow(values);
             }
 
@@ -272,19 +261,19 @@ public final class FormKhachHang extends JPanel {
         }
     }
 
-    // ===== PHƯƠNG THỨC: filter() — Lọc dữ liệu theo tiêu chí đang chọn. =====
+    // Lọc dữ liệu theo tiêu chí đang chọn.
     private void filter() {
         statusFilters.search(txtSearch.getText());
     }
 
-    // ===== PHƯƠNG THỨC: updateCount() — Cập nhật số lượng. =====
+    // Cập nhật số lượng.
     private void updateCount() {
         lblCount.setText("Hiển thị: " + tblTable.getRowCount() + " / " + model.getRowCount() + " bản ghi");
     }
 
-    // ===== PHƯƠNG THỨC: edit(boolean) — Mở biểu mẫu để chỉnh sửa dữ liệu. =====
+    // Mở ô nhập thêm và sửa
     private void edit(boolean existing) {
-
+    	// Kiểm tra có bản ghi khi chọn sửa chưa
         if (existing) {
             Map<String, Object> record = requireSelectedRecord("chỉnh sửa");
             if (record == null)
@@ -297,7 +286,7 @@ public final class FormKhachHang extends JPanel {
             JOptionPane.showMessageDialog(this, "Vui lòng chọn bản ghi.");
             return;
         }
-
+        // Xác định dòng dữ liệu hoặc sinh mã mới
         int source = existing ? tblTable.convertRowIndexToModel(row) : -1;
         String generatedId = null;
 
@@ -310,22 +299,22 @@ public final class FormKhachHang extends JPanel {
                 return;
             }
         }
-
+        // Tạo các ô nhập
         JPanel pnlForm = new JPanel(new GridBagLayout());
         pnlForm.setBackground(Color.WHITE);
         pnlForm.setBorder(new EmptyBorder(20, 22, 12, 22));
-
+        // nơi lưu các thành phần nhập 
         Map<String, JComponent> inputs = new LinkedHashMap<>();
-
+        // Vòng lặp duyệt qua các cột tạo từng ô nhập, nếu sửa thì đổ data vào ô
         for (int i = 0; i < fields.length; i++) {
             String field = fields[i];
             int column = Arrays.asList(displayFields).indexOf(field);
             String value = existing && model.getValueAt(source, column) != null
                     ? model.getValueAt(source, column).toString()
                     : "";
-
+            // Tạo ô nhập hoặc ô chọn
             JComponent input;
-
+            // Kiểm tra có tham chiếu đến bảng khác không
             OChonThamChieu cmbReference = OChonThamChieu.create(tableName, field, value);
 
             if (cmbReference != null) {
@@ -346,7 +335,7 @@ public final class FormKhachHang extends JPanel {
                 ButtonGroup group = new ButtonGroup();
                 group.add(radNam);
                 group.add(radNu);
-
+                // hiện lựa chọn ban đầu khi mở form chỉnh sửa
                 radNam.setSelected(existing && !value.equalsIgnoreCase("Nữ"));
                 radNu.setSelected(value.equalsIgnoreCase("Nữ"));
 
@@ -354,9 +343,11 @@ public final class FormKhachHang extends JPanel {
                 pnlGioiTinh.add(radNu);
                 input = pnlGioiTinh;
             } else {
+            	// Tạo ô nhập
                 JTextField txtInput = GiaoDien.field(value);
+                // Đưa dữ liệu lên ô nhập
                 txtInput.setText(value);
-
+                // Ô mã mà thêm thì auto = true
                 boolean auto = i == 0 && !existing;
 
                 if (auto)
@@ -367,22 +358,23 @@ public final class FormKhachHang extends JPanel {
                 }
 
                 if (auto || (i == 0 && existing)) {
-                    DinhDangKeThua.lock(txtInput);
+                    // Khóa ô mã nền xanh nhạt
+                	DinhDangKeThua.lock(txtInput);
                 }
-
                 input = txtInput;
             }
-
+            // Lưu từng ô vào inputs
             inputs.put(field, input);
-
+            // Tạo nhãn và đặt ô nhập dưới nhãn
             JPanel pnlCell = new JPanel(new BorderLayout(0, 7));
             pnlCell.setOpaque(false);
+            // Tạo nhãn
             pnlCell.add(GiaoDien.label(nhanCot(field) + (COT_BAT_BUOC.contains(field) ? " *" : ""), 12, true,
                     GiaoDien.TEXT), BorderLayout.NORTH);
-
+            //Ô nhập dưới nhãn
             input.setPreferredSize(new Dimension(250, 40));
-            pnlCell.add(input, BorderLayout.CENTER);
-
+            pnlCell.add(input, BorderLayout.CENTER); 
+            // Chia bô cục
             GridBagConstraints gbc = new GridBagConstraints();
             gbc.gridx = i % 2;
             gbc.gridy = i / 2;
@@ -398,7 +390,7 @@ public final class FormKhachHang extends JPanel {
 
         int formH = pnlForm.getPreferredSize().height + 8;
         scrSc.setPreferredSize(new Dimension(700, Math.min(540, formH)));
-
+        // Tiêu đề cửa sổ
         JDialog winDialog = new JDialog(SwingUtilities.getWindowAncestor(this),
                 existing ? "Chỉnh sửa thông tin" : "Thêm thông tin mới",
                 Dialog.ModalityType.APPLICATION_MODAL);
@@ -420,6 +412,7 @@ public final class FormKhachHang extends JPanel {
 
         winDialog.setContentPane(pnlContent);
         winDialog.getRootPane().setDefaultButton(btnSave);
+        // Nhấn Esc = Hủy
         winDialog.getRootPane().registerKeyboardAction(e -> winDialog.dispose(),
                 KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_ESCAPE, 0),
                 JComponent.WHEN_IN_FOCUSED_WINDOW);
@@ -431,7 +424,7 @@ public final class FormKhachHang extends JPanel {
         for (JComponent input : inputs.values()) {
             borders.put(input, input.getBorder());
         }
-
+        // Nhấn lưu
         btnSave.addActionListener(e -> {
             btnSave.setEnabled(false);
             borders.forEach(JComponent::setBorder);
@@ -446,8 +439,8 @@ public final class FormKhachHang extends JPanel {
                     dao.insert(values, expectedId[0]);
                 }
 
-                winDialog.dispose();
-                load();
+                winDialog.dispose(); // đóng cửa sổ thêm/sửa
+                load(); // tải lại data
             } catch (SQLException ex) {
                 String field = ThongBaoLoiSQL.errorField(ex, tableName);
                 String message = ex.getMessage();
@@ -541,7 +534,7 @@ public final class FormKhachHang extends JPanel {
         return record;
     }
 
-    // ===== PHƯƠNG THỨC: hideRecord() — Ẩn bản ghi đã chọn khỏi danh sách. =====
+    // Ẩn bản ghi đã chọn khỏi danh sách. 
     private void hideRecord() {
         int row = tblTable.getSelectedRow();
         if (row < 0) {
@@ -576,53 +569,62 @@ public final class FormKhachHang extends JPanel {
         return tblTable;
     }
 
-    // ===== PHƯƠNG THỨC: kiemTraDuLieu(Map<String,JComponent>) — Kiểm tra dữ liệu. =====
-    private static Map<String, Object> kiemTraDuLieu(Map<String, JComponent> inputs)
-            throws java.sql.SQLException {
-        Map<String, Object> values = new LinkedHashMap<>();
-        docCot(inputs, values, "hoTenKH", "Họ tên khách hàng", "nvarchar:100", true);
-        docCot(inputs, values, "soDienThoai", "Số điện thoại", "varchar:10", true);
-        if (values.get("soDienThoai") instanceof String soDienThoai
-                && !soDienThoai.matches("0[35789][0-9]{8}")) {
-            throw new ThongBaoLoiSQL.Issue("soDienThoai",
-                    "Số điện thoại phải gồm 10 chữ số, đầu số 03, 05, 07, 08 hoặc 09.");
-        }
-        docCot(inputs, values, "gioiTinh", "Giới tính", "bit:", true);
-        docCot(inputs, values, "email", "Email", "varchar:254", true);
-        if (values.get("email") instanceof String email
-                && !email.matches("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")) {
-            throw new ThongBaoLoiSQL.Issue("email", "Email không đúng định dạng.");
-        }
-        docCot(inputs, values, "diaChi", "Địa chỉ", "nvarchar:255", false);
-        for (Map.Entry<String, Object> e : values.entrySet()) {
-            String field = e.getKey();
-            Object value = e.getValue();
-            if (value == null)
-                continue;
-            String raw = value.toString().trim();
+    // Kiểm tra dữ liệu.
 
-            if (field.equals("maKhachHang") && !raw.matches("KH[0-9]{3}"))
-                throw new ThongBaoLoiSQL.Issue(field, "Mã khách hàng phải có dạng KH001.");
+	private static Map<String, Object> kiemTraDuLieu(
+	        Map<String, JComponent> inputs) throws java.sql.SQLException {
+	
+	    Map<String, Object> values = new LinkedHashMap<>();
+	
+	    docCot(inputs, values, "hoTenKH",
+	            "Họ tên khách hàng", "nvarchar:100", true);
+	
+	    if (values.get("hoTenKH") instanceof String hoTenKH
+	            && !hoTenKH.matches("[\\p{L}\\p{M}]+(?:[ ]+[\\p{L}\\p{M}]+)*")) {
+	        throw new ThongBaoLoiSQL.Issue("hoTenKH",
+	                "Họ tên chỉ được chứa chữ cái và khoảng trắng.");
+	    }
+	
+	    docCot(inputs, values, "soDienThoai",
+	            "Số điện thoại", "varchar:10", true);
+	
+	    if (values.get("soDienThoai") instanceof String soDienThoai
+	            && !soDienThoai.matches("0[35789][0-9]{8}")) {
+	        throw new ThongBaoLoiSQL.Issue("soDienThoai",
+	                "Số điện thoại phải gồm 10 chữ số, đầu số 03, 05, 07, 08 hoặc 09.");
+	    }
+	
+	    docCot(inputs, values, "gioiTinh",
+	            "Giới tính", "bit:", true);
+	
+	    docCot(inputs, values, "email",
+	            "Email", "varchar:254", true);
 
-            if ((field.equals("hoTenKH"))) {
+	    if (values.get("email") instanceof String email
+	            && !email.matches("[A-Za-z0-9._%+-]+@gmail\\.com")) {
+	        throw new ThongBaoLoiSQL.Issue("email",
+	                "Email phải đúng định dạng và kết thúc bằng @gmail.com.");
+	    }
+	
+	    docCot(inputs, values, "diaChi",
+	            "Địa chỉ", "nvarchar:255", false);
+	
+	    return values;
+	}
 
-                if (!raw.matches("[\\p{L}\\p{M}]+(?:[ ]+[\\p{L}\\p{M}]+)*"))
-                    throw new ThongBaoLoiSQL.Issue(field, "Họ tên chỉ được chứa chữ cái và khoảng trắng.");
-            }
 
-        }
-        return values;
-    }
-
-    // ===== PHƯƠNG THỨC: docCot(Map<String,JComponent>, Map<String,Object>, String, String, String, boolean) — Đọc, kiểm tra và chuyển giá trị của một cột biểu mẫu. =====
+    // Đọc, kiểm tra và chuyển giá trị của một cột biểu mẫu.
     private static void docCot(Map<String, JComponent> inputs, Map<String, Object> values,
             String field, String label, String specification, boolean required) throws ThongBaoLoiSQL.Issue {
-        if (!inputs.containsKey(field)) return;
-        if (inputs.get(field) instanceof OChonThamChieu cmbCombo) cmbCombo.validateSelection();
+        // inputs: ô nhập, values: dữ liệu
+    	if (!inputs.containsKey(field)) return;
+        // Kiểm tra data đặc biệt
+    	if (inputs.get(field) instanceof OChonThamChieu cmbCombo) cmbCombo.validateSelection();
         if(inputs.get(field) instanceof JCheckBox checkBox) {
             values.put(field,checkBox.isSelected());
             return;
         }
+        // đọc nội dung nhập
         String raw = docVanBan(inputs.get(field));
         if (raw.isEmpty()) {
             if (required) throw new ThongBaoLoiSQL.Issue(field, "Vui lòng nhập " + label.toLowerCase() + ".");
@@ -644,8 +646,12 @@ public final class FormKhachHang extends JPanel {
                 default -> raw;
             };
         } catch (IllegalArgumentException ex) {
-            String expected = spec[0].equals("int") ? "số nguyên hợp lệ"
-                    : spec[0].equals("decimal") ? "số hợp lệ, dùng dấu chấm cho phần thập phân" : "ngày hợp lệ";
+	        String expected = switch (spec[0]) {
+	            case "int" -> "số nguyên hợp lệ";
+	            case "decimal" -> "số hợp lệ, dùng dấu chấm cho phần thập phân";
+	            case "bit" -> "Nam hoặc Nữ";
+	            default -> "ngày hợp lệ";
+	        };
             throw new ThongBaoLoiSQL.Issue(field, label + " phải là " + expected + ".");
         }
         if ((spec[0].equals("varchar") || spec[0].equals("nvarchar"))
@@ -762,7 +768,9 @@ public final class FormKhachHang extends JPanel {
         // ===== PHƯƠNG THỨC: rounded(Color, int) — Tạo đường viền bo góc cho thành phần. =====
         public static JPanel rounded(Color c, int r) {
             return new JPanel() {
-                // ===== PHƯƠNG THỨC: paintComponent(Graphics) — Vẽ nội dung và trạng thái hiện tại của thành phần. =====
+				private static final long serialVersionUID = 1L;
+
+				// ===== PHƯƠNG THỨC: paintComponent(Graphics) — Vẽ nội dung và trạng thái hiện tại của thành phần. =====
                 @Override
                 protected void paintComponent(Graphics g) {
                     Graphics2D q = (Graphics2D) g.create();
@@ -777,7 +785,9 @@ public final class FormKhachHang extends JPanel {
         // ===== PHƯƠNG THỨC: button(String, Color, Color) — Tạo nút giao diện theo kiểu chỉ định. =====
         public static JButton button(String s, Color bg, Color fg) {
             JButton btnB = new JButton(s) {
-                // ===== PHƯƠNG THỨC: paintComponent(Graphics) — Vẽ nội dung và trạng thái hiện tại của thành phần. =====
+				private static final long serialVersionUID = 1L;
+
+				// ===== PHƯƠNG THỨC: paintComponent(Graphics) — Vẽ nội dung và trạng thái hiện tại của thành phần. =====
                 @Override
                 protected void paintComponent(Graphics g) {
                     Graphics2D q = (Graphics2D) g.create();
@@ -805,29 +815,57 @@ public final class FormKhachHang extends JPanel {
             return lblL;
         }
 
-        // ===== PHƯƠNG THỨC: field(String) — Tạo thành phần nhập liệu cho một trường. =====
+    //  Tạo ô có hiển thị gợi ý nhập
         public static JTextField field(String hint) {
-            JTextField txtT = new JTextField();
-            txtT.putClientProperty("JTextField.placeholderText", hint);
+            JTextField txtT = new JTextField() {
+				private static final long serialVersionUID = 1L;
+
+				@Override
+                protected void paintComponent(Graphics g) {
+		            // Vẽ ô nhập liệu bình thường.
+					super.paintComponent(g);
+                    // ô chưa nhập chữ thì hiện gợi ý
+                    if (getText().isEmpty() && hint != null && !hint.isEmpty()) {
+                        Graphics2D g2 = (Graphics2D) g.create();
+                        g2.setFont(getFont());
+                        // xám nhạt
+                        g2.setColor(new Color(0x9AA7A9));
+                        // xác định vị trí chữ trong ô
+                        Insets insets = getInsets();
+                        int y = (getHeight() - g2.getFontMetrics().getHeight()) / 2
+                                + g2.getFontMetrics().getAscent();
+
+                        g2.drawString(hint, insets.left, y);
+                        g2.dispose();
+                    }
+                }
+            };
+
             txtT.setFont(font(13, false));
             txtT.setForeground(TEXT);
             txtT.setBorder(
-                    new CompoundBorder(new LineBorder(LINE, 1, true), new EmptyBorder(10, 12, 10, 12)));
+                new CompoundBorder(
+                    new LineBorder(LINE, 1, true),
+                    new EmptyBorder(10, 12, 10, 12)
+                )
+            );
+
             return txtT;
         }
 
-        // ===== PHƯƠNG THỨC: table(DefaultTableModel) — Lấy bảng dữ liệu tương ứng với màn hình. =====
+        // Lấy bảng dữ liệu tương ứng với màn hình.
         public static JTable table(DefaultTableModel m) {
             JTable tblT = new JTable(m) {
-                private final TableCellRenderer cells = new DinhDangBang();
+				private static final long serialVersionUID = 1L;
+				private final TableCellRenderer cells = new DinhDangBang();
 
-                // ===== PHƯƠNG THỨC: getCellRenderer(int, int) — Lấy ô renderer. =====
+                // Lấy ô renderer.
                 @Override
                 public TableCellRenderer getCellRenderer(int row, int column) {
                     return cells;
                 }
 
-                // ===== PHƯƠNG THỨC: createDefaultColumnsFromModel() — Tạo các cột mặc định theo mô hình bảng. =====
+                // Tạo các cột mặc định theo mô hình bảng.
                 @Override
                 public void createDefaultColumnsFromModel() {
                     super.createDefaultColumnsFromModel();

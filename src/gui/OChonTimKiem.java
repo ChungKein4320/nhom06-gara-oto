@@ -1,7 +1,5 @@
 package gui;
 
-import javax.swing.plaf.basic.BasicScrollBarUI;
-
 import java.awt.*;
 import java.awt.event.*;
 import java.text.Normalizer;
@@ -9,8 +7,9 @@ import java.util.*;
 import javax.swing.*;
 import javax.swing.border.*;
 import javax.swing.event.*;
-import javax.swing.plaf.basic.BasicComboBoxUI;
 import javax.swing.plaf.basic.BasicComboBoxEditor;
+import javax.swing.plaf.basic.BasicComboBoxUI;
+import javax.swing.plaf.basic.BasicScrollBarUI;
 
 // ===== GUI: Ô CHỌN CÓ TÌM KIẾM =====
 
@@ -21,11 +20,14 @@ class OChonTimKiem<T> extends JComboBox<T> {
             if (!Set.of("PhuongTien", "PhuTung", "MaGiamGia").contains(table)
                     || !Set.of("hangXe", "dongXe", "mauXe", "namSanXuat", "loaiPhuTung", "mucGiam", "mocDiem").contains(field))
                 return null;
+            // hợp lệ tạo cmb có giá trị từ sql
             java.util.LinkedHashSet<String> choices = new java.util.LinkedHashSet<>();
+            // Có lựa chọn rỗng
             choices.add("");
             if (field.equals("namSanXuat")) {
                 for (int year = java.time.Year.now().getValue(); year >= 1886; year--) choices.add(String.valueOf(year));
             } else {
+                // Bảng chứa các giá trị gì thì cmb hiện cái đó
                 try (java.sql.Connection conn = connectDB.KetNoiCSDL.getConnection();
                         java.sql.PreparedStatement stmt = conn.prepareStatement("SELECT DISTINCT [" + field + "] FROM dbo.[" + table + "] WHERE [" + field + "] IS NOT NULL ORDER BY [" + field + "]");
                         java.sql.ResultSet rs = stmt.executeQuery()) {
@@ -37,9 +39,11 @@ class OChonTimKiem<T> extends JComboBox<T> {
                 case "hangXe" -> "— Chọn hãng xe —";
                 case "dongXe" -> "— Chọn dòng xe —";
                 case "mauXe" -> "— Chọn màu xe —";
+                case "mucGiam" -> "— Chọn mức giảm —";
+                case "mocDiem" -> "— Chọn mốc điểm —";
                 default -> "";
             };
-            JComboBox<String> combo = new OChonTimKiem<>(choices.toArray(new String[0]), placeholder);
+            JComboBox<String> combo = new OChonTimKiem<>(choices.toArray(String[]::new), placeholder);
             combo.setSelectedItem(value == null ? "" : value);
             return combo;
         }
@@ -69,14 +73,16 @@ class OChonTimKiem<T> extends JComboBox<T> {
                 }
 
                 value = value.trim();
+                // Lấy số mục trong cmb, duyệt từng mục so sánh
                 for (int i = 0; i < combo.getItemCount(); i++) {
                     String item = combo.getItemAt(i);
+                    // Check trùng, nếu trùng thì lấy lại data đã có
                     if (value.equalsIgnoreCase(item)) {
                         combo.setSelectedItem(item);
                         return;
                     }
                 }
-
+                // data mới thì thêm vào cmb
                 combo.addItem(value);
                 combo.setSelectedItem(value);
             });
@@ -172,6 +178,7 @@ class OChonTimKiem<T> extends JComboBox<T> {
     }
 
     private OChonTimKiem(T[] values, String placeholder) {
+        //Nạp danh sách
         super(values);
         if (!placeholder.isEmpty()) {
             setEditor(new BasicComboBoxEditor() {
@@ -309,7 +316,7 @@ class OChonTimKiem<T> extends JComboBox<T> {
                 return lbl;
             }
         });
-
+        //Khi gõ vào ô
         txtEditor.getDocument().addDocumentListener(new DocumentListener() {
             // ===== PHƯƠNG THỨC: update() — Cập nhật bản ghi trong cơ sở dữ liệu. =====
             private void update() {
@@ -351,7 +358,7 @@ class OChonTimKiem<T> extends JComboBox<T> {
         txtEditor.getActionMap().put("pickResult", new AbstractAction() {
             private static final long serialVersionUID = 1L;
 
-            // ===== PHƯƠNG THỨC: actionPerformed(ActionEvent) — Xử lý thao tác của người dùng. =====
+            // Xử lý thao tác của người dùng.
             @Override
             public void actionPerformed(ActionEvent e) {
                 choose();
@@ -527,6 +534,7 @@ class OChonTimKiem<T> extends JComboBox<T> {
             popup.setBackground(GiaoDien.WHITE);
             popup.setBorder(
                     new CompoundBorder(new LineBorder(GiaoDien.LINE, 1, true), new EmptyBorder(3, 0, 3, 0)));
+            // Giá trị tìm được
             results = new DefaultListModel<>();
             lstResults = new JList<>(results);
             lstResults.setFocusable(false);
@@ -638,8 +646,11 @@ class OChonTimKiem<T> extends JComboBox<T> {
     // ===== PHƯƠNG THỨC: choose() — Hiển thị lựa chọn và trả về mục được chọn. =====
     private void choose() {
         if (isPopupVisible() && lstResults != null && lstResults.getSelectedValue() != null) {
+            // Đã chọn một dòng trong danh sách
             T value = lstResults.getSelectedValue();
+            // Đóng danh sách xổ xuống.
             setPopupVisible(false);
+            // Để giá trị vào cmb
             setSelectedItem(value);
             txtEditor.requestFocusInWindow();
             return;
@@ -649,10 +660,12 @@ class OChonTimKiem<T> extends JComboBox<T> {
             T value = getItemAt(i);
             if (value != null && value.toString().equalsIgnoreCase(text)) {
                 setPopupVisible(false);
+                // Chọn vào giá trị value
                 setSelectedItem(value);
                 return;
             }
         }
+        // nếu gõ 1 giá trị ngoài danh sách thì mở open tìm kiếm tiếp
         open(true);
     }
 

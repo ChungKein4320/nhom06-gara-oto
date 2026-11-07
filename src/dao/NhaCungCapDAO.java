@@ -1,13 +1,10 @@
 package dao;
 
-import java.math.BigDecimal;
-
 import connectDB.KetNoiCSDL;
+import java.math.BigDecimal;
 import java.sql.*;
 import java.util.*;
 
-// ===== DAO: NhaCungCapDAO =====
-/** SQL và thao tác dữ liệu riêng của NhaCungCap. */
 public class NhaCungCapDAO implements DuLieuDAO {
     private static final String KHOA_CHINH = "maNCC";
     private static final String[] CAC_COT = new String[] { "maNCC", "tenNCC", "soDienThoai", "email",
@@ -21,17 +18,18 @@ public class NhaCungCapDAO implements DuLieuDAO {
     private final String table = "NhaCungCap";
     private final String primary = KHOA_CHINH;
 
-    // ===== PHƯƠNG THỨC: getAll() — Lấy danh sách bản ghi từ cơ sở dữ liệu. =====
+    // Lấy toàn bộ danh sách để hiển thị, bỏ bản ghi bị ẩn
     @Override
     public List<LinkedHashMap<String, Object>> getAll() throws SQLException {
         try (Connection conn = KetNoiCSDL.getConnection()) {
             List<LinkedHashMap<String, Object>> rows = getAll(conn, null);
+            // Loại bỏ các dòng được đánh dấu ẩn
             rows.removeIf(row -> HiddenRecords.isHidden(table, String.valueOf(row.get(primary))));
             return rows;
         }
     }
 
-    // ===== PHƯƠNG THỨC: getAll(Connection, Map<String,Object>) — Lấy danh sách bản ghi từ cơ sở dữ liệu. =====
+    // Thực hiện truy vấn SQL, có thể lọc theo điều kiện
     @Override
     public List<LinkedHashMap<String, Object>> getAll(Connection conn, Map<String, Object> filter)
             throws SQLException {
@@ -53,7 +51,7 @@ public class NhaCungCapDAO implements DuLieuDAO {
         }
     }
 
-    // ===== PHƯƠNG THỨC: previewNextId() — Tạo mã tiếp theo để xem trước khi lưu. =====
+    // Tạo số mã tiếp theo để xem trước khi lưu.
     @Override
     public String previewNextId() throws SQLException {
         if (CAC_KHOA.length != 1 || primary.equals("VIN"))
@@ -69,18 +67,18 @@ public class NhaCungCapDAO implements DuLieuDAO {
         }
     }
 
-    // ===== PHƯƠNG THỨC: prefix() — Xử lý prefix. =====
+    // Xử lý tiền tố
     private String prefix() {
         return "NCC";
     }
 
-    // ===== PHƯƠNG THỨC: insert(Map<String,Object>) — Thêm bản ghi vào cơ sở dữ liệu. =====
+    // Thêm đơn giản
     @Override
     public void insert(Map<String, Object> row) throws SQLException {
         insert(row, null);
     }
 
-    // ===== PHƯƠNG THỨC: insert(Map<String,Object>, String) — Thêm bản ghi vào cơ sở dữ liệu. =====
+    // Tạo transaction rồi gọi phương thức thêm thực tế
     @Override
     public void insert(Map<String, Object> row, String preview) throws SQLException {
         QuyTrinhDAO.transaction(conn -> {
@@ -89,16 +87,18 @@ public class NhaCungCapDAO implements DuLieuDAO {
         });
     }
 
-    // ===== PHƯƠNG THỨC: insert(Connection, Map<String,Object>) — Thêm bản ghi vào cơ sở dữ liệu. =====
-    /** Dùng connection của phiếu để lưu đầu phiếu và chi tiết cùng giao dịch. */
+    // Sinh mã, kiểm tra và thực hiện SQL INSERT
     @Override
     public String insert(Connection conn, Map<String, Object> values) throws SQLException {
-        Map<String, Object> row = new LinkedHashMap<>(values);
+        // Sao chép value thành row để bổ sung mã
+    	Map<String, Object> row = new LinkedHashMap<>(values);
         if (CAC_KHOA.length == 1 && !primary.equals("VIN")) {
             {
                 try (Statement ps = conn.createStatement();
+                		// lấy số tiếp theo
                         ResultSet rs = ps.executeQuery("SELECT NEXT VALUE FOR dbo.[Seq_" + table + "]")) {
                     rs.next();
+                    //ghép mã với 3 số
                     row.put(primary, prefix() + String.format(Locale.ROOT, "%03d", rs.getInt(1)));
                 }
             }
@@ -114,7 +114,7 @@ public class NhaCungCapDAO implements DuLieuDAO {
         return String.valueOf(row.get(primary));
     }
 
-    // ===== PHƯƠNG THỨC: update(String, Map<String,Object>) — Cập nhật bản ghi trong cơ sở dữ liệu. =====
+    // Nhận mã cần sửa, mở transaction
     @Override
     public void update(String id, Map<String, Object> row) throws SQLException {
         if (CAC_KHOA.length != 1)
@@ -125,14 +125,16 @@ public class NhaCungCapDAO implements DuLieuDAO {
         });
     }
 
-    // ===== PHƯƠNG THỨC: update(Connection, Map<String,Object>, Map<String,Object>) — Cập nhật bản ghi trong cơ sở dữ liệu. =====
+    // Kiểm tra và thực hiện SQL UPDATE 
     @Override
     public void update(Connection conn, Map<String, Object> key, Map<String, Object> values)
             throws SQLException {
         Map<String, Object> row = new LinkedHashMap<>(values);
         for (String field : CAC_KHOA)
+        	//Không thay đổi khóa chính
             row.remove(field);
         kiemTraDuLieu(row, false);
+        // Kiểm tra ràng buộc
         QuyTrinhDAO.guardWrite(conn, table, row, key);
         if (row.isEmpty())
             return;
@@ -147,13 +149,13 @@ public class NhaCungCapDAO implements DuLieuDAO {
         }
     }
 
-    // ===== PHƯƠNG THỨC: softDelete(String) — Đánh dấu bản ghi đã xóa mà vẫn giữ dữ liệu. =====
+    // Đánh dấu bản ghi đã xóa mà vẫn giữ dữ liệu. 
     @Override
     public void softDelete(String id) throws SQLException {
         HiddenRecords.hide(table, id);
     }
 
-    // ===== PHƯƠNG THỨC: conditions(Map<String,Object>) — Tạo điều kiện truy vấn theo tiêu chí lọc. =====
+    // Tạo điều kiện truy vấn theo tiêu chí lọc. (tạo ở chỗ WHERE)
     private String conditions(Map<String, Object> values) throws SQLException {
         for (String field : values.keySet())
             if (!KIEU_COT.containsKey(field))
@@ -161,46 +163,42 @@ public class NhaCungCapDAO implements DuLieuDAO {
         return String.join(" AND ", values.keySet().stream().map(s -> "[" + s + "]=?").toList());
     }
 
-    // ===== PHƯƠNG THỨC: bind(PreparedStatement, Collection<?>) — Gán giá trị tham số cho câu lệnh SQL. =====
+    // Gán giá trị tham số vào dấu ? cho câu SQL.
     private static void bind(PreparedStatement ps, Collection<?> values) throws SQLException {
         int i = 1;
         for (Object value : values)
             ps.setObject(i++, value);
     }
 
-    // ===== PHƯƠNG THỨC: cacKhoa() — Liệt kê các cột khóa của bản ghi. =====
     @Override
     public String[] cacKhoa() {
         return CAC_KHOA.clone();
     }
 
-    // ===== PHƯƠNG THỨC: khoaChinh() — Xác định cột khóa chính của bảng dữ liệu. =====
     @Override
     public String khoaChinh() {
         return KHOA_CHINH;
     }
 
-    // ===== PHƯƠNG THỨC: cacCot() — Liệt kê các cột dữ liệu của đối tượng. =====
     @Override
     public String[] cacCot() {
         return CAC_COT.clone();
     }
 
-    // ===== PHƯƠNG THỨC: kieuCot() — Khai báo kiểu dữ liệu của từng cột. =====
     @Override
     public Map<String, String> kieuCot() {
         return KIEU_COT;
     }
 
-    // ===== PHƯƠNG THỨC: cotBatBuoc() — Liệt kê các cột bắt buộc nhập. =====
     @Override
     public Set<String> cotBatBuoc() {
         return COT_BAT_BUOC;
     }
 
-    // ===== PHƯƠNG THỨC: kiemTraDuLieu(Map<String,Object>, boolean) — Kiểm tra dữ liệu. =====
+    // Kiểm tra dữ liệu. 
     private static void kiemTraDuLieu(Map<String, Object> row, boolean creating) throws SQLException {
-        if (creating) {
+        // true = insert, false = update
+    	if (creating) {
             Set<String> required = COT_BAT_BUOC;
             for (String field : required) {
                 Object val = row.get(field);
@@ -208,6 +206,7 @@ public class NhaCungCapDAO implements DuLieuDAO {
                     fail(field, "Bắt buộc nhập: " + field);
             }
         }
+    	//Kiểm tra từng giá trị
         for (Map.Entry<String, Object> e : row.entrySet()) {
             String field = e.getKey();
             Object value = e.getValue();
@@ -250,7 +249,7 @@ public class NhaCungCapDAO implements DuLieuDAO {
 
     }
 
-    // ===== PHƯƠNG THỨC: fail(String, String) — Tạo lỗi truy vấn khi thao tác nghiệp vụ không hợp lệ. =====
+    // Tạo lỗi truy vấn khi thao tác nghiệp vụ không hợp lệ. 
     private static void fail(String field, String message) throws SQLException {
         throw new LoiDuLieu(field, message);
     }

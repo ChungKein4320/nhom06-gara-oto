@@ -21,20 +21,25 @@ public final class QuyTrinhDAO {
         T run(Connection conn) throws SQLException;
     }
 
-    // ===== PHƯƠNG THỨC: transaction(Work<T>) — Chạy giao dịch cơ sở dữ liệu và hoàn tác khi lỗi. =====
+    // Chạy giao dịch cơ sở dữ liệu và hoàn tác khi lỗi.
     public static <T> T transaction(Work<T> work) throws SQLException {
         try (Connection conn = KetNoiCSDL.getConnection()) {
+            // Mở kết nối
             boolean originalAutoCommit = conn.getAutoCommit();
+            // Tắt auto
             conn.setAutoCommit(false);
             boolean completed = false;
             boolean rolledBack = false;
             try {
+                // Chạy insert/update
                 T result = work.run(conn);
+                //Thành công
                 conn.commit();
                 completed = true;
                 return result;
             } catch (SQLException t) {
                 try {
+                    //Thất bại
                     conn.rollback();
                     rolledBack = true;
                 } catch (SQLException rbEx) {

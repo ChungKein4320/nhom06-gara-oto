@@ -1,25 +1,16 @@
 package gui;
 
-import java.util.Locale;
-import java.time.format.DateTimeFormatter;
-import java.text.*;
-import javax.swing.table.*;
-import javax.swing.border.*;
-import javax.swing.table.TableColumn;
-import javax.swing.JScrollPane;
-import javax.swing.JTable;
-import javax.swing.SwingUtilities;
-import java.awt.event.ComponentEvent;
-import java.awt.event.ComponentAdapter;
-import java.awt.Component;
-
 import java.awt.*;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.sql.SQLException;
+import java.text.*;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.List;
 import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-import javax.swing.table.DefaultTableModel;
+import javax.swing.border.*;
+import javax.swing.table.*;
 
 // ===== GUI: FormPhuongTien =====
 /** Danh sách và biểu mẫu sử dụng dữ liệu SQL Server thực tế. */
@@ -117,7 +108,9 @@ public final class FormPhuongTien extends JPanel {
 
         model = new DefaultTableModel(new String[] { "Số khung (VIN)", "Mã khách hàng", "Biển số", "Hãng xe",
                 "Dòng xe", "Màu xe", "Năm sản xuất", "Số máy", "Số km" }, 0) {
-            // ===== PHƯƠNG THỨC: isCellEditable(int, int) — Kiểm tra ô bảng có cho phép chỉnh sửa không. =====
+					private static final long serialVersionUID = 1L;
+
+			// ===== PHƯƠNG THỨC: isCellEditable(int, int) — Kiểm tra ô bảng có cho phép chỉnh sửa không. =====
             @Override
             public boolean isCellEditable(int row, int col) {
                 return false;
@@ -320,7 +313,7 @@ public final class FormPhuongTien extends JPanel {
             JComponent input;
 
             OChonThamChieu cmbReference = OChonThamChieu.create(tableName, field, value);
-
+            // Ô cmb có kèm dấu +
             JComboBox<String> cmbDanhMuc = OChonTimKiem.chonDanhMuc(tableName, field, value);
             if (cmbDanhMuc != null) {
                 input = cmbDanhMuc;
@@ -356,6 +349,7 @@ public final class FormPhuongTien extends JPanel {
 
             input.setPreferredSize(new Dimension(250, 40));
             pnlCell.add(input, BorderLayout.CENTER);
+            // Nếu là 3 ô này thì thêm nút + 
             if (cmbDanhMuc != null && Set.of("hangXe", "dongXe", "mauXe").contains(field)) {
                 pnlCell.add(OChonTimKiem.nutThemGiaTri(cmbDanhMuc, nhanCot(field)), BorderLayout.EAST);
             }
@@ -554,47 +548,62 @@ public final class FormPhuongTien extends JPanel {
         return tblTable;
     }
 
-    // ===== PHƯƠNG THỨC: kiemTraDuLieu(Map<String,JComponent>, boolean) — Kiểm tra dữ liệu. =====
-    private static Map<String, Object> kiemTraDuLieu(Map<String, JComponent> inputs, boolean existing)
-            throws java.sql.SQLException {
-        Map<String, Object> values = new LinkedHashMap<>();
-        if (!existing)
-            docCot(inputs, values, "VIN", "Số khung (VIN)", "varchar:17", true);
-        if (values.get("VIN") instanceof String VIN && !VIN.matches("[A-HJ-NPR-Z0-9]{17}")) {
-            throw new ThongBaoLoiSQL.Issue("VIN", "Số khung (VIN) phải gồm 17 ký tự hợp lệ.");
-        }
-        docCot(inputs, values, "maKhachHang", "Mã khách hàng", "varchar:5", true);
-        docCot(inputs, values, "bienSo", "Biển số", "varchar:8", true);
-        docCot(inputs, values, "hangXe", "Hãng xe", "nvarchar:100", true);
-        docCot(inputs, values, "dongXe", "Dòng xe", "nvarchar:100", true);
-        docCot(inputs, values, "mauXe", "Màu xe", "nvarchar:50", true);
-        docCot(inputs, values, "namSanXuat", "Năm sản xuất", "int:", true);
-        docCot(inputs, values, "soMay", "Số máy", "varchar:100", true);
-        docCot(inputs, values, "soKM", "Số km", "decimal:12,2", true);
-        for (Map.Entry<String, Object> e : values.entrySet()) {
-            String field = e.getKey();
-            Object value = e.getValue();
-            if (value == null)
-                continue;
-            String raw = value.toString().trim();
+    // Kiểm tra dữ liệu.
+	
+	private static Map<String, Object> kiemTraDuLieu(
+	        Map<String, JComponent> inputs, boolean existing)
+	        throws java.sql.SQLException {
+	
+	    Map<String, Object> values = new LinkedHashMap<>();
+	
+	    if (!existing) {
+	        docCot(inputs, values, "VIN", "Số khung (VIN)", "varchar:17", true);
+	
+	        String vin = values.get("VIN").toString();
+	        if (!vin.matches("[A-HJ-NPR-Z0-9]{17}")) {
+	            throw new ThongBaoLoiSQL.Issue(
+	                    "VIN", "Số khung (VIN) phải gồm 17 ký tự hợp lệ, không chứa I, O, Q.");
+	        }
+	    }
+	
+	    docCot(inputs, values, "maKhachHang", "Mã khách hàng", "varchar:5", true);
+	
+	    String maKH = values.get("maKhachHang").toString();
+	    if (!maKH.matches("KH[0-9]{3}")) {
+	        throw new ThongBaoLoiSQL.Issue(
+	                "maKhachHang", "Mã khách hàng phải có dạng KH001.");
+	    }
+	
+	    docCot(inputs, values, "bienSo", "Biển số", "varchar:8", true);
+	
+	    String bienSo = values.get("bienSo").toString();
+	    if (!bienSo.matches("[0-9]{2}[A-Z][0-9]{5}")) {
+	        throw new ThongBaoLoiSQL.Issue(
+	                "bienSo", "Biển số phải theo dạng 51A12345.");
+	    }
+	
+	    docCot(inputs, values, "hangXe", "Hãng xe", "nvarchar:100", true);
+	
+	    docCot(inputs, values, "dongXe", "Dòng xe", "nvarchar:100", true);
+	
+	    docCot(inputs, values, "mauXe", "Màu xe", "nvarchar:50", true);
+	
+	    docCot(inputs, values, "namSanXuat", "Năm sản xuất", "int:", true);
+	
+	    int nam = (Integer) values.get("namSanXuat");
+	    if (nam < 1886 || nam > java.time.LocalDate.now().getYear()) {
+	        throw new ThongBaoLoiSQL.Issue(
+	                "namSanXuat",
+	                "Năm sản xuất phải từ 1886 đến năm hiện tại.");
+	    }
+	
+	    docCot(inputs, values, "soMay", "Số máy", "varchar:100", true);
+	
+	    docCot(inputs, values, "soKM", "Số km", "decimal:12,2", true);
+	
+	    return values;
+	}
 
-            if (field.equals("maKhachHang") && !raw.matches("KH[0-9]{3}"))
-                throw new ThongBaoLoiSQL.Issue(field, "Mã khách hàng phải có dạng KH001.");
-
-            if (field.equals("bienSo") && !raw.matches("[0-9]{2}[A-Z][0-9]{5}"))
-                throw new ThongBaoLoiSQL.Issue(field, "Biển số phải theo dạng 51A12345.");
-
-            if (field.equals("namSanXuat") && (Integer.parseInt(raw) < 1886
-                    || Integer.parseInt(raw) > java.time.LocalDate.now().getYear()))
-                throw new ThongBaoLoiSQL.Issue(field, "Năm sản xuất không hợp lệ.");
-
-        }
-
-        if ((values.get("maKhachHang") == null || values.get("maKhachHang").toString().isBlank()))
-            throw new ThongBaoLoiSQL.Issue("maKhachHang",
-                    "Vui lòng chọn khách hàng là chủ sở hữu phương tiện.");
-        return values;
-    }
 
     // ===== PHƯƠNG THỨC: docCot(Map<String,JComponent>, Map<String,Object>, String, String, String, boolean) — Đọc, kiểm tra và chuyển giá trị của một cột biểu mẫu. =====
     private static void docCot(Map<String, JComponent> inputs, Map<String, Object> values,
@@ -744,7 +753,9 @@ public final class FormPhuongTien extends JPanel {
         // ===== PHƯƠNG THỨC: rounded(Color, int) — Tạo đường viền bo góc cho thành phần. =====
         public static JPanel rounded(Color c, int r) {
             return new JPanel() {
-                // ===== PHƯƠNG THỨC: paintComponent(Graphics) — Vẽ nội dung và trạng thái hiện tại của thành phần. =====
+				private static final long serialVersionUID = 1L;
+
+				// ===== PHƯƠNG THỨC: paintComponent(Graphics) — Vẽ nội dung và trạng thái hiện tại của thành phần. =====
                 @Override
                 protected void paintComponent(Graphics g) {
                     Graphics2D q = (Graphics2D) g.create();
@@ -759,7 +770,9 @@ public final class FormPhuongTien extends JPanel {
         // ===== PHƯƠNG THỨC: button(String, Color, Color) — Tạo nút giao diện theo kiểu chỉ định. =====
         public static JButton button(String s, Color bg, Color fg) {
             JButton btnB = new JButton(s) {
-                // ===== PHƯƠNG THỨC: paintComponent(Graphics) — Vẽ nội dung và trạng thái hiện tại của thành phần. =====
+				private static final long serialVersionUID = 1L;
+
+				// ===== PHƯƠNG THỨC: paintComponent(Graphics) — Vẽ nội dung và trạng thái hiện tại của thành phần. =====
                 @Override
                 protected void paintComponent(Graphics g) {
                     Graphics2D q = (Graphics2D) g.create();
@@ -787,21 +800,49 @@ public final class FormPhuongTien extends JPanel {
             return lblL;
         }
 
-        // ===== PHƯƠNG THỨC: field(String) — Tạo thành phần nhập liệu cho một trường. =====
+        //  Tạo ô có hiển thị gợi ý nhập
         public static JTextField field(String hint) {
-            JTextField txtT = new JTextField();
-            txtT.putClientProperty("JTextField.placeholderText", hint);
+            JTextField txtT = new JTextField() {
+				private static final long serialVersionUID = 1L;
+
+				@Override
+                protected void paintComponent(Graphics g) {
+		            // Vẽ ô nhập liệu bình thường.
+					super.paintComponent(g);
+                    // ô chưa nhập chữ thì hiện gợi ý
+                    if (getText().isEmpty() && hint != null && !hint.isEmpty()) {
+                        Graphics2D g2 = (Graphics2D) g.create();
+                        g2.setFont(getFont());
+                        // xám nhạt
+                        g2.setColor(new Color(0x9AA7A9));
+                        // xác định vị trí chữ trong ô
+                        Insets insets = getInsets();
+                        int y = (getHeight() - g2.getFontMetrics().getHeight()) / 2
+                                + g2.getFontMetrics().getAscent();
+
+                        g2.drawString(hint, insets.left, y);
+                        g2.dispose();
+                    }
+                }
+            };
+
             txtT.setFont(font(13, false));
             txtT.setForeground(TEXT);
             txtT.setBorder(
-                    new CompoundBorder(new LineBorder(LINE, 1, true), new EmptyBorder(10, 12, 10, 12)));
+                new CompoundBorder(
+                    new LineBorder(LINE, 1, true),
+                    new EmptyBorder(10, 12, 10, 12)
+                )
+            );
+
             return txtT;
         }
 
         // ===== PHƯƠNG THỨC: table(DefaultTableModel) — Lấy bảng dữ liệu tương ứng với màn hình. =====
         public static JTable table(DefaultTableModel m) {
             JTable tblT = new JTable(m) {
-                private final TableCellRenderer cells = new DinhDangBang();
+				private static final long serialVersionUID = 1L;
+				private final TableCellRenderer cells = new DinhDangBang();
 
                 // ===== PHƯƠNG THỨC: getCellRenderer(int, int) — Lấy ô renderer. =====
                 @Override

@@ -1,16 +1,11 @@
 package dao;
 
-import java.math.BigDecimal;
-
 import connectDB.KetNoiCSDL;
+import java.math.BigDecimal;
 import java.sql.*;
 import java.util.*;
 
-// ===== DAO: TRUY VẤN VÀ GHI PHỤ TÙNG =====
-
-/** SQL và thao tác dữ liệu riêng của PhuTung. */
 public class PhuTungDAO implements DuLieuDAO {
-    // ===== CẤU HÌNH VÀ TÊN BẢNG/CỘT =====
     private static final String KHOA_CHINH = "maPhuTung";
     private static final String[] CAC_COT = new String[] { "maPhuTung", "tenPhuTung", "donGia", "loaiPhuTung",
             "thoiHanBaoHanh" };
@@ -24,9 +19,8 @@ public class PhuTungDAO implements DuLieuDAO {
     private final String table = "PhuTung";
     private final String primary = KHOA_CHINH;
 
-    // ===== TRUY VẤN VÀ THAO TÁC DỮ LIỆU =====
 
-    // ===== PHƯƠNG THỨC: getAll() — Lấy danh sách bản ghi từ cơ sở dữ liệu. =====
+    // Lấy toàn bộ danh sách để hiển thị, bỏ bản ghi bị ẩn
     @Override
     public List<LinkedHashMap<String, Object>> getAll() throws SQLException {
         try (Connection conn = KetNoiCSDL.getConnection()) {
@@ -36,7 +30,7 @@ public class PhuTungDAO implements DuLieuDAO {
         }
     }
 
-    // ===== PHƯƠNG THỨC: getAll(Connection, Map<String,Object>) — Lấy danh sách bản ghi từ cơ sở dữ liệu. =====
+ // Thực hiện truy vấn SQL, có thể lọc theo điều kiện
     @Override
     public List<LinkedHashMap<String, Object>> getAll(Connection conn, Map<String, Object> filter)
             throws SQLException {
@@ -58,7 +52,7 @@ public class PhuTungDAO implements DuLieuDAO {
         }
     }
 
-    // ===== PHƯƠNG THỨC: previewNextId() — Tạo mã tiếp theo để xem trước khi lưu. =====
+    // Tạo mã tiếp theo để xem trước khi lưu.
     @Override
     public String previewNextId() throws SQLException {
         if (CAC_KHOA.length != 1 || primary.equals("VIN"))
@@ -74,7 +68,7 @@ public class PhuTungDAO implements DuLieuDAO {
         }
     }
 
-    // ===== PHƯƠNG THỨC: prefix() — Xử lý prefix. =====
+    // Xử lý tiền tố
     private String prefix() {
         return "PT";
     }
@@ -134,10 +128,18 @@ public class PhuTungDAO implements DuLieuDAO {
     @Override
     public void update(Connection conn, Map<String, Object> key, Map<String, Object> values)
             throws SQLException {
-        Map<String, Object> row = new LinkedHashMap<>(values);
-        for (String field : CAC_KHOA)
-            row.remove(field);
-        kiemTraDuLieu(row, false);
+    	// Không cho phép sửa phụ tùng hệ thống PT000.
+    	if ("PT000".equals(String.valueOf(key.get("maPhuTung")))) {
+    	    fail("maPhuTung", "PT000 là mã hệ thống, không được sửa.");
+    	}
+
+    	Map<String, Object> row = new LinkedHashMap<>(values);
+
+    	// Không cho phép thay đổi khóa chính.
+    	for (String field : CAC_KHOA)
+    	    row.remove(field);
+
+    	kiemTraDuLieu(row, false);
         QuyTrinhDAO.guardWrite(conn, table, row, key);
         if (row.isEmpty())
             return;
@@ -155,6 +157,8 @@ public class PhuTungDAO implements DuLieuDAO {
     // ===== PHƯƠNG THỨC: softDelete(String) — Đánh dấu bản ghi đã xóa mà vẫn giữ dữ liệu. =====
     @Override
     public void softDelete(String id) throws SQLException {
+    	if ("PT000".equals(id))
+            fail("maPhuTung", "PT000 là mã hệ thống, không được xóa.");
         HiddenRecords.hide(table, id);
     }
 
@@ -206,8 +210,10 @@ public class PhuTungDAO implements DuLieuDAO {
     // ===== PHƯƠNG THỨC: kiemTraDuLieu(Map<String,Object>, boolean) — Kiểm tra dữ liệu. =====
     private static void kiemTraDuLieu(Map<String, Object> row, boolean creating) throws SQLException {
         if (creating) {
-            Set<String> required = COT_BAT_BUOC;
-            for (String field : required) {
+        	// Kiểm tra bắt buộc theo thứ tự cột
+        	for (String field : CAC_COT) {
+        	    if (!COT_BAT_BUOC.contains(field))
+        	        continue;
                 Object val = row.get(field);
                 if (val == null || (val instanceof String s && s.trim().isEmpty()))
                     fail(field, "Bắt buộc nhập: " + field);
@@ -248,12 +254,6 @@ public class PhuTungDAO implements DuLieuDAO {
                 if (!raw.matches("(?s).*[\\p{L}].*"))
                     fail(field, "Tên dịch vụ hoặc phụ tùng phải chứa ít nhất một chữ cái.");
             }
-
-        }
-
-        if ("PT000".equals(String.valueOf(row.get("maPhuTung")))) {
-            if (!creating)
-                fail("maPhuTung", "PT000 là mã hệ thống, không được sửa.");
 
         }
     }

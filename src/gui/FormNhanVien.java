@@ -1,28 +1,17 @@
 package gui;
 
-import java.util.Locale;
-import java.time.format.DateTimeFormatter;
-import java.text.*;
-import javax.swing.table.*;
-import javax.swing.border.*;
-import javax.swing.table.TableColumn;
-import javax.swing.JScrollPane;
-import javax.swing.JTable;
-import javax.swing.SwingUtilities;
-import java.awt.event.ComponentEvent;
-import java.awt.event.ComponentAdapter;
-import java.awt.Component;
-
 import java.awt.*;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.sql.SQLException;
+import java.text.*;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.List;
 import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-import javax.swing.table.DefaultTableModel;
+import javax.swing.border.*;
+import javax.swing.table.*;
 
-// ===== GUI: FormNhanVien =====
-/** Danh sách và biểu mẫu sử dụng dữ liệu SQL Server thực tế. */
 public final class FormNhanVien extends JPanel {
     private static final String[] CAC_COT = new String[] { "maNhanVien", "hoTenNV", "ngaySinh", "soDienThoai",
             "email", "diaChi", "vaiTro", "gioiTinh", "trangThai" };
@@ -47,7 +36,7 @@ public final class FormNhanVien extends JPanel {
     private final String[] displayFields;
     private final BoLocTrangThai statusFilters;
 
-    // ===== PHƯƠNG THỨC: readObject(java.io.ObjectInputStream) — Khôi phục trạng thái đối tượng sau khi đọc từ luồng lưu. =====
+    // Khôi phục trạng thái đối tượng sau khi đọc từ luồng lưu.
     @java.io.Serial
     private void readObject(java.io.ObjectInputStream input)
             throws java.io.IOException, ClassNotFoundException {
@@ -55,17 +44,14 @@ public final class FormNhanVien extends JPanel {
         dao = new dao.NhanVienDAO();
     }
 
-    // ===== KHỞI TẠO ĐỐI TƯỢNG: FormNhanVien(String) — Khởi tạo đối tượng và thiết lập trạng thái ban đầu. =====
     public FormNhanVien(String page) {
         this(page, null, null);
     }
 
-    // ===== KHỞI TẠO ĐỐI TƯỢNG: FormNhanVien(String, String) — Khởi tạo đối tượng và thiết lập trạng thái ban đầu. =====
     public FormNhanVien(String page, String employeeId) {
         this(page, null, employeeId);
     }
 
-    // ===== KHỞI TẠO ĐỐI TƯỢNG: FormNhanVien(String, VaiTro, String) — Khởi tạo đối tượng và thiết lập trạng thái ban đầu. =====
     public FormNhanVien(String page, VaiTro role, String employeeId) {
         setLayout(new BorderLayout(0, 18));
         setBackground(GiaoDien.BG);
@@ -119,27 +105,31 @@ public final class FormNhanVien extends JPanel {
         }
 
         pnlCard.add(pnlToolbar, BorderLayout.NORTH);
-
+        // Tạo model chứa dữ liệu.
         model = new DefaultTableModel(new String[] { "Mã nhân viên", "Họ tên nhân viên", "Ngày sinh",
                 "Số điện thoại", "Email", "Địa chỉ", "Vai trò", "Giới tính", "Trạng thái" }, 0) {
-            // ===== PHƯƠNG THỨC: isCellEditable(int, int) — Kiểm tra ô bảng có cho phép chỉnh sửa không. =====
+					private static final long serialVersionUID = 1L;
+
+			// Không sửa trực tiếp phải bấm nút Chỉnh sửa
             @Override
             public boolean isCellEditable(int row, int col) {
                 return false;
             }
         };
-
+        // Tạo table từ model
         tblTable = GiaoDien.table(model);
         tblTable.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
         {
             tblTable.setAutoCreateRowSorter(true);
         }
-
+        // Bộ lọc trạng thái dựa trên cột của bảng
         statusFilters = new BoLocTrangThai(tblTable);
+        // Cập nhật số dòng
         statusFilters.onChange(() -> {
             updateCount();
         });
         statusFilters.setBorder(new EmptyBorder(6, 0, 0, 0));
+        // Đưa bộ lọc xuống dưới ô tìm kiếm
         pnlToolbar.add(statusFilters, BorderLayout.SOUTH);
 
         tblTable.setRowHeight(40);
@@ -175,7 +165,7 @@ public final class FormNhanVien extends JPanel {
 
         pnlButtons.add(btnEdit);
         pnlButtons.add(btnDelete);
-
+        // Phải chọn 1 dòng thì nút Chỉnh được bật
         tblTable.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
                 int selected = tblTable.getSelectedRow();
@@ -204,28 +194,28 @@ public final class FormNhanVien extends JPanel {
         pnlActions.add(scrActions, BorderLayout.SOUTH);
         pnlCard.add(pnlActions, BorderLayout.SOUTH);
         add(pnlCard, BorderLayout.CENTER);
-
+        // Lấy nội dung nhập, theo dõi khi nd thay đổi
         txtSearch.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
-            // ===== PHƯƠNG THỨC: insertUpdate(javax.swing.event.DocumentEvent) — Xử lý khi nội dung được thêm vào. =====
+            // Khi gõ thêm chữ.
             @Override
             public void insertUpdate(javax.swing.event.DocumentEvent e) {
                 filter();
             }
 
-            // ===== PHƯƠNG THỨC: removeUpdate(javax.swing.event.DocumentEvent) — Xử lý khi nội dung bị xóa. =====
+            //  Khi xóa chữ.
             @Override
             public void removeUpdate(javax.swing.event.DocumentEvent e) {
                 filter();
             }
 
-            // ===== PHƯƠNG THỨC: changedUpdate(javax.swing.event.DocumentEvent) — Cập nhật giao diện khi nội dung thay đổi. =====
+            // Cập nhật giao diện khi nội dung thay đổi.
             @Override
             public void changedUpdate(javax.swing.event.DocumentEvent e) {
                 filter();
             }
         });
 
-        // Khởi tạo các lựa chọn lọc cố định theo quy định nghiệp vụ và trạng thái mặc định
+        // tải dữ liệu lên bảng
 
         load();
     }
@@ -242,15 +232,18 @@ public final class FormNhanVien extends JPanel {
     // ===== PHƯƠNG THỨC: load() — Tải dữ liệu cho bảng hiện tại. =====
     private void load() {
         try {
-
+            // Xóa data tải lại, tránh trùng
             model.setRowCount(0);
             List<LinkedHashMap<String, Object>> rows = dao.getAll();
 
             for (Map<String, Object> row : rows) {
 
                 Object[] values = new Object[displayFields.length];
+                // duyệt từng hàng
                 for (int i = 0; i < displayFields.length; i++) {
+                    // Lấy tên trường theo đúng thứ tự cột hiển thị.
                     String field = displayFields[i];
+                    // Giới tính có bit = 1 thành Nam, ngc lại
                     if (field.equals("gioiTinh")) {
                         values[i] = Boolean.TRUE.equals(row.get(field))
                                 || "1".equals(String.valueOf(row.get(field))) ? "Nam" : "Nữ";
@@ -258,7 +251,7 @@ public final class FormNhanVien extends JPanel {
                         values[i] = row.get(field);
                     }
                 }
-
+                // Thêm dữ liệu vào bảng
                 model.addRow(values);
             }
 
@@ -282,7 +275,7 @@ public final class FormNhanVien extends JPanel {
 
     // ===== PHƯƠNG THỨC: edit(boolean) — Mở biểu mẫu để chỉnh sửa dữ liệu. =====
     private void edit(boolean existing) {
-
+        // Kiểm tra có bản ghi khi chọn sửa chưa
         if (existing) {
             Map<String, Object> record = requireSelectedRecord("chỉnh sửa");
             if (record == null)
@@ -295,7 +288,7 @@ public final class FormNhanVien extends JPanel {
             JOptionPane.showMessageDialog(this, "Vui lòng chọn bản ghi.");
             return;
         }
-
+        // Xác định dòng dữ liệu hoặc sinh mã mới
         int source = existing ? tblTable.convertRowIndexToModel(row) : -1;
         String generatedId = null;
 
@@ -308,13 +301,13 @@ public final class FormNhanVien extends JPanel {
                 return;
             }
         }
-
+        // Tạo các ô nhập
         JPanel pnlForm = new JPanel(new GridBagLayout());
         pnlForm.setBackground(Color.WHITE);
         pnlForm.setBorder(new EmptyBorder(20, 22, 12, 22));
-
+        // nơi lưu các thành phần nhập 
         Map<String, JComponent> inputs = new LinkedHashMap<>();
-
+        // Vòng lặp duyệt qua các cột tạo từng ô nhập, nếu sửa thì đổ data vào ô
         for (int i = 0; i < fields.length; i++) {
             String field = fields[i];
             int column = Arrays.asList(displayFields).indexOf(field);
@@ -323,9 +316,9 @@ public final class FormNhanVien extends JPanel {
                     : "";
 
             String type = KIEU_COT.get(field);
-
+            // Tạo ô nhập hoặc ô chọn
             JComponent input;
-
+            // Kiểm tra có tham chiếu đến bảng khác không
             OChonThamChieu cmbReference = OChonThamChieu.create(tableName, field, value);
             JComboBox<String> cmbOptions = taoLuaChon(field, value, existing);
 
@@ -351,7 +344,7 @@ public final class FormNhanVien extends JPanel {
                 ButtonGroup group = new ButtonGroup();
                 group.add(radNam);
                 group.add(radNu);
-
+                // hiện lựa chọn ban đầu khi mở form chỉnh sửa
                 radNam.setSelected(existing && !value.equalsIgnoreCase("Nữ"));
                 radNu.setSelected(value.equalsIgnoreCase("Nữ"));
 
@@ -359,9 +352,11 @@ public final class FormNhanVien extends JPanel {
                 pnlGioiTinh.add(radNu);
                 input = pnlGioiTinh;
             } else {
+                // Tạo ô nhập
                 JTextField txtInput = GiaoDien.field(value);
+                // Đưa dữ liệu lên ô nhập
                 txtInput.setText(value);
-
+                // Ô mã mà thêm thì auto = true
                 boolean auto = i == 0 && !existing;
 
                 if (auto)
@@ -372,22 +367,24 @@ public final class FormNhanVien extends JPanel {
                 }
 
                 if (auto || (i == 0 && existing)) {
+                    // Khóa ô mã nền xanh nhạt
                     DinhDangKeThua.lock(txtInput);
                 }
 
                 input = txtInput;
             }
-
+            // Lưu từng ô vào inputs
             inputs.put(field, input);
-
+            // Tạo nhãn và đặt ô nhập dưới nhãn
             JPanel pnlCell = new JPanel(new BorderLayout(0, 7));
             pnlCell.setOpaque(false);
+            // Tạo nhãn
             pnlCell.add(GiaoDien.label(nhanCot(field) + (COT_BAT_BUOC.contains(field) ? " *" : ""), 12, true,
                     GiaoDien.TEXT), BorderLayout.NORTH);
-
+            //Ô nhập dưới nhãn
             input.setPreferredSize(new Dimension(250, 40));
             pnlCell.add(input, BorderLayout.CENTER);
-
+            // Chia bô cục
             GridBagConstraints gbc = new GridBagConstraints();
             gbc.gridx = i % 2;
             gbc.gridy = i / 2;
@@ -451,8 +448,8 @@ public final class FormNhanVien extends JPanel {
                     dao.insert(values, expectedId[0]);
                 }
 
-                winDialog.dispose();
-                load();
+                winDialog.dispose(); // đóng cửa sổ thêm/sửa
+                load(); // tải lại data
             } catch (SQLException ex) {
                 String field = ThongBaoLoiSQL.errorField(ex, tableName);
                 String message = ex.getMessage();
@@ -581,61 +578,78 @@ public final class FormNhanVien extends JPanel {
         return tblTable;
     }
 
-    // ===== PHƯƠNG THỨC: kiemTraDuLieu(Map<String,JComponent>) — Kiểm tra dữ liệu. =====
-    private static Map<String, Object> kiemTraDuLieu(Map<String, JComponent> inputs)
-            throws java.sql.SQLException {
-        Map<String, Object> values = new LinkedHashMap<>();
-        docCot(inputs, values, "hoTenNV", "Họ tên nhân viên", "nvarchar:100", true);
-        docCot(inputs, values, "ngaySinh", "Ngày sinh", "date:", true);
-        docCot(inputs, values, "soDienThoai", "Số điện thoại", "varchar:10", true);
-        if (values.get("soDienThoai") instanceof String soDienThoai
-                && !soDienThoai.matches("0[35789][0-9]{8}")) {
-            throw new ThongBaoLoiSQL.Issue("soDienThoai",
-                    "Số điện thoại phải gồm 10 chữ số, đầu số 03, 05, 07, 08 hoặc 09.");
-        }
-        docCot(inputs, values, "email", "Email", "varchar:254", true);
-        if (values.get("email") instanceof String email
-                && !email.matches("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")) {
-            throw new ThongBaoLoiSQL.Issue("email", "Email không đúng định dạng.");
-        }
-        docCot(inputs, values, "diaChi", "Địa chỉ", "nvarchar:255", false);
-        docCot(inputs, values, "vaiTro", "Vai trò", "nvarchar:50", true);
-        docCot(inputs, values, "gioiTinh", "Giới tính", "bit:", true);
-        docCot(inputs, values, "trangThai", "Trạng thái", "nvarchar:30", true);
-        for (Map.Entry<String, Object> e : values.entrySet()) {
-            String field = e.getKey();
-            Object value = e.getValue();
-            if (value == null)
-                continue;
-            String raw = value.toString().trim();
+    // Kiểm tra dữ liệu.
 
-            if (field.equals("maNhanVien") && !raw.matches("NV[0-9]{3}"))
-                throw new ThongBaoLoiSQL.Issue(field, "Mã nhân viên phải có dạng NV001.");
+	private static Map<String, Object> kiemTraDuLieu(
+	        Map<String, JComponent> inputs) throws java.sql.SQLException {
+	
+	    Map<String, Object> values = new LinkedHashMap<>();
+	
+	    docCot(inputs, values, "hoTenNV", "Họ tên nhân viên", "nvarchar:100", true);
+	
+	    if (values.get("hoTenNV") instanceof String hoTen
+	            && !hoTen.matches("\\p{Lu}[\\p{Ll}\\p{M}]*(?: +\\p{Lu}[\\p{Ll}\\p{M}]*)+")) {
+	        throw new ThongBaoLoiSQL.Issue("hoTenNV",
+	                "Họ tên phải có ít nhất 2 từ, mỗi từ viết hoa chữ cái đầu.");
+	    }
+	
+	    docCot(inputs, values, "ngaySinh", "Ngày sinh", "date:", true);
+	
+	    if (values.get("ngaySinh") != null) {
+	        java.time.LocalDate ngaySinh = java.time.LocalDate.parse(
+	                values.get("ngaySinh").toString().substring(0, 10));
+	        java.time.LocalDate homNay = java.time.LocalDate.now();
+	
+	        if (ngaySinh.isAfter(homNay.minusYears(18))
+	                || !ngaySinh.isAfter(homNay.minusYears(63))) {
+	            throw new ThongBaoLoiSQL.Issue("ngaySinh",
+	                    "Nhân viên phải từ 18 đến 62 tuổi.");
+	        }
+	    }
+	
+	    docCot(inputs, values, "soDienThoai", "Số điện thoại", "varchar:10", true);
+	
+	    if (values.get("soDienThoai") instanceof String sdt
+	            && !sdt.matches("0[35789][0-9]{8}")) {
+	        throw new ThongBaoLoiSQL.Issue("soDienThoai",
+	                "Số điện thoại phải gồm 10 chữ số, đầu số 03, 05, 07, 08 hoặc 09.");
+	    }
+	
+		docCot(inputs, values, "email", "Email", "varchar:254", true);
+		
+		if (values.get("email") instanceof String email
+		        && !email.matches("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")) {
+		    throw new ThongBaoLoiSQL.Issue("email",
+		            "Email không đúng định dạng.");
+		}
+	
+	    docCot(inputs, values, "diaChi", "Địa chỉ", "nvarchar:255", false);
+	
+	    docCot(inputs, values, "vaiTro", "Vai trò", "nvarchar:50", true);
+	
+	    if (values.get("vaiTro") instanceof String vaiTro
+	            && !java.util.Set.of(
+	                    "Nhân viên kỹ thuật",
+	                    "Nhân viên kho",
+	                    "Nhân viên bán hàng",
+	                    "Nhân viên quản lý").contains(vaiTro)) {
+	        throw new ThongBaoLoiSQL.Issue("vaiTro",
+	                "Vai trò nhân viên không hợp lệ.");
+	    }
+	
+	    docCot(inputs, values, "gioiTinh", "Giới tính", "bit:", true);
+	
+	    docCot(inputs, values, "trangThai", "Trạng thái", "nvarchar:30", true);
+	
+	    if (values.get("trangThai") instanceof String trangThai
+	            && !java.util.Set.of("Đang làm", "Đã nghỉ").contains(trangThai)) {
+	        throw new ThongBaoLoiSQL.Issue("trangThai",
+	                "Trạng thái nhân viên không hợp lệ.");
+	    }
+	
+	    return values;
+	}
 
-            if (field.equals("vaiTro") && !java.util.Set
-                    .of("Nhân viên kỹ thuật", "Nhân viên kho", "Nhân viên bán hàng", "Nhân viên quản lý")
-                    .contains(raw))
-                throw new ThongBaoLoiSQL.Issue(field, "Vai trò nhân viên không hợp lệ.");
-
-            if (field.equals("trangThai") && !java.util.Set.of("Đang làm", "Đã nghỉ").contains(raw))
-                throw new ThongBaoLoiSQL.Issue(field, "Trạng thái nhân viên không hợp lệ.");
-
-            if ((field.equals("hoTenNV"))) {
-
-                if (!raw.matches("[\\p{L}\\p{M}]+(?:[ ]+[\\p{L}\\p{M}]+)*"))
-                    throw new ThongBaoLoiSQL.Issue(field, "Họ tên chỉ được chứa chữ cái và khoảng trắng.");
-            }
-
-            if (field.equals("ngaySinh")) {
-                java.time.LocalDate date = java.time.LocalDate.parse(raw.substring(0, 10));
-                java.time.LocalDate today = java.time.LocalDate.now();
-                if (date.isAfter(today.minusYears(18)) || !date.isAfter(today.minusYears(66)))
-                    throw new ThongBaoLoiSQL.Issue(field, "Nhân viên phải từ 18 đến dưới 66 tuổi.");
-            }
-
-        }
-        return values;
-    }
 
     // ===== PHƯƠNG THỨC: docCot(Map<String,JComponent>, Map<String,Object>, String, String, String, boolean) — Đọc, kiểm tra và chuyển giá trị của một cột biểu mẫu. =====
     private static void docCot(Map<String, JComponent> inputs, Map<String, Object> values,
@@ -646,6 +660,7 @@ public final class FormNhanVien extends JPanel {
             values.put(field,checkBox.isSelected());
             return;
         }
+        // Đọc field là tên cột đó
         String raw = docVanBan(inputs.get(field));
         if (raw.isEmpty()) {
             if (required) throw new ThongBaoLoiSQL.Issue(field, "Vui lòng nhập " + label.toLowerCase() + ".");
@@ -659,6 +674,7 @@ public final class FormNhanVien extends JPanel {
                 case "int" -> Integer.valueOf(raw);
                 case "decimal" -> new java.math.BigDecimal(raw);
                 case "datetime", "datetime2" -> java.sql.Timestamp.valueOf(raw.length() == 10 ? raw + " 00:00:00" : raw);
+                // Chuyển chuỗi thành ngày sql
                 case "date" -> java.sql.Date.valueOf(raw);
                 case "bit" -> {
                     if (!raw.equals("Nam") && !raw.equals("Nữ")) throw new IllegalArgumentException();
@@ -690,10 +706,11 @@ public final class FormNhanVien extends JPanel {
                 }
             }
         }
+        // Lưu giá trị gửi DAO
         values.put(field, value);
     }
 
-    // ===== PHƯƠNG THỨC: taoLuaChon(String, String, boolean) — Tạo lua chon. =====
+    // Tạo lua chon.
     private static JComboBox<String> taoLuaChon(String field, String value, boolean existing) {
         String[] choices = switch (field) {
         case "vaiTro" ->
@@ -703,8 +720,10 @@ public final class FormNhanVien extends JPanel {
         };
         if (choices == null)
             return null;
+        // Combobox chứa các vai trò và trạng thái
         JComboBox<String> combo = new OChonTimKiem<>(choices);
         combo.setFont(GiaoDien.font(12, false));
+        // Chỉ được chọn trạng thái có sẵn, không cho nhập.
         combo.setEditable(false);
         if (existing) {
             if (value == null || value.isEmpty()) {
@@ -817,7 +836,9 @@ public final class FormNhanVien extends JPanel {
         // ===== PHƯƠNG THỨC: rounded(Color, int) — Tạo đường viền bo góc cho thành phần. =====
         public static JPanel rounded(Color c, int r) {
             return new JPanel() {
-                // ===== PHƯƠNG THỨC: paintComponent(Graphics) — Vẽ nội dung và trạng thái hiện tại của thành phần. =====
+				private static final long serialVersionUID = 1L;
+
+				// ===== PHƯƠNG THỨC: paintComponent(Graphics) — Vẽ nội dung và trạng thái hiện tại của thành phần. =====
                 @Override
                 protected void paintComponent(Graphics g) {
                     Graphics2D q = (Graphics2D) g.create();
@@ -832,7 +853,9 @@ public final class FormNhanVien extends JPanel {
         // ===== PHƯƠNG THỨC: button(String, Color, Color) — Tạo nút giao diện theo kiểu chỉ định. =====
         public static JButton button(String s, Color bg, Color fg) {
             JButton btnB = new JButton(s) {
-                // ===== PHƯƠNG THỨC: paintComponent(Graphics) — Vẽ nội dung và trạng thái hiện tại của thành phần. =====
+				private static final long serialVersionUID = 1L;
+
+				// ===== PHƯƠNG THỨC: paintComponent(Graphics) — Vẽ nội dung và trạng thái hiện tại của thành phần. =====
                 @Override
                 protected void paintComponent(Graphics g) {
                     Graphics2D q = (Graphics2D) g.create();
@@ -860,21 +883,49 @@ public final class FormNhanVien extends JPanel {
             return lblL;
         }
 
-        // ===== PHƯƠNG THỨC: field(String) — Tạo thành phần nhập liệu cho một trường. =====
+        //  Tạo ô có hiển thị gợi ý nhập
         public static JTextField field(String hint) {
-            JTextField txtT = new JTextField();
-            txtT.putClientProperty("JTextField.placeholderText", hint);
+            JTextField txtT = new JTextField() {
+				private static final long serialVersionUID = 1L;
+
+				@Override
+                protected void paintComponent(Graphics g) {
+		            // Vẽ ô nhập liệu bình thường.
+					super.paintComponent(g);
+                    // ô chưa nhập chữ thì hiện gợi ý
+                    if (getText().isEmpty() && hint != null && !hint.isEmpty()) {
+                        Graphics2D g2 = (Graphics2D) g.create();
+                        g2.setFont(getFont());
+                        // xám nhạt
+                        g2.setColor(new Color(0x9AA7A9));
+                        // xác định vị trí chữ trong ô
+                        Insets insets = getInsets();
+                        int y = (getHeight() - g2.getFontMetrics().getHeight()) / 2
+                                + g2.getFontMetrics().getAscent();
+
+                        g2.drawString(hint, insets.left, y);
+                        g2.dispose();
+                    }
+                }
+            };
+
             txtT.setFont(font(13, false));
             txtT.setForeground(TEXT);
             txtT.setBorder(
-                    new CompoundBorder(new LineBorder(LINE, 1, true), new EmptyBorder(10, 12, 10, 12)));
+                new CompoundBorder(
+                    new LineBorder(LINE, 1, true),
+                    new EmptyBorder(10, 12, 10, 12)
+                )
+            );
+
             return txtT;
         }
 
         // ===== PHƯƠNG THỨC: table(DefaultTableModel) — Lấy bảng dữ liệu tương ứng với màn hình. =====
         public static JTable table(DefaultTableModel m) {
             JTable tblT = new JTable(m) {
-                private final TableCellRenderer cells = new DinhDangBang();
+				private static final long serialVersionUID = 1L;
+				private final TableCellRenderer cells = new DinhDangBang();
 
                 // ===== PHƯƠNG THỨC: getCellRenderer(int, int) — Lấy ô renderer. =====
                 @Override
@@ -1050,6 +1101,7 @@ public final class FormNhanVien extends JPanel {
     // ===== PHƯƠNG THỨC: docVanBan(javax.swing.JComponent) — Lấy văn bản từ thành phần nhập liệu. =====
     private static String docVanBan(javax.swing.JComponent control) {
         if (control instanceof OChonNgay pnlPicker)
+        	// Lấy ngày đã chọn
             return pnlPicker.getDateText();
         if (control instanceof OChonThamChieu cmbCombo)
             return cmbCombo.selectedId();
