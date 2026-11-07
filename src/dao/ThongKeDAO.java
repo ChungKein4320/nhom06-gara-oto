@@ -7,7 +7,6 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
-// ===== DAO: ThongKeDAO =====
 public final class ThongKeDAO {
     public record Bucket(String label, double value) implements java.io.Serializable {
 
@@ -18,11 +17,10 @@ public final class ThongKeDAO {
     public record Result(List<Bucket> buckets, BigDecimal total) {
     }
 
-    // ===== KHỞI TẠO ĐỐI TƯỢNG: ThongKeDAO() — Khởi tạo đối tượng và thiết lập trạng thái ban đầu. =====
     private ThongKeDAO() {
     }
 
-    // ===== PHƯƠNG THỨC: load(int, LocalDate, LocalDate, boolean) — Tải dữ liệu cho bảng hiện tại. =====
+    // Tải dữ liệu cho bảng hiện tại.
     public static Result load(int category, LocalDate from, LocalDate to, boolean daily) throws SQLException {
         if (from.isAfter(to))
             throw new IllegalArgumentException("Ngày bắt đầu phải trước hoặc bằng ngày kết thúc.");
@@ -30,12 +28,15 @@ public final class ThongKeDAO {
         String group = "CONVERT(char(" + (daily ? "10" : "7") + "), " + date + ", 120)";
         String source;
         String value;
+        // 1 Doanh thu: chỉ hóa đơn đã thanh toán.
         if (category == 0) {
             source = " FROM dbo.HoaDon WHERE trangThaiThanhToan=N'Đã thanh toán' AND ngayLap>=? AND ngayLap<?";
             value = "SUM(tienPhuTung+tienCong+dichVuKhac+thueVAT-giamGia)";
+        // 2 Số lượng KH: đếm mã KH không trùng trong từng ngày/tháng tiếp nhận.
         } else if (category == 1) {
             source = " FROM dbo.PhieuTiepNhan WHERE ngayTiepNhan>=? AND ngayTiepNhan<?";
             value = "COUNT(DISTINCT maKhachHang)";
+        // 4 Dịch vụ: đếm số hạng mục dịch vụ hoàn thành, bỏ phiếu sửa chữa đã hủy.
         } else if (category == 2) {
             source = " FROM dbo.ChiTietPhieuSuaChua ct JOIN dbo.PhieuSuaChua p ON p.maPSC=ct.maPSC "
                     + "JOIN dbo.DichVu d ON d.maDichVu=ct.maDichVu "
@@ -49,6 +50,7 @@ public final class ThongKeDAO {
             String repair = " FROM dbo.ChiTietPhieuSuaChua ct JOIN dbo.PhieuSuaChua p ON p.maPSC=ct.maPSC ";
             String paid = "h.trangThaiThanhToan=N'Đã thanh toán'";
             switch (category) {
+            // 5 Phụ tùng: tổng số lượng đã thay; 4/5 là lọc lốp/nhớt, 6 nhóm theo loại phụ tùng.
             case 3, 4, 5, 6 -> {
                 source = repair
                         + "JOIN dbo.PhuTung pt ON pt.maPhuTung=ct.maPhuTung WHERE ct.maPhuTung<>'PT000' AND ct.trangThaiHangMuc=N'Hoàn thành' AND p.trangThai<>N'Đã hủy' AND p.ngayLap>=? AND p.ngayLap<?";
@@ -61,28 +63,33 @@ public final class ThongKeDAO {
                 group = category == 6 ? "pt.loaiPhuTung" : "pt.maPhuTung,pt.tenPhuTung";
                 value = "SUM(ct.soLuongPhuTung)";
             }
+            // 6 Phương tiện: đếm VIN không trùng; 7 nhóm hãng, 8 nhóm hãng + dòng xe.
             case 7, 8 -> {
                 source = " FROM dbo.PhieuSuaChua p JOIN dbo.PhuongTien x ON x.VIN=p.VIN WHERE p.trangThai<>N'Đã hủy' AND p.ngayLap>=? AND p.ngayLap<?";
                 group = category == 7 ? "x.hangXe" : "x.hangXe,x.dongXe";
                 value = "COUNT(DISTINCT p.VIN)";
             }
+            // 3 Khách hàng: nhóm theo mã/tên KH, cộng tổng tiền hóa đơn đã thanh toán
             case 9 -> {
                 source = " FROM dbo.HoaDon h JOIN dbo.KhachHang k ON k.maKhachHang=h.maKhachHang WHERE "
                         + paid + " AND h.ngayLap>=? AND h.ngayLap<?";
                 group = "k.maKhachHang,k.hoTenKH";
                 value = "SUM(h.tienPhuTung+h.tienCong+h.dichVuKhac+h.thueVAT-COALESCE(h.giamGia,0))";
             }
+            // Nhánh phụ: hiệu suất nhân viên kỹ thuật theo số phiếu sửa chữa không hủy.
             case 10 -> {
                 source = " FROM dbo.PhieuSuaChua p JOIN dbo.NhanVien n ON n.maNhanVien=p.maNhanVien WHERE p.trangThai<>N'Đã hủy' AND p.ngayLap>=? AND p.ngayLap<?";
                 group = "n.maNhanVien,n.hoTenNV";
                 value = "COUNT(DISTINCT p.maPSC)";
             }
+            // 7 Doanh số nhân viên: cộng tiền hóa đơn đã thu theo từng nhân viên.
             case 11 -> {
                 source = " FROM dbo.HoaDon h JOIN dbo.NhanVien n ON n.maNhanVien=h.maNhanVien WHERE " + paid
                         + " AND h.ngayLap>=? AND h.ngayLap<?";
                 group = "n.maNhanVien,n.hoTenNV";
                 value = "SUM(h.tienPhuTung+h.tienCong+h.dichVuKhac+h.thueVAT-COALESCE(h.giamGia,0))";
             }
+            // 8 Giá trị hóa đơn: nhóm theo mã hóa đơn, tính tổng tiền từng hóa đơn.
             default -> {
                 source = " FROM dbo.HoaDon h WHERE " + paid + " AND h.ngayLap>=? AND h.ngayLap<?";
                 group = "h.maHoaDon";
@@ -91,7 +98,7 @@ public final class ThongKeDAO {
             }
         } else
             throw new IllegalArgumentException("Phân loại không hợp lệ.");
-
+        // Tạo nhãn
         String label = switch (category) {
         case 2 -> "CONCAT(d.maDichVu,N' — ',d.tenDichVu)";
         case 3, 4, 5 -> "CONCAT(pt.maPhuTung,N' — ',pt.tenPhuTung)";
@@ -111,7 +118,8 @@ public final class ThongKeDAO {
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 range(ps, from, to);
                 try (ResultSet rs = ps.executeQuery()) {
-                    while (rs.next())
+                	// Mỗi dòng SQL trở thành một Bucket trên biểu đồ.
+                	while (rs.next())
                         buckets.add(new Bucket(rs.getString(1), rs.getDouble(2)));
                 }
             }
@@ -126,6 +134,7 @@ public final class ThongKeDAO {
                 }
             }
         }
+        // Doanh thu/số KH: bổ sung ngày hoặc tháng không có dữ liệu bằng giá trị 0 để vẽ đủ trục thời gian.
         if (category < 2 && !buckets.isEmpty()) {
             java.util.Map<String, Double> byDate = new java.util.HashMap<>();
             for (Bucket bucket : buckets)
@@ -141,7 +150,7 @@ public final class ThongKeDAO {
         return new Result(List.copyOf(buckets), total);
     }
 
-    // ===== PHƯƠNG THỨC: distinctVehicles(int, LocalDate, LocalDate) — Lấy danh sách phương tiện không trùng trong khoảng ngày. =====
+    // Lấy danh sách phương tiện không trùng trong khoảng ngày.
     /** Số VIN khác nhau có hạng mục phụ tùng hoàn thành trong kỳ. */
     public static long distinctVehicles(int category, LocalDate from, LocalDate to) throws SQLException {
         if (category != 3 && category != 4 && category != 5 && category != 6)
@@ -168,7 +177,7 @@ public final class ThongKeDAO {
     public record BangChiTiet(String[] cot, List<Object[]> dong) {
     }
 
-    // ===== PHƯƠNG THỨC: taiBang(int, LocalDate, LocalDate) — Tải dữ liệu bảng từ cơ sở dữ liệu. =====
+    // Tải dữ liệu bảng từ cơ sở dữ liệu
     public static BangChiTiet taiBang(int loai, LocalDate tu, LocalDate den) throws SQLException {
         String sql;
         boolean coNgay = true;
@@ -182,7 +191,9 @@ public final class ThongKeDAO {
                         ? " AND (LOWER(pt.tenPhuTung) LIKE N'%nhớt%' OR LOWER(pt.tenPhuTung) LIKE N'%dầu động cơ%' OR LOWER(pt.loaiPhuTung) LIKE N'%nhớt%' OR LOWER(pt.loaiPhuTung) LIKE N'%dầu nhờn%')"
                         : "";
         String[] cot;
+        // Các case tương ứng mã loại do GUI loaiCu() chuyển sang.
         switch (loai) {
+        // Doanh thu
         case 0 -> {
             cot = new String[] { "Tháng", "Số hóa đơn", "Tiền phụ tùng (đ)", "Tiền công (đ)",
                     "Dịch vụ khác (đ)", "VAT (đ)", "Giảm giá (đ)", "Doanh thu (đ)" };
@@ -190,16 +201,19 @@ public final class ThongKeDAO {
                     + tongHD + ") FROM dbo.HoaDon h WHERE " + daTra
                     + " GROUP BY CONVERT(char(7),h.ngayLap,120) ORDER BY 1";
         }
+        // Số khách
         case 1 -> {
             cot = new String[] { "Tháng", "Khách hàng duy nhất", "Số lượt tiếp nhận" };
             sql = "SELECT CONVERT(char(7),ngayTiepNhan,120),COUNT(DISTINCT maKhachHang),COUNT(*) FROM dbo.PhieuTiepNhan WHERE ngayTiepNhan>=? AND ngayTiepNhan<? GROUP BY CONVERT(char(7),ngayTiepNhan,120) ORDER BY 1";
         }
+        // Dịch vụ
         case 2 -> {
             cot = new String[] { "Mã dịch vụ", "Tên dịch vụ", "Số lượt thực hiện", "Số xe",
                     "Số phiếu sửa chữa" };
             sql = "SELECT d.maDichVu,d.tenDichVu,COUNT(*),COUNT(DISTINCT p.VIN),COUNT(DISTINCT p.maPSC) FROM dbo.ChiTietPhieuSuaChua ct JOIN dbo.PhieuSuaChua p ON p.maPSC=ct.maPSC JOIN dbo.DichVu d ON d.maDichVu=ct.maDichVu WHERE "
                     + sua + " GROUP BY d.maDichVu,d.tenDichVu ORDER BY 3 DESC";
         }
+        // Phụ tùng
         case 3, 4, 5 -> {
             cot = new String[] { "Mã phụ tùng", "Tên phụ tùng", "Loại", "Số lượng đã thay", "Số xe",
                     "Số phiếu", "Giá trị theo đơn giá (đ)" };
@@ -207,12 +221,14 @@ public final class ThongKeDAO {
                     + suaPhuTung + nhom
                     + " GROUP BY pt.maPhuTung,pt.tenPhuTung,pt.loaiPhuTung ORDER BY 4 DESC";
         }
+        // Phụ tùng theo loại: gom nhiều mã phụ tùng vào một loại.
         case 6 -> {
             cot = new String[] { "Loại phụ tùng", "Số loại mã", "Số lượng đã thay", "Số xe",
                     "Giá trị theo đơn giá (đ)" };
             sql = "SELECT pt.loaiPhuTung,COUNT(DISTINCT pt.maPhuTung),SUM(ct.soLuongPhuTung),COUNT(DISTINCT p.VIN),SUM(ct.soLuongPhuTung*pt.donGia) FROM dbo.ChiTietPhieuSuaChua ct JOIN dbo.PhieuSuaChua p ON p.maPSC=ct.maPSC JOIN dbo.PhuTung pt ON pt.maPhuTung=ct.maPhuTung WHERE "
                     + sua + " GROUP BY pt.loaiPhuTung ORDER BY 3 DESC";
         }
+        // Phương tiện: 7: theo hãng, 8: theo hãng + dòng xe
         case 7, 8 -> {
             if (loai == 7) {
                 cot = new String[] { "Hãng xe", "Số xe duy nhất", "Số phiếu sửa chữa" };
@@ -225,6 +241,7 @@ public final class ThongKeDAO {
                 sql = "SELECT x.hangXe,x.dongXe,COUNT(DISTINCT p.VIN),COUNT(DISTINCT p.maPSC) FROM dbo.PhieuSuaChua p JOIN dbo.PhuongTien x ON x.VIN=p.VIN WHERE p.trangThai<>N'Đã hủy' AND p.ngayLap>=? AND p.ngayLap<? GROUP BY x.hangXe,x.dongXe ORDER BY 3 DESC";
             }
         }
+        // Khách hàng
         case 9 -> {
             cot = new String[] { "Mã khách hàng", "Tên khách hàng", "Số hóa đơn", "Tổng thanh toán (đ)",
                     "Bình quân/hóa đơn (đ)" };
@@ -237,6 +254,7 @@ public final class ThongKeDAO {
                     "Số hạng mục hoàn thành" };
             sql = "SELECT n.maNhanVien,n.hoTenNV,COUNT(DISTINCT p.maPSC),COUNT(DISTINCT p.VIN),COUNT(ct.maDichVu) FROM dbo.PhieuSuaChua p JOIN dbo.NhanVien n ON n.maNhanVien=p.maNhanVien LEFT JOIN dbo.ChiTietPhieuSuaChua ct ON ct.maPSC=p.maPSC AND ct.trangThaiHangMuc=N'Hoàn thành' WHERE p.trangThai IN (N'Đã sửa xong',N'Chờ thanh toán',N'Đã thanh toán',N'Hoàn tất') AND p.ngayLap>=? AND p.ngayLap<? GROUP BY n.maNhanVien,n.hoTenNV ORDER BY 3 DESC";
         }
+        // Doanh số nhân viên
         case 11 -> {
             cot = new String[] { "Mã nhân viên", "Nhân viên thu ngân", "Số hóa đơn đã thu",
                     "Tổng tiền đã thu (đ)", "Bình quân/hóa đơn (đ)" };
@@ -244,6 +262,7 @@ public final class ThongKeDAO {
                     + ") FROM dbo.HoaDon h JOIN dbo.NhanVien n ON n.maNhanVien=h.maNhanVien WHERE " + daTra
                     + " GROUP BY n.maNhanVien,n.hoTenNV ORDER BY 4 DESC";
         }
+        // Giá trị hóa đơn
         default -> {
             cot = new String[] { "Mã hóa đơn", "Ngày lập", "Mã khách hàng", "Tiền phụ tùng (đ)",
                     "Tiền công (đ)", "Dịch vụ khác (đ)", "VAT (đ)", "Giảm giá (đ)", "Tổng thanh toán (đ)" };
@@ -251,6 +270,7 @@ public final class ThongKeDAO {
                     + tongHD + " FROM dbo.HoaDon h WHERE " + daTra + " ORDER BY 9 DESC";
         }
         }
+        // Đọc từng dòng ResultSet vào Object[].
         List<Object[]> dong = new ArrayList<>();
         try (Connection c = KetNoiCSDL.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
             if (coNgay)
@@ -269,7 +289,8 @@ public final class ThongKeDAO {
 
     // ===== PHƯƠNG THỨC: danhSachLoc(boolean) — Lấy danh sách trạng thái dùng làm điều kiện lọc. =====
     public static List<String> danhSachLoc(boolean phuTung) throws SQLException {
-        String sql = phuTung
+        // true: lấy loại PT, false: lấy hãng xe
+    	String sql = phuTung
                 ? "SELECT DISTINCT loaiPhuTung FROM dbo.PhuTung WHERE loaiPhuTung IS NOT NULL ORDER BY loaiPhuTung"
                 : "SELECT DISTINCT hangXe FROM dbo.PhuongTien WHERE hangXe IS NOT NULL ORDER BY hangXe";
         List<String> ds = new ArrayList<>();
@@ -308,7 +329,7 @@ public final class ThongKeDAO {
                 "Số lần sửa chữa" }, dong);
     }
 
-    // ===== PHƯƠNG THỨC: taiBangLoc(int, LocalDate, LocalDate, String, boolean) — Tải danh sách bảng theo điều kiện lọc. =====
+    // Gui vào đây nếu phương tiện + theo mã thì qua thongKeTungXe().
     public static BangChiTiet taiBangLoc(int loai, LocalDate tu, LocalDate den, String loc, boolean theoMa)
             throws SQLException {
         if (loai == 8 && theoMa)
@@ -316,7 +337,7 @@ public final class ThongKeDAO {
         return taiBangLoc(loai, tu, den, loc);
     }
 
-    // ===== PHƯƠNG THỨC: taiBieuDoLoc(int, LocalDate, LocalDate, boolean, String, boolean) — Tải dữ liệu biểu đồ theo bộ lọc. =====
+ // GUI vào đây: nếu theo VIN thì chuyển từng dòng bảng thành Bucket.
     public static Result taiBieuDoLoc(int loai, LocalDate tu, LocalDate den, boolean daily, String loc,
             boolean theoMa) throws SQLException {
         if (loai == 8 && theoMa) {
@@ -329,7 +350,7 @@ public final class ThongKeDAO {
         return taiBieuDoLoc(loai, tu, den, daily, loc);
     }
 
-    // ===== PHƯƠNG THỨC: taiBangLoc(int, LocalDate, LocalDate, String) — Tải danh sách bảng theo điều kiện lọc. =====
+    // Lấy bảng gốc rồi lọc các dòng theo loại phụ tùng (3) hoặc hãng xe (8).
     public static BangChiTiet taiBangLoc(int loai, LocalDate tu, LocalDate den, String loc)
             throws SQLException {
         BangChiTiet bang = taiBang(loai, tu, den);
@@ -344,7 +365,7 @@ public final class ThongKeDAO {
         return new BangChiTiet(bang.cot(), dong);
     }
 
-    // ===== PHƯƠNG THỨC: taiBieuDoLoc(int, LocalDate, LocalDate, boolean, String) — Tải dữ liệu biểu đồ theo bộ lọc. =====
+    // Lấy biểu đồ gốc; nếu có lọc phụ tùng/hãng xe thì dựng lại Bucket từ bảng đã lọc.
     public static Result taiBieuDoLoc(int loai, LocalDate tu, LocalDate den, boolean daily, String loc)
             throws SQLException {
         Result ketQua = load(loai, tu, den, daily);
@@ -362,7 +383,7 @@ public final class ThongKeDAO {
         return new Result(nhom, BigDecimal.valueOf(nhom.stream().mapToDouble(Bucket::value).sum()));
     }
 
-    // ===== PHƯƠNG THỨC: range(PreparedStatement, LocalDate, LocalDate) — Tạo điều kiện lọc theo khoảng giá trị. =====
+ // Gán 2 dấu ?: từ ngày bắt đầu đến trước ngày sau ngày kết thúc (lấy trọn ngày cuối).
     private static void range(PreparedStatement ps, LocalDate from, LocalDate to) throws SQLException {
         ps.setDate(1, Date.valueOf(from));
         ps.setDate(2, Date.valueOf(to.plusDays(1)));
