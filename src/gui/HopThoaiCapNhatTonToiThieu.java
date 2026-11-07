@@ -9,18 +9,33 @@ import java.sql.SQLException;
 import java.util.Map;
 import java.util.Objects;
 import javax.swing.*;
-import javax.swing.border.EmptyBorder;
 
-// ===== GUI: HopThoaiCapNhatTonToiThieu =====
 /**
- * Hộp thoại cập nhật số lượng tồn kho tối thiểu cho phụ tùng.
- * Phục vụ nghiệp vụ BUG-03 / AUD-15.
- * Chỉ cho phép điều chỉnh TonKho.soLuongToiThieu; tuyệt đối không thay đổi soLuongHienTai.
+ * ============================================================================
+ * GUI: HopThoaiCapNhatTonToiThieu (Hộp thoại cập nhật mức tồn tối thiểu)
+ * ============================================================================
+ * 1. Mục đích:
+ *    - Hiển thị cửa sổ modal cho phép Nhân viên kho hoặc Quản trị viên điều chỉnh
+ *      định mức tồn kho tối thiểu (TonKho.soLuongToiThieu) của một phụ tùng.
+ *    - Bảo vệ nghiêm ngặt số lượng tồn kho thực tế (soLuongHienTai chỉ hiển thị
+ *      ở chế độ khóa chỉ đọc, tuyệt đối không cho sửa tay tại đây).
+ * 2. Phục vụ màn hình / nghiệp vụ:
+ *    - Nghiệp vụ 1 (Quản lý tồn kho và mức tồn tối thiểu): Được mở từ FormTonKho
+ *      khi người dùng bấm nút "Cập nhật mức tồn tối thiểu" hoặc nhấp đúp vào dòng.
+ * 3. Gọi DAO nào:
+ *    - Gọi TonKhoDAO.updateMinimumThreshold(maTonKho, newThreshold, role).
+ * 4. Phương thức quan trọng:
+ *    - show(Component, Map, VaiTro, Runnable): Kiểm tra quyền và mở hộp thoại.
+ *    - luuMucTonToiThieu(): Đọc dữ liệu ô nhập, kiểm tra số nguyên >= 0, gọi DAO
+ *      cập nhật CSDL và kích hoạt callback tải lại bảng.
+ * ============================================================================
  */
 final class HopThoaiCapNhatTonToiThieu extends JDialog {
     private static final long serialVersionUID = 1L;
 
-    // ===== PHƯƠNG THỨC: show(Component, Map<String,Object>, VaiTro, Runnable) — Hiển thị nghiệp vụ tương ứng. =====
+    // ===== NHÓM 1: ĐIỂM VÀO MỞ HỘP THOẠI & KIỂM TRA QUYỀN TRƯỚC KHI HIỂN THỊ =====
+
+    // Kiểm tra bản ghi được chọn và phân quyền (KHO / ADMIN) trước khi mở hộp thoại.
     public static void show(Component parent, Map<String, Object> record, VaiTro role, Runnable onSuccess) {
         if (record == null) {
             JOptionPane.showMessageDialog(parent, "Vui lòng chọn phụ tùng cần cập nhật mức tồn tối thiểu.",
@@ -39,13 +54,15 @@ final class HopThoaiCapNhatTonToiThieu extends JDialog {
         dialog.setVisible(true);
     }
 
+    // ===== THUỘC TÍNH GIAO DIỆN & DỮ LIỆU BẢN GHI =====
     private final VaiTro role;
     private final Runnable onSuccess;
     private final JTextField txtNewThreshold;
     private final String maTonKho;
     private final String maPhuTung;
 
-    // ===== KHỞI TẠO ĐỐI TƯỢNG: HopThoaiCapNhatTonToiThieu(Component, Map<String,Object>, VaiTro, Runnable) — Khởi tạo đối tượng và thiết lập trạng thái ban đầu. =====
+    // ===== NHÓM 2: KHỞI TẠO GIAO DIỆN, TẠO THÀNH PHẦN SWING & ĐĂNG KÝ SỰ KIỆN =====
+
     private HopThoaiCapNhatTonToiThieu(Component parent, Map<String, Object> record, VaiTro role,
             Runnable onSuccess) {
         super(parent == null ? null : SwingUtilities.getWindowAncestor(parent), "Cập nhật mức tồn tối thiểu",
@@ -56,6 +73,7 @@ final class HopThoaiCapNhatTonToiThieu extends JDialog {
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         setResizable(false);
 
+        // Lấy thông tin bản ghi tồn kho đang chọn để hiển thị lên biểu mẫu.
         maTonKho = Objects.toString(record.get("maTonKho"), "");
         maPhuTung = Objects.toString(record.get("maPhuTung"), "");
         String tenPhuTung = Objects.toString(record.get("tenPhuTung"), "");
@@ -66,7 +84,7 @@ final class HopThoaiCapNhatTonToiThieu extends JDialog {
         root.setLayout(new BorderLayout(0, 16));
         root.setBorder(new EmptyBorder(22, 24, 20, 24));
 
-        // Heading
+        // 1. Tiêu đề hộp thoại (Heading)
         JPanel pnlHeading = new JPanel(new GridLayout(0, 1, 0, 4));
         pnlHeading.setOpaque(false);
         pnlHeading.add(GiaoDien.label("QUẢN LÝ TỒN KHO • THINKING AUTO", 11, true, GiaoDien.TEAL));
@@ -76,7 +94,7 @@ final class HopThoaiCapNhatTonToiThieu extends JDialog {
                         12, false, GiaoDien.MUTED));
         root.add(pnlHeading, BorderLayout.NORTH);
 
-        // Form Card
+        // 2. Thẻ biểu mẫu thông tin tồn kho (Form Card)
         JPanel pnlCard = GiaoDien.card(new GridBagLayout());
         GridBagConstraints c = new GridBagConstraints();
         c.fill = GridBagConstraints.HORIZONTAL;
@@ -86,25 +104,25 @@ final class HopThoaiCapNhatTonToiThieu extends JDialog {
 
         int rowIdx = 0;
 
-        // 1. Mã tồn kho
+        // Trường 1: Mã tồn kho (khóa chỉ đọc)
         c.gridy = rowIdx++;
-        pnlCard.add(createFieldPanel("Mã tồn kho", maTonKho, true), c);
+        pnlCard.add(taoKhungTruongThongTin("Mã tồn kho", maTonKho, true), c);
 
-        // 2. Phụ tùng
+        // Trường 2: Phụ tùng (khóa chỉ đọc)
         c.gridy = rowIdx++;
         String partDisplay = maPhuTung + (tenPhuTung.isBlank() ? "" : " — " + tenPhuTung);
-        pnlCard.add(createFieldPanel("Phụ tùng", partDisplay, true), c);
+        pnlCard.add(taoKhungTruongThongTin("Phụ tùng", partDisplay, true), c);
 
-        // 3. Số lượng hiện tại (được bảo vệ, chỉ đọc)
+        // Trường 3: Số lượng hiện tại (được bảo vệ, chỉ đọc)
         c.gridy = rowIdx++;
-        pnlCard.add(createFieldPanel("Số lượng tồn hiện tại (thực tế trong kho)",
+        pnlCard.add(taoKhungTruongThongTin("Số lượng tồn hiện tại (thực tế trong kho)",
                 soLuongHienTai + "  (Chỉ thay đổi qua nhập kho / xuất kho / hoàn trả)", true), c);
 
-        // 4. Số lượng tối thiểu hiện tại
+        // Trường 4: Số lượng tối thiểu hiện tại (khóa chỉ đọc)
         c.gridy = rowIdx++;
-        pnlCard.add(createFieldPanel("Mức tồn tối thiểu hiện tại", soLuongToiThieu, true), c);
+        pnlCard.add(taoKhungTruongThongTin("Mức tồn tối thiểu hiện tại", soLuongToiThieu, true), c);
 
-        // 5. Mức tồn tối thiểu mới (cho phép nhập)
+        // Trường 5: Mức tồn tối thiểu mới (ô nhập liệu duy nhất cho phép chỉnh sửa)
         c.gridy = rowIdx++;
         txtNewThreshold = GiaoDien.field("Nhập số nguyên >= 0");
         txtNewThreshold.setText(soLuongToiThieu);
@@ -117,7 +135,7 @@ final class HopThoaiCapNhatTonToiThieu extends JDialog {
         pnlNewInput.add(txtNewThreshold, BorderLayout.CENTER);
         pnlCard.add(pnlNewInput, c);
 
-        // 6. Ghi chú quy tắc
+        // Trường 6: Ghi chú quy tắc cảnh báo tồn kho
         c.gridy = rowIdx++;
         c.insets = new Insets(4, 0, 0, 0);
         JLabel lblNote = GiaoDien.label(
@@ -127,7 +145,7 @@ final class HopThoaiCapNhatTonToiThieu extends JDialog {
 
         root.add(pnlCard, BorderLayout.CENTER);
 
-        // Actions
+        // 3. Thanh nút chức năng và đăng ký sự kiện (Hủy / Lưu thay đổi)
         JPanel pnlActions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         pnlActions.setOpaque(false);
 
@@ -137,7 +155,7 @@ final class HopThoaiCapNhatTonToiThieu extends JDialog {
         btnSave.setPreferredSize(new Dimension(130, 38));
 
         btnCancel.addActionListener(e -> dispose());
-        btnSave.addActionListener(e -> save());
+        btnSave.addActionListener(e -> luuMucTonToiThieu());
 
         pnlActions.add(btnCancel);
         pnlActions.add(btnSave);
@@ -157,8 +175,8 @@ final class HopThoaiCapNhatTonToiThieu extends JDialog {
         });
     }
 
-    // ===== PHƯƠNG THỨC: createFieldPanel(String, String, boolean) — Tạo khung chứa nhãn và ô nhập liệu. =====
-    private JPanel createFieldPanel(String label, String value, boolean locked) {
+    // Tạo một khung trường thông tin gồm nhãn tiêu đề và ô văn bản (có thể khóa chỉ đọc).
+    private JPanel taoKhungTruongThongTin(String label, String value, boolean locked) {
         JPanel panel = new JPanel(new BorderLayout(0, 4));
         panel.setOpaque(false);
         panel.add(GiaoDien.label(label, 12, true, GiaoDien.TEXT), BorderLayout.NORTH);
@@ -172,8 +190,14 @@ final class HopThoaiCapNhatTonToiThieu extends JDialog {
         return panel;
     }
 
-    // ===== PHƯƠNG THỨC: save() — Lưu nghiệp vụ tương ứng. =====
-    private void save() {
+    // ===== NHÓM 3: LẤY DỮ LIỆU, KIỂM TRA HỢP LỆ, GỌI DAO & TẢI LẠI BẢNG =====
+
+    /**
+     * Đọc mức tồn tối thiểu mới từ ô nhập, kiểm tra điều kiện số nguyên >= 0,
+     * gọi TonKhoDAO.updateMinimumThreshold() và chạy callback onSuccess để tải lại bảng.
+     */
+    private void luuMucTonToiThieu() {
+        // BƯỚC 1: Kiểm tra lại quyền thực hiện (chỉ KHO hoặc ADMIN).
         if (role != VaiTro.KHO && role != VaiTro.ADMIN) {
             JOptionPane.showMessageDialog(this,
                     "Chỉ Nhân viên kho hoặc Quản trị viên mới có quyền cập nhật mức tồn kho tối thiểu.",
@@ -181,6 +205,7 @@ final class HopThoaiCapNhatTonToiThieu extends JDialog {
             return;
         }
 
+        // BƯỚC 2: Lấy dữ liệu người dùng nhập và kiểm tra không được để trống.
         String raw = txtNewThreshold.getText().trim();
         if (raw.isEmpty()) {
             JOptionPane.showMessageDialog(this, "Vui lòng nhập số lượng tồn kho tối thiểu.",
@@ -189,6 +214,7 @@ final class HopThoaiCapNhatTonToiThieu extends JDialog {
             return;
         }
 
+        // BƯỚC 3: Kiểm tra giá trị nhập phải là số nguyên hợp lệ và >= 0.
         int newThreshold;
         try {
             newThreshold = Integer.parseInt(raw);
@@ -209,6 +235,7 @@ final class HopThoaiCapNhatTonToiThieu extends JDialog {
             return;
         }
 
+        // BƯỚC 4: Gọi TonKhoDAO cập nhật cột soLuongToiThieu, thông báo kết quả và tải lại danh sách.
         try {
             new TonKhoDAO().updateMinimumThreshold(maTonKho, newThreshold, role);
             JOptionPane.showMessageDialog(this, "Đã cập nhật mức tồn tối thiểu cho phụ tùng " + maPhuTung
@@ -223,6 +250,7 @@ final class HopThoaiCapNhatTonToiThieu extends JDialog {
         }
     }
 
+    // ===== LỚP TIỆN ÍCH GIAO DIỆN NỘI BỘ =====
     private static final class GiaoDien {
 
         private static final Color NAV = new Color(0x13272E);
@@ -234,22 +262,18 @@ final class HopThoaiCapNhatTonToiThieu extends JDialog {
         private static final Color MUTED = new Color(0x718387);
         private static final Color LINE = new Color(0xE4EBE9);
 
-        // ===== PHƯƠNG THỨC: font(int, boolean) — Tạo phông chữ theo cỡ và kiểu chữ. =====
         public static Font font(int size, boolean bold) {
             return new Font("Segoe UI", bold ? Font.BOLD : Font.PLAIN, size);
         }
 
-        // ===== PHƯƠNG THỨC: panel(Color) — Xử lý khung. =====
         public static JPanel panel(Color c) {
             JPanel pnlP = new JPanel();
             pnlP.setBackground(c);
             return pnlP;
         }
 
-        // ===== PHƯƠNG THỨC: rounded(Color, int) — Tạo đường viền bo góc cho thành phần. =====
         public static JPanel rounded(Color c, int r) {
             return new JPanel() {
-                // ===== PHƯƠNG THỨC: paintComponent(Graphics) — Vẽ nội dung và trạng thái hiện tại của thành phần. =====
                 @Override
                 protected void paintComponent(Graphics g) {
                     Graphics2D q = (Graphics2D) g.create();
@@ -261,10 +285,8 @@ final class HopThoaiCapNhatTonToiThieu extends JDialog {
             };
         }
 
-        // ===== PHƯƠNG THỨC: button(String, Color, Color) — Tạo nút giao diện theo kiểu chỉ định. =====
         public static JButton button(String s, Color bg, Color fg) {
             JButton btnB = new JButton(s) {
-                // ===== PHƯƠNG THỨC: paintComponent(Graphics) — Vẽ nội dung và trạng thái hiện tại của thành phần. =====
                 @Override
                 protected void paintComponent(Graphics g) {
                     Graphics2D q = (Graphics2D) g.create();
@@ -284,7 +306,6 @@ final class HopThoaiCapNhatTonToiThieu extends JDialog {
             return btnB;
         }
 
-        // ===== PHƯƠNG THỨC: label(String, int, boolean, Color) — Tạo nhãn giao diện. =====
         public static JLabel label(String s, int size, boolean bold, Color c) {
             JLabel lblL = new JLabel(s);
             lblL.setFont(font(size, bold));
@@ -292,7 +313,6 @@ final class HopThoaiCapNhatTonToiThieu extends JDialog {
             return lblL;
         }
 
-        // ===== PHƯƠNG THỨC: field(String) — Tạo thành phần nhập liệu cho một trường. =====
         public static JTextField field(String hint) {
             JTextField txtT = new JTextField();
             txtT.putClientProperty("JTextField.placeholderText", hint);
@@ -303,7 +323,6 @@ final class HopThoaiCapNhatTonToiThieu extends JDialog {
             return txtT;
         }
 
-        // ===== PHƯƠNG THỨC: card(LayoutManager) — Tạo khung giao diện dạng thẻ. =====
         public static JPanel card(LayoutManager l) {
             JPanel pnlP = rounded(WHITE, 18);
             pnlP.setLayout(l);

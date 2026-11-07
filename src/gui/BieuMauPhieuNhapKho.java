@@ -7,8 +7,25 @@ import java.sql.SQLException;
 import java.util.*;
 import javax.swing.*;
 
-// ===== GUI: BieuMauPhieuNhapKho =====
+/**
+ * ============================================================================
+ * GUI: BieuMauPhieuNhapKho (Biểu mẫu thông tin đầu Phiếu nhập kho)
+ * ============================================================================
+ * 1. Mục đích:
+ *    - Tạo panel chứa các trường thông tin đầu phiếu (header) của Phiếu nhập kho
+ *      (maPNK, maNCC, maNhanVien, ngayNhap, trangThai, maYCNK).
+ *    - Tự động đồng bộ trường kế thừa (maNCC từ maYCNK) thông qua TruongKeThua.
+ * 2. Phục vụ màn hình / nghiệp vụ:
+ *    - Nghiệp vụ 3 (Lập và xác nhận phiếu nhập kho): Được đặt ở phần đầu của
+ *      cửa sổ TrinhSuaPhieuNhapKho khi lập mới, chỉnh sửa nháp hoặc xem chi tiết.
+ * 3. Phương thức quan trọng:
+ *    - read() -> kiemTraDuLieu(Map): Đọc và kiểm tra tính hợp lệ của thông tin đầu phiếu.
+ *    - lockField(String): Khóa các trường không được sửa tay (maYCNK, maNCC, trangThai, ngayNhap).
+ *    - docVaKiemTraGiaTriCot(...): Kiểm tra kiểu dữ liệu và định dạng mã NVxxx / NCCxxx.
+ * ============================================================================
+ */
 final class BieuMauPhieuNhapKho extends JPanel {
+    // ===== CẤU HÌNH CÁC CỘT ĐẦU PHIẾU NHẬP KHO =====
     private static final String[] CAC_COT = new String[] { "maPNK", "maNCC", "maNhanVien", "ngayNhap",
             "trangThai", "maYCNK" };
     private static final Map<String, String> KIEU_COT = Map.ofEntries(Map.entry("maPNK", "varchar"),
@@ -23,17 +40,16 @@ final class BieuMauPhieuNhapKho extends JPanel {
     private final Map<String, JComponent> inputs = new LinkedHashMap<>();
     private final TruongKeThua.Binding inherited;
 
-    // ===== KHỞI TẠO ĐỐI TƯỢNG: BieuMauPhieuNhapKho(String, Map<String,Object>, Set<String>) — Khởi tạo đối tượng và thiết lập trạng thái ban đầu. =====
+    // ===== NHÓM 1: KHỞI TẠO GIAO DIỆN BIỂU MẪU ĐẦU PHIẾU =====
+
     BieuMauPhieuNhapKho(String table, Map<String, Object> row, Set<String> excluded) {
         this(table, row, excluded, false);
     }
 
-    // ===== KHỞI TẠO ĐỐI TƯỢNG: BieuMauPhieuNhapKho(String, Map<String,Object>, Set<String>, boolean) — Khởi tạo đối tượng và thiết lập trạng thái ban đầu. =====
     BieuMauPhieuNhapKho(String table, Map<String, Object> row, Set<String> excluded, boolean readOnly) {
         this(table, row, excluded, readOnly, isExisting(table, row));
     }
 
-    // ===== KHỞI TẠO ĐỐI TƯỢNG: BieuMauPhieuNhapKho(String, Map<String,Object>, Set<String>, boolean, boolean) — Khởi tạo đối tượng và thiết lập trạng thái ban đầu. =====
     BieuMauPhieuNhapKho(String table, Map<String, Object> row, Set<String> excluded, boolean readOnly,
             boolean existing) {
         super(new GridBagLayout());
@@ -93,7 +109,7 @@ final class BieuMauPhieuNhapKho extends JPanel {
             c.insets = new Insets(6, 8, 6, 8);
             JPanel pnlCell = new JPanel(new BorderLayout(0, 5));
             pnlCell.setOpaque(false);
-            String fieldLabel = nhanCot(field);
+            String fieldLabel = layTenHienThiCuaCot(field);
             String label = fieldLabel + (COT_BAT_BUOC.contains(field) ? " *" : "");
 
             pnlCell.add(GiaoDien.label(label, 12, true, GiaoDien.TEXT), BorderLayout.NORTH);
@@ -106,7 +122,7 @@ final class BieuMauPhieuNhapKho extends JPanel {
         inherited = readOnly ? null : TruongKeThua.bind(table, inputs);
     }
 
-    // ===== PHƯƠNG THỨC: isExisting(String, Map<String,Object>) — Kiểm tra dữ liệu đã tồn tại. =====
+    // Kiểm tra bản ghi đầu phiếu đã có mã maPNK hay là phiếu tạo mới.
     static boolean isExisting(String table, Map<String, Object> row) {
         if (row == null || row.isEmpty())
             return false;
@@ -114,19 +130,21 @@ final class BieuMauPhieuNhapKho extends JPanel {
         return val != null && !String.valueOf(val).trim().isEmpty();
     }
 
-    // ===== PHƯƠNG THỨC: read() — Đọc và chuyển đổi dữ liệu từ biểu mẫu. =====
+    // ===== NHÓM 2: ĐỌC DỮ LIỆU, KHÓA TRƯỜNG & KIỂM TRA HỢP LỆ =====
+
+    // Đọc và kiểm tra toàn bộ dữ liệu trên biểu mẫu đầu phiếu nhập kho.
     Map<String, Object> read() throws SQLException {
         if (inherited != null)
             inherited.validate();
         return kiemTraDuLieu(inputs);
     }
-    // ===== PHƯƠNG THỨC: lockField(String) — Khóa trường dữ liệu để không cho chỉnh sửa. =====
+
+    // Khóa một trường trên biểu mẫu không cho người dùng sửa tay.
     void lockField(String field) {
         if (inputs.get(field) != null)
             DinhDangKeThua.lock(inputs.get(field));
     }
 
-    // ===== PHƯƠNG THỨC: getPreferredSize() — Tính kích thước ưu tiên của thành phần. =====
     @Override
     public Dimension getPreferredSize() {
         Dimension d = super.getPreferredSize();
@@ -135,15 +153,15 @@ final class BieuMauPhieuNhapKho extends JPanel {
         return d;
     }
 
-    // ===== PHƯƠNG THỨC: kiemTraDuLieu(Map<String,JComponent>) — Kiểm tra dữ liệu. =====
+    // Kiểm tra các trường bắt buộc và định dạng mã nhân viên / mã nhà cung cấp của đầu phiếu nhập kho.
     private static Map<String, Object> kiemTraDuLieu(Map<String, JComponent> inputs)
             throws java.sql.SQLException {
         Map<String, Object> values = new LinkedHashMap<>();
-        docCot(inputs, values, "maNCC", "Mã nhà cung cấp", "varchar:6", true);
-        docCot(inputs, values, "maNhanVien", "Mã nhân viên", "varchar:5", true);
-        docCot(inputs, values, "ngayNhap", "Ngày nhập", "datetime2:0", true);
-        docCot(inputs, values, "trangThai", "Trạng thái", "nvarchar:30", true);
-        docCot(inputs, values, "maYCNK", "Mã yêu cầu nhập kho", "varchar:6", false);
+        docVaKiemTraGiaTriCot(inputs, values, "maNCC", "Mã nhà cung cấp", "varchar:6", true);
+        docVaKiemTraGiaTriCot(inputs, values, "maNhanVien", "Mã nhân viên", "varchar:5", true);
+        docVaKiemTraGiaTriCot(inputs, values, "ngayNhap", "Ngày nhập", "datetime2:0", true);
+        docVaKiemTraGiaTriCot(inputs, values, "trangThai", "Trạng thái", "nvarchar:30", true);
+        docVaKiemTraGiaTriCot(inputs, values, "maYCNK", "Mã yêu cầu nhập kho", "varchar:6", false);
         for (Map.Entry<String, Object> e : values.entrySet()) {
             String field = e.getKey();
             Object value = e.getValue();
@@ -161,8 +179,8 @@ final class BieuMauPhieuNhapKho extends JPanel {
         return values;
     }
 
-    // ===== PHƯƠNG THỨC: docCot(Map<String,JComponent>, Map<String,Object>, String, String, String, boolean) — Đọc, kiểm tra và chuyển giá trị của một cột biểu mẫu. =====
-    private static void docCot(Map<String, JComponent> inputs, Map<String, Object> values,
+    // Đọc giá trị văn bản từ một ô nhập, kiểm tra bắt buộc và chuyển đổi sang kiểu dữ liệu tương ứng.
+    private static void docVaKiemTraGiaTriCot(Map<String, JComponent> inputs, Map<String, Object> values,
             String field, String label, String specification, boolean required) throws ThongBaoLoiSQL.Issue {
         if (!inputs.containsKey(field)) return;
         if (inputs.get(field) instanceof OChonThamChieu cmbCombo) cmbCombo.validateSelection();
@@ -170,7 +188,7 @@ final class BieuMauPhieuNhapKho extends JPanel {
             values.put(field,checkBox.isSelected());
             return;
         }
-        String raw = docVanBan(inputs.get(field));
+        String raw = layVanBanTuONhap(inputs.get(field));
         if (raw.isEmpty()) {
             if (required) throw new ThongBaoLoiSQL.Issue(field, "Vui lòng nhập " + label.toLowerCase() + ".");
             values.put(field, null);
@@ -217,7 +235,7 @@ final class BieuMauPhieuNhapKho extends JPanel {
         values.put(field, value);
     }
 
-    // ===== PHƯƠNG THỨC: taoLuaChon(String, String, boolean) — Tạo lua chon. =====
+    // Tạo hộp chọn trạng thái cho trường trangThai (khóa không cho sửa tay trạng thái nghiệp vụ).
     private static JComboBox<String> taoLuaChon(String field, String value, boolean existing) {
         String[] choices = switch (field) {
         case "trangThai" -> new String[] { "Chờ xác nhận nhập kho", "Đã nhập kho", "Đã hủy" };
@@ -248,18 +266,18 @@ final class BieuMauPhieuNhapKho extends JPanel {
         return combo;
     }
 
+    // ===== NHÓM 3: TIỆN ÍCH GIAO DIỆN & ĐỌC VĂN BẢN TỪ COMPONENT =====
+
     private static final class GiaoDien {
 
         private static final Color WHITE = Color.WHITE;
         private static final Color TEXT = new Color(0x21383C);
         private static final Color LINE = new Color(0xE4EBE9);
 
-        // ===== PHƯƠNG THỨC: font(int, boolean) — Tạo phông chữ theo cỡ và kiểu chữ. =====
         public static Font font(int size, boolean bold) {
             return new Font("Segoe UI", bold ? Font.BOLD : Font.PLAIN, size);
         }
 
-        // ===== PHƯƠNG THỨC: label(String, int, boolean, Color) — Tạo nhãn giao diện. =====
         public static JLabel label(String s, int size, boolean bold, Color c) {
             JLabel lblL = new JLabel(s);
             lblL.setFont(font(size, bold));
@@ -267,7 +285,6 @@ final class BieuMauPhieuNhapKho extends JPanel {
             return lblL;
         }
 
-        // ===== PHƯƠNG THỨC: field(String) — Tạo thành phần nhập liệu cho một trường. =====
         public static JTextField field(String hint) {
             JTextField txtT = new JTextField();
             txtT.putClientProperty("JTextField.placeholderText", hint);
@@ -279,8 +296,8 @@ final class BieuMauPhieuNhapKho extends JPanel {
         }
     }
 
-    // ===== PHƯƠNG THỨC: nhanCot(String) — Tạo tiêu đề hiển thị cho cột bảng. =====
-    private static String nhanCot(String field) {
+    // Lấy tên nhãn tiếng Việt hiển thị cho từng cột dữ liệu đầu phiếu nhập kho.
+    private static String layTenHienThiCuaCot(String field) {
         return switch (field) {
         case "maNhanVien" -> "Mã nhân viên";
         case "trangThai" -> "Trạng thái";
@@ -292,8 +309,8 @@ final class BieuMauPhieuNhapKho extends JPanel {
         };
     }
 
-    // ===== PHƯƠNG THỨC: docVanBan(javax.swing.JComponent) — Lấy văn bản từ thành phần nhập liệu. =====
-    private static String docVanBan(javax.swing.JComponent control) {
+    // Trích xuất chuỗi văn bản người dùng đã nhập hoặc chọn từ một JComponent.
+    private static String layVanBanTuONhap(javax.swing.JComponent control) {
         if (control instanceof OChonNgay pnlPicker)
             return pnlPicker.getDateText();
         if (control instanceof OChonThamChieu cmbCombo)

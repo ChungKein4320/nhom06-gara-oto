@@ -21,29 +21,25 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
 
-// ===== GUI: FormTonKho =====
-/** Danh sách và biểu mẫu sử dụng dữ liệu SQL Server thực tế. */
+/**
+ * Màn hình GUI: Quản lý danh sách tồn kho và cập nhật mức tồn tối thiểu (FormTonKho).
+ * - Nghiệp vụ: Tra cứu số lượng tồn kho hiện tại, lọc phụ tùng sắp hết và mở hộp thoại cập nhật mức tồn tối thiểu.
+ * - Luồng chính: taiDanhSachTuCSDL() -> chọn dòng phụ tùng -> moHopThoaiCapNhatTonToiThieu() -> HopThoaiCapNhatTonToiThieu.show().
+ */
 public final class FormTonKho extends JPanel {
-    private static final String[] CAC_COT = new String[] { "maTonKho", "maPhuTung", "soLuongHienTai",
-            "soLuongToiThieu" };
-    private static final Set<String> COT_BAT_BUOC = Set.of("maTonKho", "maPhuTung", "soLuongHienTai",
-            "soLuongToiThieu");
-
     @java.io.Serial
     private static final long serialVersionUID = 1L;
 
-    private final String tableName;
     private final VaiTro role;
     private transient dao.TonKhoDAO dao;
     private final JTable tblTable;
     private final DefaultTableModel model;
     private final JTextField txtSearch;
     private final JLabel lblCount;
-    private final String[] fields;
     private final String[] displayFields;
     private final BoLocTrangThai statusFilters;
 
-    // ===== PHƯƠNG THỨC: readObject(java.io.ObjectInputStream) — Khôi phục trạng thái đối tượng sau khi đọc từ luồng lưu. =====
+    // ===== PHƯƠNG THỨC: readObject(java.io.ObjectInputStream) — Khôi phục DAO sau khi giải tuần tự hóa. =====
     @java.io.Serial
     private void readObject(java.io.ObjectInputStream input)
             throws java.io.IOException, ClassNotFoundException {
@@ -51,31 +47,30 @@ public final class FormTonKho extends JPanel {
         dao = new dao.TonKhoDAO();
     }
 
-    // ===== KHỞI TẠO ĐỐI TƯỢNG: FormTonKho(String) — Khởi tạo đối tượng và thiết lập trạng thái ban đầu. =====
+    // ===== KHỞI TẠO ĐỐI TƯỢNG: FormTonKho(String) — Khởi tạo màn hình tồn kho theo tên trang. =====
     public FormTonKho(String page) {
         this(page, null, null);
     }
 
-    // ===== KHỞI TẠO ĐỐI TƯỢNG: FormTonKho(String, String) — Khởi tạo đối tượng và thiết lập trạng thái ban đầu. =====
+    // ===== KHỞI TẠO ĐỐI TƯỢNG: FormTonKho(String, String) — Khởi tạo màn hình tồn kho kèm mã nhân viên. =====
     public FormTonKho(String page, String employeeId) {
         this(page, null, employeeId);
     }
 
-    // ===== KHỞI TẠO ĐỐI TƯỢNG: FormTonKho(String, VaiTro, String) — Khởi tạo đối tượng và thiết lập trạng thái ban đầu. =====
+    // ===== KHỞI TẠO ĐỐI TƯỢNG: FormTonKho(String, VaiTro, String) — Khởi tạo đầy đủ màn hình tồn kho và phân quyền. =====
     public FormTonKho(String page, VaiTro role, String employeeId) {
+        // 1. Khởi tạo giao diện chính và cấu hình DAO
         this.role = role;
         setLayout(new BorderLayout(0, 18));
         setBackground(GiaoDien.BG);
         setBorder(new EmptyBorder(26, 26, 26, 26));
 
-        tableName = "TonKho";
-
         dao = new dao.TonKhoDAO();
 
-        fields = CAC_COT;
         displayFields = new String[] { "maTonKho", "maPhuTung", "tenPhuTung", "soLuongHienTai",
                 "soLuongToiThieu" };
 
+        // 2. Tạo các thành phần Swing (tiêu đề, thanh tìm kiếm, bảng tồn kho, thanh nút chức năng)
         JPanel pnlHeading = new JPanel(new GridLayout(2, 1, 0, 5));
         pnlHeading.setOpaque(false);
 
@@ -106,17 +101,11 @@ public final class FormTonKho extends JPanel {
         pnlInput.add(txtSearch, BorderLayout.CENTER);
         pnlToolbar.add(pnlInput, BorderLayout.CENTER);
 
-        JButton btnAdd = GiaoDien.button("Thêm mới", GiaoDien.TEAL, Color.WHITE);
-        boolean canAdd = true;
-
-        btnAdd.setEnabled(canAdd);
-        btnAdd.addActionListener(e -> edit(false));
-
         pnlCard.add(pnlToolbar, BorderLayout.NORTH);
 
         model = new DefaultTableModel(new String[] { "Mã tồn kho", "Mã phụ tùng", "Tên phụ tùng",
                 "Số lượng hiện tại", "Số lượng tối thiểu" }, 0) {
-            // ===== PHƯƠNG THỨC: isCellEditable(int, int) — Kiểm tra ô bảng có cho phép chỉnh sửa không. =====
+            // ===== PHƯƠNG THỨC: isCellEditable(int, int) — Khóa chỉnh sửa trực tiếp trên bảng danh sách. =====
             @Override
             public boolean isCellEditable(int row, int col) {
                 return false;
@@ -131,7 +120,7 @@ public final class FormTonKho extends JPanel {
 
         statusFilters = new BoLocTrangThai(tblTable);
         statusFilters.onChange(() -> {
-            updateCount();
+            capNhatSoLuongBanGhi();
         });
         statusFilters.setBorder(new EmptyBorder(6, 0, 0, 0));
         pnlToolbar.add(statusFilters, BorderLayout.SOUTH);
@@ -154,16 +143,9 @@ public final class FormTonKho extends JPanel {
         pnlButtons.setOpaque(false);
 
         JButton btnRefresh = GiaoDien.button("Làm mới", GiaoDien.CREAM, GiaoDien.NAV);
-        JButton btnEdit = GiaoDien.button("Chỉnh sửa", GiaoDien.TEAL, Color.WHITE);
-        JButton btnDelete = GiaoDien.button("Xóa", GiaoDien.ORANGE, Color.WHITE);
 
-        final boolean canEdit = true;
-        btnEdit.setEnabled(false);
-        btnDelete.setEnabled(true);
-
+        // 3. Đăng ký sự kiện cho các nút chức năng, bảng và ô tìm kiếm
         btnRefresh.addActionListener(e -> lamMoi());
-        btnEdit.addActionListener(e -> edit(true));
-        btnDelete.addActionListener(e -> hideRecord());
 
         pnlButtons.add(btnRefresh);
 
@@ -171,7 +153,7 @@ public final class FormTonKho extends JPanel {
         if ((role == VaiTro.KHO || role == VaiTro.ADMIN)) {
             btnThreshold = GiaoDien.button("Cập nhật mức tồn tối thiểu", GiaoDien.TEAL, Color.WHITE);
             btnThreshold.setEnabled(false);
-            btnThreshold.addActionListener(e -> updateMinimumThreshold());
+            btnThreshold.addActionListener(e -> moHopThoaiCapNhatTonToiThieu());
             pnlButtons.add(btnThreshold);
         } else {
             btnThreshold = null;
@@ -180,11 +162,6 @@ public final class FormTonKho extends JPanel {
         tblTable.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
                 int selected = tblTable.getSelectedRow();
-                if (selected < 0) {
-                    btnEdit.setEnabled(false);
-                } else {
-                    btnEdit.setEnabled(canEdit);
-                }
                 if (btnThreshold != null) {
                     btnThreshold.setEnabled(selected >= 0);
                 }
@@ -210,58 +187,58 @@ public final class FormTonKho extends JPanel {
         add(pnlCard, BorderLayout.CENTER);
 
         tblTable.addMouseListener(new java.awt.event.MouseAdapter() {
-            // ===== PHƯƠNG THỨC: mouseClicked(java.awt.event.MouseEvent) — Xử lý khi người dùng nhấp chuột. =====
+            // ===== PHƯƠNG THỨC: mouseClicked(java.awt.event.MouseEvent) — Nhấp đúp dòng để mở hộp thoại cập nhật mức tồn tối thiểu. =====
             @Override
             public void mouseClicked(java.awt.event.MouseEvent event) {
                 if (event.getClickCount() == 2 && tblTable.rowAtPoint(event.getPoint()) >= 0) {
                     if ((role == VaiTro.KHO || role == VaiTro.ADMIN)) {
-                        updateMinimumThreshold();
+                        moHopThoaiCapNhatTonToiThieu();
                     }
                 }
             }
         });
 
         txtSearch.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
-            // ===== PHƯƠNG THỨC: insertUpdate(javax.swing.event.DocumentEvent) — Xử lý khi nội dung được thêm vào. =====
+            // ===== PHƯƠNG THỨC: insertUpdate(javax.swing.event.DocumentEvent) — Lọc danh sách khi thêm ký tự tìm kiếm. =====
             @Override
             public void insertUpdate(javax.swing.event.DocumentEvent e) {
-                filter();
+                locDanhSachTheoTimKiem();
             }
 
-            // ===== PHƯƠNG THỨC: removeUpdate(javax.swing.event.DocumentEvent) — Xử lý khi nội dung bị xóa. =====
+            // ===== PHƯƠNG THỨC: removeUpdate(javax.swing.event.DocumentEvent) — Lọc danh sách khi xóa ký tự tìm kiếm. =====
             @Override
             public void removeUpdate(javax.swing.event.DocumentEvent e) {
-                filter();
+                locDanhSachTheoTimKiem();
             }
 
-            // ===== PHƯƠNG THỨC: changedUpdate(javax.swing.event.DocumentEvent) — Cập nhật giao diện khi nội dung thay đổi. =====
+            // ===== PHƯƠNG THỨC: changedUpdate(javax.swing.event.DocumentEvent) — Lọc danh sách khi thuộc tính văn bản thay đổi. =====
             @Override
             public void changedUpdate(javax.swing.event.DocumentEvent e) {
-                filter();
+                locDanhSachTheoTimKiem();
             }
         });
 
-        // Khởi tạo các lựa chọn lọc cố định theo quy định nghiệp vụ và trạng thái mặc định
-
-        load();
+        // 8. Tải dữ liệu ban đầu từ SQL Server lên bảng
+        taiDanhSachTuCSDL();
     }
 
-    // ===== PHƯƠNG THỨC: lamMoi() — Tải lại dữ liệu và cập nhật nội dung đang hiển thị. =====
+    // ===== PHƯƠNG THỨC: lamMoi() — Xóa bộ lọc tìm kiếm và tải lại danh sách tồn kho từ CSDL. =====
     private void lamMoi() {
         txtSearch.setText("");
         statusFilters.reset();
-        load();
+        taiDanhSachTuCSDL();
         tblTable.clearSelection();
         tblTable.scrollRectToVisible(new Rectangle(0, 0, 1, 1));
     }
 
-    // ===== PHƯƠNG THỨC: load() — Tải dữ liệu cho bảng hiện tại. =====
-    private void load() {
+    // ===== PHƯƠNG THỨC: taiDanhSachTuCSDL() — Gọi TonKhoDAO.getAll() để nạp danh sách tồn kho lên bảng. =====
+    private void taiDanhSachTuCSDL() {
         try {
-
+            // 6. Gọi DAO lấy danh sách tồn kho kèm tên phụ tùng
             model.setRowCount(0);
             List<LinkedHashMap<String, Object>> rows = dao.getAll();
 
+            // 8. Đổ từng bản ghi vào model của JTable
             for (Map<String, Object> row : rows) {
 
                 Object[] values = new Object[displayFields.length];
@@ -277,24 +254,26 @@ public final class FormTonKho extends JPanel {
 
             statusFilters.refresh();
         } catch (SQLException ex) {
+            // 7. Hiển thị thông báo lỗi nếu mất kết nối SQL Server
             lblCount.setText("Lỗi kết nối SQL Server");
             JOptionPane.showMessageDialog(this, ex.getMessage(), "Lỗi cơ sở dữ liệu",
                     JOptionPane.ERROR_MESSAGE);
         }
     }
 
-    // ===== PHƯƠNG THỨC: filter() — Lọc dữ liệu theo tiêu chí đang chọn. =====
-    private void filter() {
+    // ===== PHƯƠNG THỨC: locDanhSachTheoTimKiem() — Lọc các dòng trên bảng theo từ khóa trong ô tìm kiếm. =====
+    private void locDanhSachTheoTimKiem() {
         statusFilters.search(txtSearch.getText());
     }
 
-    // ===== PHƯƠNG THỨC: updateCount() — Cập nhật số lượng. =====
-    private void updateCount() {
+    // ===== PHƯƠNG THỨC: capNhatSoLuongBanGhi() — Cập nhật nhãn tổng số bản ghi đang hiển thị trên bảng. =====
+    private void capNhatSoLuongBanGhi() {
         lblCount.setText("Hiển thị: " + tblTable.getRowCount() + " / " + model.getRowCount() + " bản ghi");
     }
 
-    // ===== PHƯƠNG THỨC: updateMinimumThreshold() — Cập nhật minimum threshold. =====
-    private void updateMinimumThreshold() {
+    // ===== PHƯƠNG THỨC: moHopThoaiCapNhatTonToiThieu() — Lấy dòng đang chọn và mở hộp thoại cập nhật mức tồn tối thiểu. =====
+    private void moHopThoaiCapNhatTonToiThieu() {
+        // 4. Lấy dòng phụ tùng đang chọn trên bảng
         int selected = tblTable.getSelectedRow();
         if (selected < 0) {
             JOptionPane.showMessageDialog(this, "Vui lòng chọn phụ tùng cần cập nhật mức tồn tối thiểu.",
@@ -306,363 +285,20 @@ public final class FormTonKho extends JPanel {
         for (int col = 0; col < displayFields.length; col++) {
             record.put(displayFields[col], model.getValueAt(row, col));
         }
-        HopThoaiCapNhatTonToiThieu.show(this, record, role, this::load);
+        // Mở hộp thoại HopThoaiCapNhatTonToiThieu và truyền callback taiDanhSachTuCSDL sau khi lưu
+        HopThoaiCapNhatTonToiThieu.show(this, record, role, this::taiDanhSachTuCSDL);
     }
 
-    // ===== PHƯƠNG THỨC: edit(boolean) — Mở biểu mẫu để chỉnh sửa dữ liệu. =====
-    private void edit(boolean existing) {
-
-        if (existing) {
-            Map<String, Object> record = requireSelectedRecord("chỉnh sửa");
-            if (record == null)
-                return;
-
-        }
-
-        int row = tblTable.getSelectedRow();
-        if (existing && row < 0) {
-            JOptionPane.showMessageDialog(this, "Vui lòng chọn bản ghi.");
-            return;
-        }
-
-        int source = existing ? tblTable.convertRowIndexToModel(row) : -1;
-        String generatedId = null;
-
-        if (!existing && !fields[0].equals("VIN")) {
-            try {
-                generatedId = dao.previewNextId();
-            } catch (SQLException ex) {
-                JOptionPane.showMessageDialog(this, ex.getMessage(), "Không thể sinh mã",
-                        JOptionPane.ERROR_MESSAGE);
-                return;
-            }
-        }
-
-        JPanel pnlForm = new JPanel(new GridBagLayout());
-        pnlForm.setBackground(Color.WHITE);
-        pnlForm.setBorder(new EmptyBorder(20, 22, 12, 22));
-
-        Map<String, JComponent> inputs = new LinkedHashMap<>();
-
-        for (int i = 0; i < fields.length; i++) {
-            String field = fields[i];
-            int column = Arrays.asList(displayFields).indexOf(field);
-            String value = existing && model.getValueAt(source, column) != null
-                    ? model.getValueAt(source, column).toString()
-                    : "";
-
-            JComponent input;
-
-            OChonThamChieu cmbReference = OChonThamChieu.create(tableName, field, value);
-
-            if (cmbReference != null) {
-                cmbReference.selectId(value);
-                input = cmbReference;
-            } else {
-                JTextField txtInput = GiaoDien.field(value);
-                txtInput.setText(value);
-
-                boolean auto = i == 0 && !existing;
-
-                if (auto)
-                    txtInput.setText(generatedId);
-
-                if (i == 0) {
-                    txtInput.setEditable(false);
-                }
-
-                if (auto || (i == 0 && existing)) {
-                    DinhDangKeThua.lock(txtInput);
-                }
-
-                input = txtInput;
-            }
-
-            inputs.put(field, input);
-
-            JPanel pnlCell = new JPanel(new BorderLayout(0, 7));
-            pnlCell.setOpaque(false);
-            pnlCell.add(GiaoDien.label(nhanCot(field) + (COT_BAT_BUOC.contains(field) ? " *" : ""), 12, true,
-                    GiaoDien.TEXT), BorderLayout.NORTH);
-
-            input.setPreferredSize(new Dimension(250, 40));
-            pnlCell.add(input, BorderLayout.CENTER);
-
-            GridBagConstraints gbc = new GridBagConstraints();
-            gbc.gridx = i % 2;
-            gbc.gridy = i / 2;
-            gbc.weightx = 1;
-            gbc.fill = GridBagConstraints.HORIZONTAL;
-            gbc.insets = new Insets(0, i % 2 == 0 ? 0 : 9, 16, i % 2 == 0 ? 9 : 0);
-            pnlForm.add(pnlCell, gbc);
-        }
-
-        JScrollPane scrSc = new JScrollPane(pnlForm);
-        scrSc.setBorder(null);
-        scrSc.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-
-        int formH = pnlForm.getPreferredSize().height + 8;
-        scrSc.setPreferredSize(new Dimension(700, Math.min(540, formH)));
-
-        JDialog winDialog = new JDialog(SwingUtilities.getWindowAncestor(this),
-                existing ? "Chỉnh sửa thông tin" : "Thêm thông tin mới",
-                Dialog.ModalityType.APPLICATION_MODAL);
-        winDialog.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
-
-        JPanel pnlContent = new JPanel(new BorderLayout(0, 12));
-        pnlContent.setBorder(new EmptyBorder(12, 12, 12, 12));
-        pnlContent.add(scrSc, BorderLayout.CENTER);
-
-        JPanel pnlActions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 2));
-        JButton btnSave = GiaoDien.button("Lưu", GiaoDien.TEAL, Color.WHITE);
-        JButton btnCancel = GiaoDien.button("Hủy", GiaoDien.CREAM, GiaoDien.NAV);
-
-        btnSave.setPreferredSize(new Dimension(115, 40));
-        btnCancel.setPreferredSize(new Dimension(115, 40));
-        pnlActions.add(btnSave);
-        pnlActions.add(btnCancel);
-        pnlContent.add(pnlActions, BorderLayout.SOUTH);
-
-        winDialog.setContentPane(pnlContent);
-        winDialog.getRootPane().setDefaultButton(btnSave);
-        winDialog.getRootPane().registerKeyboardAction(e -> winDialog.dispose(),
-                KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_ESCAPE, 0),
-                JComponent.WHEN_IN_FOCUSED_WINDOW);
-        btnCancel.addActionListener(e -> winDialog.dispose());
-
-        String[] expectedId = { generatedId };
-        Map<JComponent, javax.swing.border.Border> borders = new LinkedHashMap<>();
-
-        for (JComponent input : inputs.values()) {
-            borders.put(input, input.getBorder());
-        }
-
-        btnSave.addActionListener(e -> {
-            btnSave.setEnabled(false);
-            borders.forEach(JComponent::setBorder);
-
-            try {
-
-                Map<String, Object> values = kiemTraDuLieu(inputs);
-
-                if (existing) {
-                    dao.update(model.getValueAt(source, 0).toString(), values);
-                } else {
-                    dao.insert(values, expectedId[0]);
-                }
-
-                winDialog.dispose();
-                load();
-            } catch (SQLException ex) {
-                String field = ThongBaoLoiSQL.errorField(ex, tableName);
-                String message = ex.getMessage();
-
-                if (!existing && fields[0].equals(field)) {
-                    try {
-                        expectedId[0] = dao.previewNextId();
-                        ((JTextField) inputs.get(field)).setText(expectedId[0]);
-                        message = "Mã đã thay đổi. Mã mới là " + expectedId[0]
-                                + ". Dữ liệu bạn nhập vẫn được giữ nguyên;" + " vui lòng nhấn Lưu lại.";
-                    } catch (SQLException refreshError) {
-                        message = message + "\nKhông lấy được mã mới: " + refreshError.getMessage();
-                    }
-                } else if (field != null) {
-                    String label = nhanCot(field);
-
-                    if (ex.getErrorCode() == 2601 || ex.getErrorCode() == 2627) {
-                        message = label + " đã tồn tại. Vui lòng nhập giá trị khác.";
-                    } else if (ex.getErrorCode() == 547 && message != null && message.contains("FK_")) {
-                        message = label + " không tồn tại hoặc không hợp lệ." + " Vui lòng kiểm tra lại.";
-                    }
-                }
-
-                JComponent invalid = inputs.get(field);
-                if (invalid != null) {
-                    invalid.setBorder(BorderFactory.createLineBorder(GiaoDien.ORANGE, 2));
-                }
-
-                JOptionPane.showMessageDialog(winDialog,
-                        message == null ? "Không thể lưu." + " Vui lòng kiểm tra lại thông tin." : message,
-                        "Không thể lưu", JOptionPane.ERROR_MESSAGE);
-
-                JComponent target = invalid;
-                if (target == null || !target.isEnabled()
-                        || (target instanceof JTextField txtText && !txtText.isEditable())) {
-                    target = inputs.values().stream()
-                            .filter(input -> input.isEnabled()
-                                    && (!(input instanceof JTextField txtText) || txtText.isEditable()))
-                            .findFirst().orElse(btnSave);
-                }
-
-                JComponent focus = target;
-                SwingUtilities.invokeLater(() -> {
-                    focus.scrollRectToVisible(new Rectangle(0, 0, focus.getWidth(), focus.getHeight()));
-
-                    if (focus instanceof OChonNgay pnlPicker) {
-                        pnlPicker.focusCalendar();
-                    } else {
-                        focus.requestFocusInWindow();
-                        if (focus instanceof JTextField txtText) {
-                            txtText.selectAll();
-                        }
-                    }
-                });
-            } finally {
-                btnSave.setEnabled(true);
-            }
-        });
-
-        winDialog.pack();
-        winDialog.setLocationRelativeTo(null);
-        winDialog.setVisible(true);
-    }
-
-    // ===== PHƯƠNG THỨC: currentRecord() — Lấy bản ghi đang được chọn. =====
-    private Map<String, Object> currentRecord() {
-        int selected = tblTable.getSelectedRow();
-        if (selected < 0)
-            return null;
-
-        int row = tblTable.convertRowIndexToModel(selected);
-        Map<String, Object> record = new LinkedHashMap<>();
-
-        for (String field : fields) {
-            int column = Arrays.asList(displayFields).indexOf(field);
-            if (column >= 0) {
-                record.put(field, model.getValueAt(row, column));
-            }
-        }
-        return record;
-    }
-
-    // ===== PHƯƠNG THỨC: requireSelectedRecord(String) — Kiểm tra và lấy bản ghi đang được chọn. =====
-    private Map<String, Object> requireSelectedRecord(String actionDesc) {
-        Map<String, Object> record = currentRecord();
-        if (record == null) {
-            JOptionPane.showMessageDialog(this,
-                    "Vui lòng chọn một bản ghi" + (actionDesc == null ? "." : " để " + actionDesc + "."),
-                    "Chưa chọn bản ghi", JOptionPane.WARNING_MESSAGE);
-        }
-        return record;
-    }
-
-    // ===== PHƯƠNG THỨC: hideRecord() — Ẩn bản ghi đã chọn khỏi danh sách. =====
-    private void hideRecord() {
-        int row = tblTable.getSelectedRow();
-        if (row < 0) {
-            JOptionPane.showMessageDialog(this, "Vui lòng chọn một bản ghi để xóa.", "Chưa chọn bản ghi",
-                    JOptionPane.WARNING_MESSAGE);
-            return;
-        }
-
-        if (JOptionPane.showConfirmDialog(this,
-                "Bạn chắc chắn muốn xoá dòng này" + " ra khỏi danh sách hiển thị?", "Xác nhận",
-                JOptionPane.YES_NO_OPTION) != JOptionPane.YES_OPTION) {
-            return;
-        }
-
-        try {
-            dao.softDelete(model.getValueAt(tblTable.convertRowIndexToModel(row), 0).toString());
-            load();
-        } catch (SQLException ex) {
-            JOptionPane.showMessageDialog(this, ex.getMessage(), "Lỗi SQL", JOptionPane.ERROR_MESSAGE);
-        }
-    }
-
-    // ===== PHƯƠNG THỨC: getStatusFilterCombo() — Lấy trạng thái bộ lọc combo. =====
+    // ===== PHƯƠNG THỨC: getStatusFilterCombo() — Lấy combobox lọc trạng thái (nếu có). =====
     public JComboBox<String> getStatusFilterCombo() {
         String statusField = "trangThai";
         int column = Arrays.asList(displayFields).indexOf(statusField);
         return column >= 0 ? statusFilters.getFilter(column) : null;
     }
 
-    // ===== PHƯƠNG THỨC: getTable() — Lấy bảng. =====
+    // ===== PHƯƠNG THỨC: getTable() — Lấy đối tượng JTable hiển thị danh sách tồn kho. =====
     public JTable getTable() {
         return tblTable;
-    }
-
-    // ===== PHƯƠNG THỨC: kiemTraDuLieu(Map<String,JComponent>) — Kiểm tra dữ liệu. =====
-    private static Map<String, Object> kiemTraDuLieu(Map<String, JComponent> inputs)
-            throws java.sql.SQLException {
-        Map<String, Object> values = new LinkedHashMap<>();
-        docCot(inputs, values, "maPhuTung", "Mã phụ tùng", "varchar:5", true);
-        docCot(inputs, values, "soLuongHienTai", "Số lượng hiện tại", "int:", true);
-        docCot(inputs, values, "soLuongToiThieu", "Số lượng tối thiểu", "int:", true);
-        for (Map.Entry<String, Object> e : values.entrySet()) {
-            String field = e.getKey();
-            Object value = e.getValue();
-            if (value == null)
-                continue;
-            String raw = value.toString().trim();
-
-            if (field.equals("maPhuTung") && !raw.matches("PT[0-9]{3}"))
-                throw new ThongBaoLoiSQL.Issue(field, "Mã phụ tùng phải có dạng PT001.");
-
-        }
-
-        if ("PT000".equals(String.valueOf(values.get("maPhuTung")))) {
-
-            throw new ThongBaoLoiSQL.Issue("maPhuTung",
-                    "PT000 chỉ dùng để biểu thị hạng mục không sử dụng phụ tùng; không được nhập kho hoặc bán như phụ tùng.");
-
-        }
-        return values;
-    }
-
-    // ===== PHƯƠNG THỨC: docCot(Map<String,JComponent>, Map<String,Object>, String, String, String, boolean) — Đọc, kiểm tra và chuyển giá trị của một cột biểu mẫu. =====
-    private static void docCot(Map<String, JComponent> inputs, Map<String, Object> values,
-            String field, String label, String specification, boolean required) throws ThongBaoLoiSQL.Issue {
-        if (!inputs.containsKey(field)) return;
-        if (inputs.get(field) instanceof OChonThamChieu cmbCombo) cmbCombo.validateSelection();
-        if(inputs.get(field) instanceof JCheckBox checkBox) {
-            values.put(field,checkBox.isSelected());
-            return;
-        }
-        String raw = docVanBan(inputs.get(field));
-        if (raw.isEmpty()) {
-            if (required) throw new ThongBaoLoiSQL.Issue(field, "Vui lòng nhập " + label.toLowerCase() + ".");
-            values.put(field, null);
-            return;
-        }
-        String[] spec = specification.split(":", 2);
-        Object value;
-        try {
-            value = switch (spec[0]) {
-                case "int" -> Integer.valueOf(raw);
-                case "decimal" -> new java.math.BigDecimal(raw);
-                case "datetime", "datetime2" -> java.sql.Timestamp.valueOf(raw.length() == 10 ? raw + " 00:00:00" : raw);
-                case "date" -> java.sql.Date.valueOf(raw);
-                case "bit" -> {
-                    if (!raw.equals("Nam") && !raw.equals("Nữ")) throw new IllegalArgumentException();
-                    yield raw.equals("Nam");
-                }
-                default -> raw;
-            };
-        } catch (IllegalArgumentException ex) {
-            String expected = spec[0].equals("int") ? "số nguyên hợp lệ"
-                    : spec[0].equals("decimal") ? "số hợp lệ, dùng dấu chấm cho phần thập phân" : "ngày hợp lệ";
-            throw new ThongBaoLoiSQL.Issue(field, label + " phải là " + expected + ".");
-        }
-        if ((spec[0].equals("varchar") || spec[0].equals("nvarchar"))
-                && raw.length() > Integer.parseInt(spec[1].trim())) {
-            throw new ThongBaoLoiSQL.Issue(field, label + " không được vượt quá " + spec[1].trim() + " ký tự.");
-        }
-        if (value instanceof Number number) {
-            java.math.BigDecimal numberValue = new java.math.BigDecimal(number.toString());
-            if (numberValue.signum() < 0) throw new ThongBaoLoiSQL.Issue(field, label + " không được âm.");
-            if (spec[0].equals("decimal")) {
-                String[] size = spec[1].split(",");
-                int precision = Integer.parseInt(size[0].trim());
-                int scale = Integer.parseInt(size[1].trim());
-                java.math.BigDecimal normalized = numberValue.stripTrailingZeros();
-                if (Math.max(0, normalized.precision() - normalized.scale()) > precision - scale
-                        || Math.max(0, normalized.scale()) > scale) {
-                    throw new ThongBaoLoiSQL.Issue(field, label + " chỉ nhận tối đa " + (precision - scale)
-                            + " chữ số phần nguyên và " + scale + " chữ số thập phân.");
-                }
-            }
-        }
-        values.put(field, value);
     }
 
     private static final class BoCucBang {
@@ -828,7 +464,7 @@ public final class FormTonKho extends JPanel {
                     super.createDefaultColumnsFromModel();
                     for (int i = 0; i < getColumnModel().getColumnCount(); i++) {
                         TableColumn column = getColumnModel().getColumn(i);
-                        column.setHeaderValue(nhanCot(getModel().getColumnName(column.getModelIndex())));
+                        column.setHeaderValue(layTenHienThiCuaCot(getModel().getColumnName(column.getModelIndex())));
                     }
                 }
             };
@@ -971,8 +607,8 @@ public final class FormTonKho extends JPanel {
         }
     }
 
-    // ===== PHƯƠNG THỨC: nhanCot(String) — Tạo tiêu đề hiển thị cho cột bảng. =====
-    private static String nhanCot(String field) {
+    // ===== PHƯƠNG THỨC: layTenHienThiCuaCot(String) — Trả về nhãn tiếng Việt cho tên cột tồn kho. =====
+    private static String layTenHienThiCuaCot(String field) {
         return switch (field) {
         case "maPhuTung" -> "Mã phụ tùng";
         case "tenPhuTung" -> "Tên phụ tùng";
@@ -981,24 +617,6 @@ public final class FormTonKho extends JPanel {
         case "soLuongToiThieu" -> "Số lượng tối thiểu";
         default -> field;
         };
-    }
-
-    // ===== PHƯƠNG THỨC: docVanBan(javax.swing.JComponent) — Lấy văn bản từ thành phần nhập liệu. =====
-    private static String docVanBan(javax.swing.JComponent control) {
-        if (control instanceof OChonNgay pnlPicker)
-            return pnlPicker.getDateText();
-        if (control instanceof OChonThamChieu cmbCombo)
-            return cmbCombo.selectedId();
-        if (control instanceof javax.swing.JComboBox<?> cmbCombo)
-            return cmbCombo.getSelectedItem() == null ? "" : cmbCombo.getSelectedItem().toString().trim();
-        if (control instanceof javax.swing.JTextField txtField)
-            return txtField.getText().trim();
-        if (control instanceof javax.swing.JPanel pnlPanel) {
-            for (java.awt.Component component : pnlPanel.getComponents())
-                if (component instanceof javax.swing.JRadioButton radRadio && radRadio.isSelected())
-                    return radRadio.getText();
-        }
-        return "";
     }
 
 }

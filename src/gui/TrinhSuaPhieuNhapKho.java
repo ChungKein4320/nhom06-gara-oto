@@ -20,38 +20,45 @@ import java.util.List;
 import javax.swing.*;
 import javax.swing.table.*;
 
-// ===== GUI: TrinhSuaPhieuNhapKho =====
-/** Nhập đầu phiếu và nhiều hạng mục, chỉ ghi khi nhấn Lưu toàn bộ phiếu. */
+/**
+ * Hộp thoại GUI: Lập mới (từ YCNK đã duyệt), chỉnh sửa và xem chi tiết Phiếu nhập kho (TrinhSuaPhieuNhapKho).
+ * - Gồm 2 phần trên cùng một cửa sổ:
+ *   1. Đầu phiếu (BieuMauPhieuNhapKho): mã PNK, mã YCNK, mã NCC, mã nhân viên, ngày nhập, trạng thái (khóa các trường kế thừa từ YCNK).
+ *   2. Bảng chi tiết (ChiTietPhieuNhapKho): khóa danh sách phụ tùng 1-1 theo YCNK; cho phép nhấp đúp sửa trực tiếp 3 cột
+ *      'soLuongThucNhan', 'soLuongNhap', 'donGiaNhap' thông qua BoChinhSuaOHangMucPNK.
+ * - Khi nhấn 'Lưu toàn bộ phiếu' / 'Lưu thay đổi': kiểm tra 0 <= soLuongNhap <= soLuongThucNhan <= soLuongYeuCau
+ *   và gọi QuyTrinhDAO.saveDocument("PhieuNhapKho", ...).
+ */
 final class TrinhSuaPhieuNhapKho {
-    // ===== KHỞI TẠO ĐỐI TƯỢNG: TrinhSuaPhieuNhapKho() — Khởi tạo đối tượng và thiết lập trạng thái ban đầu. =====
+    // ===== KHỞI TẠO ĐỐI TƯỢNG: TrinhSuaPhieuNhapKho() — Lớp tiện ích tĩnh, không khởi tạo trực tiếp. =====
     private TrinhSuaPhieuNhapKho() {
     }
 
-    // ===== PHƯƠNG THỨC: show(Component, String, Map<String,Object>, VaiTro, String) — Hiển thị nghiệp vụ tương ứng. =====
+    // ===== PHƯƠNG THỨC: show(Component, String, Map<String,Object>, VaiTro, String) — Mở hộp thoại chỉnh sửa phiếu nhập kho. =====
     static void show(Component parent, String table, Map<String, Object> header, VaiTro role,
             String employeeId) {
         show(parent, table, header, List.of(), role, employeeId);
     }
 
-    // ===== PHƯƠNG THỨC: show(Component, String, Map<String,Object>, List<Map<String,Object>>, VaiTro, String) — Hiển thị nghiệp vụ tương ứng. =====
+    // ===== PHƯƠNG THỨC: show(Component, String, Map<String,Object>, List<Map<String,Object>>, VaiTro, String) — Mở hộp thoại lập phiếu nhập kho từ YCNK đã duyệt kèm danh sách hạng mục. =====
     static void show(Component parent, String table, Map<String, Object> header,
             List<Map<String, Object>> initialDetails, VaiTro role, String employeeId) {
-        open(parent, table, header, initialDetails, false, role, employeeId);
+        moHopThoaiChinhSuaHoacXem(parent, table, header, initialDetails, false, role, employeeId);
     }
 
-    // ===== PHƯƠNG THỨC: view(Component, String, Map<String,Object>) — Mở màn hình xem chi tiết dữ liệu. =====
+    // ===== PHƯƠNG THỨC: view(Component, String, Map<String,Object>) — Mở hộp thoại xem chi tiết phiếu nhập kho (chỉ đọc). =====
     static void view(Component parent, String table, Map<String, Object> header) {
-        open(parent, table, header, List.of(), true, null, null);
+        moHopThoaiChinhSuaHoacXem(parent, table, header, List.of(), true, null, null);
     }
 
-    // ===== PHƯƠNG THỨC: review(Component, String, Map<String,Object>, VaiTro, String) — Mở chức năng xem xét và xử lý chứng từ. =====
+    // ===== PHƯƠNG THỨC: review(Component, String, Map<String,Object>, VaiTro, String) — Điểm vào xem xét chứng từ (giữ tương thích cấu trúc). =====
     static void review(Component parent, String table, Map<String, Object> header, VaiTro role,
             String employeeId) {
-        openReview(parent, table, header, role, employeeId);
+        moHopThoaiXetDuyet(parent, table, header, role, employeeId);
     }
 
-    // ===== PHƯƠNG THỨC: getWindowOwner(Component) — Lấy cửa sổ owner. =====
-    private static Window getWindowOwner(Component parent) {
+    // ===== PHƯƠNG THỨC: layCuaSoCha(Component) — Tìm cửa sổ Window cha để gắn JDialog modal. =====
+    private static Window layCuaSoCha(Component parent) {
         if (parent == null)
             return null;
         if (parent instanceof Window window)
@@ -59,8 +66,8 @@ final class TrinhSuaPhieuNhapKho {
         return SwingUtilities.getWindowAncestor(parent);
     }
 
-    // ===== PHƯƠNG THỨC: openReview(Component, String, Map<String,Object>, VaiTro, String) — Mở review. =====
-    private static void openReview(Component parent, String table, Map<String, Object> header, VaiTro role,
+    // ===== PHƯƠNG THỨC: moHopThoaiXetDuyet(...) — Hộp thoại xét duyệt giữ lại để đồng bộ cấu trúc với lớp tách từ TrinhSuaPhieu. =====
+    private static void moHopThoaiXetDuyet(Component parent, String table, Map<String, Object> header, VaiTro role,
             String employeeId) {
         String pk = "maPNK";
         String id = header == null || header.get(pk) == null ? null : String.valueOf(header.get(pk));
@@ -79,7 +86,7 @@ final class TrinhSuaPhieuNhapKho {
             freshHeader = fresh.get(0);
             details.addAll(new dao.ChiTietPhieuNhapKhoDAO().getAll(conn, Map.of(pk, id)));
         } catch (SQLException ex) {
-            error(parent, ex);
+            hienThiLoiLuuPhieu(parent, ex);
             return;
         }
 
@@ -110,7 +117,7 @@ final class TrinhSuaPhieuNhapKho {
 
         String title = (canDecide ? "Xét duyệt yêu cầu nhập kho " : "Chi tiết yêu cầu nhập kho ") + id + " ["
                 + status + "]";
-        JDialog winDialog = new JDialog(getWindowOwner(parent), title, Dialog.ModalityType.APPLICATION_MODAL);
+        JDialog winDialog = new JDialog(layCuaSoCha(parent), title, Dialog.ModalityType.APPLICATION_MODAL);
         JPanel pnlContent = new JPanel(new BorderLayout(0, 10));
         pnlContent.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
 
@@ -194,9 +201,10 @@ final class TrinhSuaPhieuNhapKho {
         winDialog.setVisible(true);
     }
 
-    // ===== PHƯƠNG THỨC: buildDialog(Component, String, Map<String,Object>, List<Map<String,Object>>, boolean, VaiTro, String) — Tạo hộp thoại hiển thị và xử lý biểu mẫu. =====
+    // ===== PHƯƠNG THỨC: buildDialog(...) — Xây dựng hộp thoại lập mới (từ YCNK), chỉnh sửa hoặc xem chi tiết phiếu nhập kho. =====
     static JDialog buildDialog(Component parent, String table, Map<String, Object> header,
             List<Map<String, Object>> initialDetails, boolean viewOnly, VaiTro role, String employeeId) {
+        // 1. Kiểm tra điều kiện bắt buộc: Phiếu nhập kho mới (id == null) phải gắn với maYCNK đã duyệt
         String child = QuyTrinhDAO.detailTable(table), pk = "maPNK";
         String id = header == null || header.get(pk) == null ? null : String.valueOf(header.get(pk));
         if (id == null && (((header == null || header.get("maYCNK") == null)))) {
@@ -206,6 +214,8 @@ final class TrinhSuaPhieuNhapKho {
             }
             return null;
         }
+
+        // 2. Tải dữ liệu đầu phiếu và chi tiết hạng mục từ CSDL (nếu đang mở phiếu đã tồn tại)
         String lockedReason = null;
         List<Map<String, Object>> details = new ArrayList<>();
         if (id == null && initialDetails != null) {
@@ -223,9 +233,11 @@ final class TrinhSuaPhieuNhapKho {
                 details.addAll(new dao.ChiTietPhieuNhapKhoDAO().getAll(conn, Map.of(pk, id)));
             }
         } catch (SQLException ex) {
-            error(parent, ex);
+            hienThiLoiLuuPhieu(parent, ex);
             return null;
         }
+
+        // 3. Khởi tạo biểu mẫu đầu phiếu (BieuMauPhieuNhapKho) và khóa các trường kế thừa từ YCNK
         boolean readOnly = viewOnly || lockedReason != null;
         BieuMauPhieuNhapKho pnlHeader = new BieuMauPhieuNhapKho(table, header,
                 id == null ? Set.of(pk) : Set.of(), readOnly, id != null);
@@ -242,31 +254,29 @@ final class TrinhSuaPhieuNhapKho {
 
         String[] columns = new String[] { "maPhuTung", "soLuongYeuCau", "soLuongThucNhan", "soLuongNhap",
                 "donGiaNhap" };
-        boolean isPnk = true;
+        // Với Phiếu nhập kho, danh sách phụ tùng được khóa 1-1 theo YCNK đã duyệt;
+        // người dùng nhấp đúp sửa trực tiếp 3 cột 'soLuongThucNhan', 'soLuongNhap', 'donGiaNhap' trên bảng qua BoChinhSuaOHangMucPNK.
 
         DefaultTableModel model = new DefaultTableModel(new String[] { "Mã phụ tùng", "Số lượng yêu cầu",
                 "Số lượng thực nhận", "Số lượng nhập", "Đơn giá nhập" }, 0) {
             @java.io.Serial
             private static final long serialVersionUID = 1L;
 
-            // ===== PHƯƠNG THỨC: isCellEditable(int, int) — Kiểm tra ô bảng có cho phép chỉnh sửa không. =====
+            // ===== PHƯƠNG THỨC: isCellEditable(int, int) — Chỉ cho phép sửa trực tiếp 3 cột thực nhận, số lượng nhập và đơn giá nhập. =====
             @Override
             public boolean isCellEditable(int r, int c) {
                 if (readOnly)
                     return false;
-                if (isPnk) {
-                    String col = columns[c];
-                    return "soLuongThucNhan".equals(col) || "soLuongNhap".equals(col)
-                            || "donGiaNhap".equals(col);
-                }
-                return false;
+                String col = columns[c];
+                return "soLuongThucNhan".equals(col) || "soLuongNhap".equals(col)
+                        || "donGiaNhap".equals(col);
             }
 
-            // ===== PHƯƠNG THỨC: setValueAt(Object, int, int) — Gán giá trị at. =====
+            // ===== PHƯƠNG THỨC: setValueAt(Object, int, int) — Cập nhật giá trị ô bảng và đồng bộ vào danh sách details. =====
             @Override
             public void setValueAt(Object aValue, int r, int c) {
                 super.setValueAt(aValue, r, c);
-                if (isPnk && r < details.size()) {
+                if (r < details.size()) {
                     String col = columns[c];
                     details.get(r).put(col, aValue);
                 }
@@ -285,16 +295,16 @@ final class TrinhSuaPhieuNhapKho {
             private static final long serialVersionUID = 1L;
             private final TableCellRenderer cells = new DinhDangBang();
 
-            // ===== PHƯƠNG THỨC: getCellRenderer(int, int) — Lấy ô renderer. =====
+            // ===== PHƯƠNG THỨC: getCellRenderer(int, int) — Lấy bộ hiển thị định dạng ô bảng. =====
             @Override
             public TableCellRenderer getCellRenderer(int row, int column) {
                 return cells;
             }
 
-            // ===== PHƯƠNG THỨC: getCellEditor(int, int) — Lấy ô bộ chỉnh sửa. =====
+            // ===== PHƯƠNG THỨC: getCellEditor(int, int) — Trả về BoChinhSuaOHangMucPNK cho 3 cột cho phép nhập trực tiếp. =====
             @Override
             public TableCellEditor getCellEditor(int row, int column) {
-                if (isPnk && !readOnly) {
+                if (!readOnly) {
                     int modelCol = convertColumnIndexToModel(column);
                     String col = columns[modelCol];
                     if ("soLuongThucNhan".equals(col) || "soLuongNhap".equals(col)
@@ -307,13 +317,13 @@ final class TrinhSuaPhieuNhapKho {
                 return super.getCellEditor(row, column);
             }
 
-            // ===== PHƯƠNG THỨC: createDefaultColumnsFromModel() — Tạo các cột mặc định theo mô hình bảng. =====
+            // ===== PHƯƠNG THỨC: createDefaultColumnsFromModel() — Gán tiêu đề tiếng Việt cho các cột của bảng. =====
             @Override
             public void createDefaultColumnsFromModel() {
                 super.createDefaultColumnsFromModel();
                 for (int i = 0; i < getColumnModel().getColumnCount(); i++) {
                     TableColumn column = getColumnModel().getColumn(i);
-                    column.setHeaderValue(nhanCot(getModel().getColumnName(column.getModelIndex())));
+                    column.setHeaderValue(layTenHienThiCuaCot(getModel().getColumnName(column.getModelIndex())));
                 }
             }
         };
@@ -333,8 +343,9 @@ final class TrinhSuaPhieuNhapKho {
         DinhDangBang.header(tblDetails);
         tblDetails.setAutoCreateRowSorter(true);
 
-        PnkCellEditor pnkEditor = new PnkCellEditor(tfEditor, tblDetails, model, details, columns, parent);
-        if (isPnk && !readOnly) {
+        // 4. Gắn bộ chỉnh sửa trực tiếp trên bảng (BoChinhSuaOHangMucPNK) cho 3 cột thực nhận, số lượng nhập và đơn giá nhập
+        BoChinhSuaOHangMucPNK pnkEditor = new BoChinhSuaOHangMucPNK(tfEditor, tblDetails, model, details, columns, parent);
+        if (!readOnly) {
             tblDetails.putClientProperty("terminateEditOnFocusLost", Boolean.TRUE);
             for (int i = 0; i < tblDetails.getColumnCount(); i++) {
                 int modelCol = tblDetails.convertColumnIndexToModel(i);
@@ -353,7 +364,7 @@ final class TrinhSuaPhieuNhapKho {
         };
         refresh.run();
 
-        JDialog winDialog = new JDialog(getWindowOwner(parent),
+        JDialog winDialog = new JDialog(layCuaSoCha(parent),
                 (id == null ? "Lập phiếu mới" : readOnly ? "Chi tiết " + id : "Chỉnh sửa " + id),
                 Dialog.ModalityType.APPLICATION_MODAL);
         JPanel pnlContent = new JPanel(new BorderLayout(0, 10));
@@ -377,75 +388,11 @@ final class TrinhSuaPhieuNhapKho {
         pnlContent.add(pnlDetailList, BorderLayout.CENTER);
         BoCucBang.install(tblDetails, scrDetails);
         JPanel pnlButtons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 2));
-        JButton btnAdd = GiaoDien.button("Thêm hạng mục", GiaoDien.TEAL, Color.WHITE);
-        JButton btnEdit = GiaoDien.button("Sửa hạng mục", GiaoDien.CREAM, GiaoDien.NAV);
-        JButton btnRemove = GiaoDien.button("Bỏ hạng mục", GiaoDien.CREAM, GiaoDien.NAV);
         JButton btnSave = GiaoDien.button(id == null ? "Lưu toàn bộ phiếu" : "Lưu thay đổi", GiaoDien.TEAL,
                 Color.WHITE);
         JButton btnClose = GiaoDien.button("Đóng", GiaoDien.CREAM, GiaoDien.NAV);
 
-        if (!isPnk) {
-            JButton btnView = GiaoDien.button("Xem hạng mục", GiaoDien.CREAM, GiaoDien.NAV);
-            btnView.addActionListener(e -> {
-                int selected = tblDetails.getSelectedRow();
-                if (selected < 0) {
-                    if (!java.awt.GraphicsEnvironment.isHeadless())
-                        JOptionPane.showMessageDialog(winDialog, "Vui lòng chọn hạng mục.");
-                    return;
-                }
-                BieuMauChiTietPhieuNhapKho pnlLine = new BieuMauChiTietPhieuNhapKho(child,
-                        details.get(tblDetails.convertRowIndexToModel(selected)), Set.of(), true);
-                JScrollPane scrLine = new JScrollPane(pnlLine);
-                scrLine.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-                scrLine.setPreferredSize(
-                        new Dimension(660, Math.min(380, pnlLine.getPreferredSize().height + 12)));
-                if (!java.awt.GraphicsEnvironment.isHeadless())
-                    JOptionPane.showMessageDialog(winDialog, scrLine, "Chi tiết hạng mục",
-                            JOptionPane.PLAIN_MESSAGE);
-            });
-            pnlButtons.add(btnView);
-        }
-
-        if (!isPnk) {
-            tblDetails.addMouseListener(new java.awt.event.MouseAdapter() {
-                // ===== PHƯƠNG THỨC: mouseClicked(java.awt.event.MouseEvent) — Xử lý khi người dùng nhấp chuột. =====
-                @Override
-                public void mouseClicked(java.awt.event.MouseEvent event) {
-                    if (event.getClickCount() == 2 && !readOnly)
-                        btnEdit.doClick();
-                }
-            });
-        }
-
-        btnAdd.addActionListener(e -> {
-            Map<String, Object> row = editLine(winDialog, child, null, pk);
-            if (row != null) {
-                details.add(row);
-                refresh.run();
-            }
-        });
-        btnEdit.addActionListener(e -> {
-            int selected = tblDetails.getSelectedRow();
-            if (selected < 0) {
-                if (!java.awt.GraphicsEnvironment.isHeadless())
-                    JOptionPane.showMessageDialog(winDialog, "Vui lòng chọn hạng mục cần sửa.");
-                return;
-            }
-            int index = tblDetails.convertRowIndexToModel(selected);
-            Map<String, Object> row = editLine(winDialog, child, details.get(index), pk);
-            if (row != null) {
-                details.set(index, row);
-                refresh.run();
-            }
-        });
-        btnRemove.addActionListener(e -> {
-            int selected = tblDetails.getSelectedRow();
-            if (selected >= 0) {
-                details.remove(tblDetails.convertRowIndexToModel(selected));
-                refresh.run();
-            }
-        });
-
+        // 5. Sự kiện nhấn nút 'Lưu toàn bộ phiếu' / 'Lưu thay đổi': kiểm tra ràng buộc số lượng và lưu qua QuyTrinhDAO
         btnSave.addActionListener(e -> {
             btnSave.setEnabled(false);
             try {
@@ -456,93 +403,93 @@ final class TrinhSuaPhieuNhapKho {
                     }
                 }
 
-                if (isPnk) {
-                    for (int r = 0; r < model.getRowCount(); r++) {
-                        Map<String, Object> detail = details.get(r);
-                        String part = String.valueOf(detail.get("maPhuTung"));
-                        int req = ((Number) detail.get("soLuongYeuCau")).intValue();
+                // Kiểm tra từng dòng phụ tùng trên bảng: 0 <= soLuongNhap <= soLuongThucNhan <= soLuongYeuCau và donGiaNhap >= 0
+                for (int r = 0; r < model.getRowCount(); r++) {
+                    Map<String, Object> detail = details.get(r);
+                    String part = String.valueOf(detail.get("maPhuTung"));
+                    int req = ((Number) detail.get("soLuongYeuCau")).intValue();
 
-                        int colActual = Arrays.asList(columns).indexOf("soLuongThucNhan");
-                        int colAccepted = Arrays.asList(columns).indexOf("soLuongNhap");
-                        int colPrice = Arrays.asList(columns).indexOf("donGiaNhap");
+                    int colActual = Arrays.asList(columns).indexOf("soLuongThucNhan");
+                    int colAccepted = Arrays.asList(columns).indexOf("soLuongNhap");
+                    int colPrice = Arrays.asList(columns).indexOf("donGiaNhap");
 
-                        Object valActual = colActual >= 0 ? model.getValueAt(r, colActual) : null;
-                        Object valAccepted = colAccepted >= 0 ? model.getValueAt(r, colAccepted) : null;
-                        Object valPrice = colPrice >= 0 ? model.getValueAt(r, colPrice) : null;
+                    Object valActual = colActual >= 0 ? model.getValueAt(r, colActual) : null;
+                    Object valAccepted = colAccepted >= 0 ? model.getValueAt(r, colAccepted) : null;
+                    Object valPrice = colPrice >= 0 ? model.getValueAt(r, colPrice) : null;
 
-                        if (valActual == null || valActual.toString().trim().isEmpty()) {
-                            throw new IllegalArgumentException(
-                                    "Dòng " + (r + 1) + " (" + part + "): Vui lòng nhập số lượng thực nhận.");
-                        }
-                        if (valAccepted == null || valAccepted.toString().trim().isEmpty()) {
-                            throw new IllegalArgumentException("Dòng " + (r + 1) + " (" + part
-                                    + "): Vui lòng nhập số lượng nhập chấp nhận.");
-                        }
-
-                        int actual;
-                        int accepted;
-                        try {
-                            actual = Integer.parseInt(valActual.toString().trim().replace(" ", ""));
-                        } catch (NumberFormatException nfe) {
-                            throw new IllegalArgumentException("Dòng " + (r + 1) + " (" + part
-                                    + "): Số lượng thực nhận phải là số nguyên.");
-                        }
-                        try {
-                            accepted = Integer.parseInt(valAccepted.toString().trim().replace(" ", ""));
-                        } catch (NumberFormatException nfe) {
-                            throw new IllegalArgumentException("Dòng " + (r + 1) + " (" + part
-                                    + "): Số lượng nhập chấp nhận phải là số nguyên.");
-                        }
-
-                        if (actual < 0) {
-                            throw new IllegalArgumentException(
-                                    "Dòng " + (r + 1) + " (" + part + "): Số lượng thực nhận không được âm.");
-                        }
-                        if (accepted < 0) {
-                            throw new IllegalArgumentException(
-                                    "Dòng " + (r + 1) + " (" + part + "): Số lượng nhập không được âm.");
-                        }
-                        if (actual > req) {
-                            throw new IllegalArgumentException(
-                                    "Dòng " + (r + 1) + " (" + part + "): Số lượng thực nhận (" + actual
-                                            + ") không được vượt quá số lượng yêu cầu (" + req + ").");
-                        }
-                        if (accepted > actual) {
-                            throw new IllegalArgumentException("Dòng " + (r + 1) + " (" + part
-                                    + "): Số lượng nhập chấp nhận (" + accepted
-                                    + ") không được vượt quá số lượng thực nhận (" + actual + ").");
-                        }
-
-                        java.math.BigDecimal price = java.math.BigDecimal.ZERO;
-                        if (valPrice != null && !valPrice.toString().trim().isEmpty()) {
-                            String pText = valPrice.toString().trim().replace(" ", "");
-                            if (pText.contains(",") && pText.contains(".")) {
-                                if (pText.lastIndexOf(',') > pText.lastIndexOf('.')) {
-                                    pText = pText.replace(".", "").replace(",", ".");
-                                } else {
-                                    pText = pText.replace(",", "");
-                                }
-                            } else if (pText.contains(",")) {
-                                pText = pText.replace(",", ".");
-                            }
-                            try {
-                                price = new java.math.BigDecimal(pText);
-                            } catch (Exception pe) {
-                                throw new IllegalArgumentException(
-                                        "Dòng " + (r + 1) + " (" + part + "): Đơn giá nhập không hợp lệ.");
-                            }
-                            if (price.compareTo(java.math.BigDecimal.ZERO) < 0) {
-                                throw new IllegalArgumentException(
-                                        "Dòng " + (r + 1) + " (" + part + "): Đơn giá nhập không được âm.");
-                            }
-                        }
-
-                        detail.put("soLuongThucNhan", actual);
-                        detail.put("soLuongNhap", accepted);
-                        detail.put("donGiaNhap", price);
+                    if (valActual == null || valActual.toString().trim().isEmpty()) {
+                        throw new IllegalArgumentException(
+                                "Dòng " + (r + 1) + " (" + part + "): Vui lòng nhập số lượng thực nhận.");
                     }
+                    if (valAccepted == null || valAccepted.toString().trim().isEmpty()) {
+                        throw new IllegalArgumentException("Dòng " + (r + 1) + " (" + part
+                                + "): Vui lòng nhập số lượng nhập chấp nhận.");
+                    }
+
+                    int actual;
+                    int accepted;
+                    try {
+                        actual = Integer.parseInt(valActual.toString().trim().replace(" ", ""));
+                    } catch (NumberFormatException nfe) {
+                        throw new IllegalArgumentException("Dòng " + (r + 1) + " (" + part
+                                + "): Số lượng thực nhận phải là số nguyên.");
+                    }
+                    try {
+                        accepted = Integer.parseInt(valAccepted.toString().trim().replace(" ", ""));
+                    } catch (NumberFormatException nfe) {
+                        throw new IllegalArgumentException("Dòng " + (r + 1) + " (" + part
+                                + "): Số lượng nhập chấp nhận phải là số nguyên.");
+                    }
+
+                    if (actual < 0) {
+                        throw new IllegalArgumentException(
+                                "Dòng " + (r + 1) + " (" + part + "): Số lượng thực nhận không được âm.");
+                    }
+                    if (accepted < 0) {
+                        throw new IllegalArgumentException(
+                                "Dòng " + (r + 1) + " (" + part + "): Số lượng nhập không được âm.");
+                    }
+                    if (actual > req) {
+                        throw new IllegalArgumentException(
+                                "Dòng " + (r + 1) + " (" + part + "): Số lượng thực nhận (" + actual
+                                        + ") không được vượt quá số lượng yêu cầu (" + req + ").");
+                    }
+                    if (accepted > actual) {
+                        throw new IllegalArgumentException("Dòng " + (r + 1) + " (" + part
+                                + "): Số lượng nhập chấp nhận (" + accepted
+                                + ") không được vượt quá số lượng thực nhận (" + actual + ").");
+                    }
+
+                    java.math.BigDecimal price = java.math.BigDecimal.ZERO;
+                    if (valPrice != null && !valPrice.toString().trim().isEmpty()) {
+                        String pText = valPrice.toString().trim().replace(" ", "");
+                        if (pText.contains(",") && pText.contains(".")) {
+                            if (pText.lastIndexOf(',') > pText.lastIndexOf('.')) {
+                                pText = pText.replace(".", "").replace(",", ".");
+                            } else {
+                                pText = pText.replace(",", "");
+                            }
+                        } else if (pText.contains(",")) {
+                            pText = pText.replace(",", ".");
+                        }
+                        try {
+                            price = new java.math.BigDecimal(pText);
+                        } catch (Exception pe) {
+                            throw new IllegalArgumentException(
+                                    "Dòng " + (r + 1) + " (" + part + "): Đơn giá nhập không hợp lệ.");
+                        }
+                        if (price.compareTo(java.math.BigDecimal.ZERO) < 0) {
+                            throw new IllegalArgumentException(
+                                    "Dòng " + (r + 1) + " (" + part + "): Đơn giá nhập không được âm.");
+                        }
+                    }
+
+                    detail.put("soLuongThucNhan", actual);
+                    detail.put("soLuongNhap", accepted);
+                    detail.put("donGiaNhap", price);
                 }
 
+                // 6. Gọi QuyTrinhDAO.saveDocument để lưu phiếu nhập kho và chi tiết hạng mục
                 String savedId = QuyTrinhDAO.saveDocument(table, pnlHeader.read(), details, id, role,
                         employeeId);
                 String docName = "phiếu nhập kho " + savedId;
@@ -567,11 +514,6 @@ final class TrinhSuaPhieuNhapKho {
         btnClose.addActionListener(e -> winDialog.dispose());
 
         if (!readOnly) {
-            if (!isPnk) {
-                pnlButtons.add(btnAdd);
-                pnlButtons.add(btnRemove);
-                pnlButtons.add(btnEdit);
-            }
             pnlButtons.add(btnSave);
         }
         pnlButtons.add(btnClose);
@@ -588,8 +530,8 @@ final class TrinhSuaPhieuNhapKho {
         return winDialog;
     }
 
-    // ===== PHƯƠNG THỨC: open(Component, String, Map<String,Object>, List<Map<String,Object>>, boolean, VaiTro, String) — Mở nghiệp vụ tương ứng. =====
-    private static void open(Component parent, String table, Map<String, Object> header,
+    // ===== PHƯƠNG THỨC: moHopThoaiChinhSuaHoacXem(...) — Tạo và hiển thị hộp thoại chỉnh sửa hoặc xem chi tiết phiếu nhập kho. =====
+    private static void moHopThoaiChinhSuaHoacXem(Component parent, String table, Map<String, Object> header,
             List<Map<String, Object>> initialDetails, boolean viewOnly, VaiTro role, String employeeId) {
         JDialog winDialog = buildDialog(parent, table, header, initialDetails, viewOnly, role, employeeId);
         if (winDialog != null) {
@@ -597,7 +539,11 @@ final class TrinhSuaPhieuNhapKho {
         }
     }
 
-    private static class PnkCellEditor extends DefaultCellEditor {
+    /**
+     * Bộ chỉnh sửa trực tiếp trên ô bảng chi tiết Phiếu nhập kho (BoChinhSuaOHangMucPNK).
+     * Cho phép nhấp đúp vào các cột 'soLuongThucNhan', 'soLuongNhap', 'donGiaNhap' và kiểm tra hợp lệ ngay khi rời ô.
+     */
+    private static class BoChinhSuaOHangMucPNK extends DefaultCellEditor {
         private static final long serialVersionUID = 1L;
         private final JTextField textField;
         private final JTable table;
@@ -608,8 +554,8 @@ final class TrinhSuaPhieuNhapKho {
         private boolean validating = false;
         private Object parsedValue = null;
 
-        // ===== KHỞI TẠO ĐỐI TƯỢNG: PnkCellEditor(JTextField, JTable, DefaultTableModel, List<Map<String,Object>>, String[], Component) — Khởi tạo đối tượng và thiết lập trạng thái ban đầu. =====
-        PnkCellEditor(JTextField tf, JTable table, DefaultTableModel model, List<Map<String, Object>> details,
+        // ===== KHỞI TẠO ĐỐI TƯỢNG: BoChinhSuaOHangMucPNK(...) — Khởi tạo bộ chỉnh sửa ô bảng chi tiết PNK. =====
+        BoChinhSuaOHangMucPNK(JTextField tf, JTable table, DefaultTableModel model, List<Map<String, Object>> details,
                 String[] columns, Component parentComponent) {
             super(tf);
             this.textField = tf;
@@ -621,7 +567,7 @@ final class TrinhSuaPhieuNhapKho {
             setClickCountToStart(2);
         }
 
-        // ===== PHƯƠNG THỨC: getTableCellEditorComponent(JTable, Object, boolean, int, int) — Lấy bảng ô bộ chỉnh sửa thành phần. =====
+        // ===== PHƯƠNG THỨC: getTableCellEditorComponent(...) — Chuẩn bị ô nhập văn bản khi người dùng nhấp đúp vào ô bảng. =====
         @Override
         public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row,
                 int column) {
@@ -638,13 +584,13 @@ final class TrinhSuaPhieuNhapKho {
             return c;
         }
 
-        // ===== PHƯƠNG THỨC: getCellEditorValue() — Lấy ô bộ chỉnh sửa giá trị. =====
+        // ===== PHƯƠNG THỨC: getCellEditorValue() — Trả về giá trị đã kiểm tra hợp lệ sau khi kết thúc sửa ô. =====
         @Override
         public Object getCellEditorValue() {
             return parsedValue != null ? parsedValue : textField.getText().trim();
         }
 
-        // ===== PHƯƠNG THỨC: stopCellEditing() — Kết thúc chỉnh sửa và xác nhận giá trị ô bảng. =====
+        // ===== PHƯƠNG THỨC: stopCellEditing() — Kiểm tra ràng buộc 0 <= soLuongNhap <= soLuongThucNhan <= soLuongYeuCau và donGiaNhap >= 0. =====
         @Override
         public boolean stopCellEditing() {
             if (validating)
@@ -677,7 +623,7 @@ final class TrinhSuaPhieuNhapKho {
                     switch (colName) {
                     case "soLuongThucNhan" -> {
                         if (text.isEmpty()) {
-                            showError("Dòng " + (modelRow + 1) + " (" + part
+                            hienThiLoiNhapO("Dòng " + (modelRow + 1) + " (" + part
                                     + "): Vui lòng nhập số lượng thực nhận.");
                             return false;
                         }
@@ -685,17 +631,17 @@ final class TrinhSuaPhieuNhapKho {
                         try {
                             actual = Integer.parseInt(text.replace(" ", ""));
                         } catch (NumberFormatException e) {
-                            showError("Dòng " + (modelRow + 1) + " (" + part
+                            hienThiLoiNhapO("Dòng " + (modelRow + 1) + " (" + part
                                     + "): Số lượng thực nhận phải là số nguyên.");
                             return false;
                         }
                         if (actual < 0) {
-                            showError("Dòng " + (modelRow + 1) + " (" + part
+                            hienThiLoiNhapO("Dòng " + (modelRow + 1) + " (" + part
                                     + "): Số lượng thực nhận không được âm (" + actual + ").");
                             return false;
                         }
                         if (actual > req) {
-                            showError("Dòng " + (modelRow + 1) + " (" + part + "): Số lượng thực nhận ("
+                            hienThiLoiNhapO("Dòng " + (modelRow + 1) + " (" + part + "): Số lượng thực nhận ("
                                     + actual + ") không được vượt quá số lượng yêu cầu (" + req + ").");
                             return false;
                         }
@@ -708,7 +654,7 @@ final class TrinhSuaPhieuNhapKho {
                                 int curAccepted = Integer
                                         .parseInt(curAcceptedObj.toString().trim().replace(" ", ""));
                                 if (actual < curAccepted) {
-                                    showError("Dòng " + (modelRow + 1) + " (" + part
+                                    hienThiLoiNhapO("Dòng " + (modelRow + 1) + " (" + part
                                             + "): Số lượng thực nhận (" + actual
                                             + ") không được nhỏ hơn số lượng nhập chấp nhận (" + curAccepted
                                             + "). Vui lòng điều chỉnh số lượng nhập trước.");
@@ -721,7 +667,7 @@ final class TrinhSuaPhieuNhapKho {
                     }
                     case "soLuongNhap" -> {
                         if (text.isEmpty()) {
-                            showError("Dòng " + (modelRow + 1) + " (" + part
+                            hienThiLoiNhapO("Dòng " + (modelRow + 1) + " (" + part
                                     + "): Vui lòng nhập số lượng nhập chấp nhận.");
                             return false;
                         }
@@ -729,12 +675,12 @@ final class TrinhSuaPhieuNhapKho {
                         try {
                             accepted = Integer.parseInt(text.replace(" ", ""));
                         } catch (NumberFormatException e) {
-                            showError("Dòng " + (modelRow + 1) + " (" + part
+                            hienThiLoiNhapO("Dòng " + (modelRow + 1) + " (" + part
                                     + "): Số lượng nhập chấp nhận phải là số nguyên.");
                             return false;
                         }
                         if (accepted < 0) {
-                            showError("Dòng " + (modelRow + 1) + " (" + part
+                            hienThiLoiNhapO("Dòng " + (modelRow + 1) + " (" + part
                                     + "): Số lượng nhập không được âm (" + accepted + ").");
                             return false;
                         }
@@ -749,7 +695,7 @@ final class TrinhSuaPhieuNhapKho {
                             }
                         }
                         if (accepted > actual) {
-                            showError("Dòng " + (modelRow + 1) + " (" + part + "): Số lượng nhập chấp nhận ("
+                            hienThiLoiNhapO("Dòng " + (modelRow + 1) + " (" + part + "): Số lượng nhập chấp nhận ("
                                     + accepted + ") không được vượt quá số lượng thực nhận (" + actual
                                     + ").");
                             return false;
@@ -758,7 +704,7 @@ final class TrinhSuaPhieuNhapKho {
                     }
                     case "donGiaNhap" -> {
                         if (text.isEmpty()) {
-                            showError("Dòng " + (modelRow + 1) + " (" + part
+                            hienThiLoiNhapO("Dòng " + (modelRow + 1) + " (" + part
                                     + "): Vui lòng nhập đơn giá nhập.");
                             return false;
                         }
@@ -776,12 +722,12 @@ final class TrinhSuaPhieuNhapKho {
                         try {
                             price = new java.math.BigDecimal(clean);
                         } catch (Exception e) {
-                            showError(
+                            hienThiLoiNhapO(
                                     "Dòng " + (modelRow + 1) + " (" + part + "): Đơn giá nhập không hợp lệ.");
                             return false;
                         }
                         if (price.compareTo(java.math.BigDecimal.ZERO) < 0) {
-                            showError("Dòng " + (modelRow + 1) + " (" + part
+                            hienThiLoiNhapO("Dòng " + (modelRow + 1) + " (" + part
                                     + "): Đơn giá nhập không được âm.");
                             return false;
                         }
@@ -797,8 +743,8 @@ final class TrinhSuaPhieuNhapKho {
             return super.stopCellEditing();
         }
 
-        // ===== PHƯƠNG THỨC: showError(String) — Hiển thị error. =====
-        private void showError(String msg) {
+        // ===== PHƯƠNG THỨC: hienThiLoiNhapO(String) — Hiển thị thông báo lỗi khi giá trị nhập trong ô bảng không hợp lệ. =====
+        private void hienThiLoiNhapO(String msg) {
             Component win = parentComponent;
             if (win == null || !win.isShowing()) {
                 win = SwingUtilities.getWindowAncestor(table);
@@ -812,35 +758,8 @@ final class TrinhSuaPhieuNhapKho {
         }
     }
 
-    // ===== PHƯƠNG THỨC: editLine(Component, String, Map<String,Object>, String) — Mở biểu mẫu cập nhật một dòng dữ liệu. =====
-    private static Map<String, Object> editLine(Component parent, String child, Map<String, Object> row,
-            String foreignKey) {
-        // Khóa hạng mục được nhập lại trong bản nháp; đầu phiếu sẽ gắn khi lưu.
-        BieuMauChiTietPhieuNhapKho pnlForm = new BieuMauChiTietPhieuNhapKho(child, row, Set.of(foreignKey));
-        if (child.equals("ChiTietPhieuNhapKho") && row != null && row.get("soLuongYeuCau") != null) {
-            pnlForm.lockField("maPhuTung");
-            pnlForm.lockField("soLuongYeuCau");
-        }
-        JScrollPane scrForm = new JScrollPane(pnlForm);
-        scrForm.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-        scrForm.setPreferredSize(new Dimension(660, Math.min(380, pnlForm.getPreferredSize().height + 12)));
-        Object[] options = { "Áp dụng vào phiếu", "Hủy" };
-        while (JOptionPane.showOptionDialog(parent, scrForm, "Chỉnh sửa hạng mục — lưu phiếu để ghi nhận",
-                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE, null, options,
-                options[0]) == JOptionPane.OK_OPTION) {
-            try {
-                Map<String, Object> values = pnlForm.read();
-                // ThongBaoLoiSQL bỏ khóa chính của bản ghi đang sửa; giữ lại khóa dịch vụ nếu cần.
-                return values;
-            } catch (SQLException ex) {
-                error(parent, ex);
-            }
-        }
-        return null;
-    }
-
-    // ===== PHƯƠNG THỨC: error(Component, SQLException) — Hiển thị lỗi cho người dùng. =====
-    private static void error(Component parent, SQLException ex) {
+    // ===== PHƯƠNG THỨC: hienThiLoiLuuPhieu(Component, SQLException) — Hiển thị hộp thoại báo lỗi SQL thân thiện cho người dùng. =====
+    private static void hienThiLoiLuuPhieu(Component parent, SQLException ex) {
         JOptionPane.showMessageDialog(parent, ThongBaoLoiSQL.userMessage(ex, ""), "Không thể lưu phiếu",
                 JOptionPane.ERROR_MESSAGE);
     }
@@ -981,7 +900,7 @@ final class TrinhSuaPhieuNhapKho {
                     super.createDefaultColumnsFromModel();
                     for (int i = 0; i < getColumnModel().getColumnCount(); i++) {
                         TableColumn column = getColumnModel().getColumn(i);
-                        column.setHeaderValue(nhanCot(getModel().getColumnName(column.getModelIndex())));
+                        column.setHeaderValue(layTenHienThiCuaCot(getModel().getColumnName(column.getModelIndex())));
                     }
                 }
             };
@@ -1115,8 +1034,8 @@ final class TrinhSuaPhieuNhapKho {
         }
     }
 
-    // ===== PHƯƠNG THỨC: nhanCot(String) — Tạo tiêu đề hiển thị cho cột bảng. =====
-    private static String nhanCot(String field) {
+    // ===== PHƯƠNG THỨC: layTenHienThiCuaCot(String) — Trả về nhãn tiếng Việt cho cột bảng chi tiết phiếu nhập kho. =====
+    private static String layTenHienThiCuaCot(String field) {
         return switch (field) {
         case "maPhuTung" -> "Mã phụ tùng";
         case "soLuongYeuCau" -> "Số lượng yêu cầu";

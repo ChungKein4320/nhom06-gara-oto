@@ -6,9 +6,28 @@ import connectDB.KetNoiCSDL;
 import java.sql.*;
 import java.util.*;
 
-// ===== DAO: ChiTietPhieuNhapKhoDAO =====
-/** SQL và thao tác dữ liệu riêng của ChiTietPhieuNhapKho. */
+/**
+ * ============================================================================
+ * DAO: ChiTietPhieuNhapKhoDAO (Truy vấn và lưu chi tiết Phiếu nhập kho)
+ * ============================================================================
+ * 1. Mục đích:
+ *    - Thực hiện truy vấn SQL và thao tác lưu/cập nhật cho bảng
+ *      dbo.ChiTietPhieuNhapKho (khóa ghép: maPNK + maPhuTung).
+ * 2. Phục vụ màn hình / nghiệp vụ:
+ *    - Nghiệp vụ 3 (Lập và xác nhận phiếu nhập kho thực tế):
+ *      + Lưu từng dòng phụ tùng thực nhận và chấp nhận nhập kho cùng giao dịch
+ *        với đầu phiếu PhieuNhapKho (qua QuyTrinhDAO.saveDocument).
+ *      + Cung cấp danh sách các dòng phụ tùng của phiếu cho PhieuNhapKhoDAO
+ *        khi xác nhận nhập kho thực tế (confirmActualStockIn).
+ * 3. Phương thức quan trọng:
+ *    - getAll(Connection, Map): Đọc danh sách các dòng chi tiết theo mã maPNK.
+ *    - insert(Connection, Map): Lưu từng dòng chi tiết trong cùng transaction với đầu phiếu.
+ *    - kiemTraDuLieu(Map, boolean): Kiểm tra quy tắc 0 <= soLuongNhap <= soLuongThucNhan <= soLuongYeuCau,
+ *      đơn giá không âm và không cho phép dùng mã phụ tùng ảo PT000.
+ * ============================================================================
+ */
 public class ChiTietPhieuNhapKhoDAO implements DuLieuDAO {
+    // ===== CẤU HÌNH BẢNG VÀ CỘT DỮ LIỆU =====
     private static final String KHOA_CHINH = "maPNK";
     private static final String[] CAC_COT = new String[] { "maPNK", "maPhuTung", "soLuongYeuCau",
             "soLuongThucNhan", "soLuongNhap", "donGiaNhap" };
@@ -23,7 +42,9 @@ public class ChiTietPhieuNhapKhoDAO implements DuLieuDAO {
     private final String table = "ChiTietPhieuNhapKho";
     private final String primary = KHOA_CHINH;
 
-    // ===== PHƯƠNG THỨC: getAll() — Lấy danh sách bản ghi từ cơ sở dữ liệu. =====
+    // ===== NHÓM 1: TRUY VẤN VÀ THAO TÁC CRUD CƠ BẢN (Triển khai DuLieuDAO) =====
+
+    // Lấy toàn bộ các dòng chi tiết phiếu nhập kho từ CSDL.
     @Override
     public List<LinkedHashMap<String, Object>> getAll() throws SQLException {
         try (Connection conn = KetNoiCSDL.getConnection()) {
@@ -33,15 +54,15 @@ public class ChiTietPhieuNhapKhoDAO implements DuLieuDAO {
         }
     }
 
-    // ===== PHƯƠNG THỨC: getAll(Connection, Map<String,Object>) — Lấy danh sách bản ghi từ cơ sở dữ liệu. =====
+    // Truy vấn các dòng chi tiết phiếu nhập kho theo điều kiện lọc (thường lọc theo maPNK).
     @Override
     public List<LinkedHashMap<String, Object>> getAll(Connection conn, Map<String, Object> filter)
             throws SQLException {
-        String where = filter == null || filter.isEmpty() ? "" : " WHERE " + conditions(filter);
+        String where = filter == null || filter.isEmpty() ? "" : " WHERE " + taoDieuKienWhere(filter);
         try (PreparedStatement ps = conn.prepareStatement(
                 "SELECT * FROM dbo.[" + table + "]" + where + " ORDER BY [" + primary + "]")) {
             if (filter != null)
-                bind(ps, filter.values());
+                ganThamSoSQL(ps, filter.values());
             try (ResultSet rs = ps.executeQuery()) {
                 List<LinkedHashMap<String, Object>> rows = new ArrayList<>();
                 while (rs.next()) {
@@ -55,7 +76,7 @@ public class ChiTietPhieuNhapKhoDAO implements DuLieuDAO {
         }
     }
 
-    // ===== PHƯƠNG THỨC: previewNextId() — Tạo mã tiếp theo để xem trước khi lưu. =====
+    // Bảng chi tiết dùng khóa ghép (maPNK, maPhuTung) nên không tự sinh mã đơn lẻ.
     @Override
     public String previewNextId() throws SQLException {
         if (CAC_KHOA.length != 1 || primary.equals("VIN"))
@@ -66,23 +87,23 @@ public class ChiTietPhieuNhapKhoDAO implements DuLieuDAO {
                         "SELECT CASE WHEN current_value IS NULL THEN CONVERT(int,start_value) ELSE CONVERT(int,current_value)+1 END FROM sys.sequences WHERE name=? AND schema_id=SCHEMA_ID('dbo')")) {
             ps.setString(1, "Seq_" + table);
             try (ResultSet rs = ps.executeQuery()) {
-                return rs.next() ? prefix() + String.format(Locale.ROOT, "%03d", rs.getInt(1)) : "";
+                return rs.next() ? layTienToMa() + String.format(Locale.ROOT, "%03d", rs.getInt(1)) : "";
             }
         }
     }
 
-    // ===== PHƯƠNG THỨC: prefix() — Xử lý prefix. =====
-    private String prefix() {
+    // Lấy tiền tố mã (trống vì bảng chi tiết dùng khóa ghép).
+    private String layTienToMa() {
         return "";
     }
 
-    // ===== PHƯƠNG THỨC: insert(Map<String,Object>) — Thêm bản ghi vào cơ sở dữ liệu. =====
+    // Thêm một dòng chi tiết phiếu nhập kho (mở transaction độc lập).
     @Override
     public void insert(Map<String, Object> row) throws SQLException {
         insert(row, null);
     }
 
-    // ===== PHƯƠNG THỨC: insert(Map<String,Object>, String) — Thêm bản ghi vào cơ sở dữ liệu. =====
+    // Thêm một dòng chi tiết phiếu nhập kho trong giao dịch của QuyTrinhDAO.
     @Override
     public void insert(Map<String, Object> row, String preview) throws SQLException {
         QuyTrinhDAO.transaction(conn -> {
@@ -91,7 +112,6 @@ public class ChiTietPhieuNhapKhoDAO implements DuLieuDAO {
         });
     }
 
-    // ===== PHƯƠNG THỨC: insert(Connection, Map<String,Object>) — Thêm bản ghi vào cơ sở dữ liệu. =====
     /** Dùng connection của phiếu để lưu đầu phiếu và chi tiết cùng giao dịch. */
     @Override
     public String insert(Connection conn, Map<String, Object> values) throws SQLException {
@@ -101,22 +121,24 @@ public class ChiTietPhieuNhapKhoDAO implements DuLieuDAO {
                 try (Statement ps = conn.createStatement();
                         ResultSet rs = ps.executeQuery("SELECT NEXT VALUE FOR dbo.[Seq_" + table + "]")) {
                     rs.next();
-                    row.put(primary, prefix() + String.format(Locale.ROOT, "%03d", rs.getInt(1)));
+                    row.put(primary, layTienToMa() + String.format(Locale.ROOT, "%03d", rs.getInt(1)));
                 }
             }
         }
+        // BƯỚC 1: Kiểm tra tính hợp lệ của dòng chi tiết (0 <= soLuongNhap <= soLuongThucNhan <= soLuongYeuCau).
         kiemTraDuLieu(row, true);
         QuyTrinhDAO.guardWrite(conn, table, row, null);
+        // BƯỚC 2: Thực thi INSERT INTO dbo.[ChiTietPhieuNhapKho].
         String fields = String.join(",", row.keySet().stream().map(s -> "[" + s + "]").toList());
         try (PreparedStatement ps = conn.prepareStatement("INSERT INTO dbo.[" + table + "](" + fields
                 + ") VALUES(" + String.join(",", Collections.nCopies(row.size(), "?")) + ")")) {
-            bind(ps, row.values());
+            ganThamSoSQL(ps, row.values());
             ps.executeUpdate();
         }
         return String.valueOf(row.get(primary));
     }
 
-    // ===== PHƯƠNG THỨC: update(String, Map<String,Object>) — Cập nhật bản ghi trong cơ sở dữ liệu. =====
+    // Bảng chi tiết dùng khóa ghép nên không hỗ trợ update theo 1 mã đơn.
     @Override
     public void update(String id, Map<String, Object> row) throws SQLException {
         if (CAC_KHOA.length != 1)
@@ -127,7 +149,7 @@ public class ChiTietPhieuNhapKhoDAO implements DuLieuDAO {
         });
     }
 
-    // ===== PHƯƠNG THỨC: update(Connection, Map<String,Object>, Map<String,Object>) — Cập nhật bản ghi trong cơ sở dữ liệu. =====
+    // Cập nhật dòng chi tiết phiếu nhập kho theo khóa ghép (maPNK, maPhuTung).
     @Override
     public void update(Connection conn, Map<String, Object> key, Map<String, Object> values)
             throws SQLException {
@@ -140,76 +162,75 @@ public class ChiTietPhieuNhapKhoDAO implements DuLieuDAO {
             return;
         String fields = String.join(",", row.keySet().stream().map(s -> "[" + s + "]=?").toList());
         try (PreparedStatement ps = conn
-                .prepareStatement("UPDATE dbo.[" + table + "] SET " + fields + " WHERE " + conditions(key))) {
+                .prepareStatement("UPDATE dbo.[" + table + "] SET " + fields + " WHERE " + taoDieuKienWhere(key))) {
             List<Object> params = new ArrayList<>(row.values());
             params.addAll(key.values());
-            bind(ps, params);
+            ganThamSoSQL(ps, params);
             if (ps.executeUpdate() != 1)
                 throw new SQLException("Bản ghi đã thay đổi hoặc không còn tồn tại.");
         }
     }
 
-    // ===== PHƯƠNG THỨC: softDelete(String) — Đánh dấu bản ghi đã xóa mà vẫn giữ dữ liệu. =====
+    // Ẩn mềm bản ghi khỏi danh sách hiển thị.
     @Override
     public void softDelete(String id) throws SQLException {
         HiddenRecords.hide(table, id);
     }
 
-    // ===== PHƯƠNG THỨC: conditions(Map<String,Object>) — Tạo điều kiện truy vấn theo tiêu chí lọc. =====
-    private String conditions(Map<String, Object> values) throws SQLException {
+    // Tạo biểu thức điều kiện WHERE từ Map tiêu chí lọc.
+    private String taoDieuKienWhere(Map<String, Object> values) throws SQLException {
         for (String field : values.keySet())
             if (!KIEU_COT.containsKey(field))
                 throw new SQLException("Trường không hợp lệ: " + field);
         return String.join(" AND ", values.keySet().stream().map(s -> "[" + s + "]=?").toList());
     }
 
-    // ===== PHƯƠNG THỨC: bind(PreparedStatement, Collection<?>) — Gán giá trị tham số cho câu lệnh SQL. =====
-    private static void bind(PreparedStatement ps, Collection<?> values) throws SQLException {
+    // Gán tuần tự các giá trị tham số vào dấu hỏi (?) của PreparedStatement.
+    private static void ganThamSoSQL(PreparedStatement ps, Collection<?> values) throws SQLException {
         int i = 1;
         for (Object value : values)
             ps.setObject(i++, value);
     }
 
-    // ===== PHƯƠNG THỨC: cacKhoa() — Liệt kê các cột khóa của bản ghi. =====
+    // ===== NHÓM 2: SIÊU DỮ LIỆU BẢNG VÀ KIỂM TRA DỮ LIỆU ĐẦU VÀO =====
+
     @Override
     public String[] cacKhoa() {
         return CAC_KHOA.clone();
     }
 
-    // ===== PHƯƠNG THỨC: khoaChinh() — Xác định cột khóa chính của bảng dữ liệu. =====
     @Override
     public String khoaChinh() {
         return KHOA_CHINH;
     }
 
-    // ===== PHƯƠNG THỨC: cacCot() — Liệt kê các cột dữ liệu của đối tượng. =====
     @Override
     public String[] cacCot() {
         return CAC_COT.clone();
     }
 
-    // ===== PHƯƠNG THỨC: kieuCot() — Khai báo kiểu dữ liệu của từng cột. =====
     @Override
     public Map<String, String> kieuCot() {
         return KIEU_COT;
     }
 
-    // ===== PHƯƠNG THỨC: cotBatBuoc() — Liệt kê các cột bắt buộc nhập. =====
     @Override
     public Set<String> cotBatBuoc() {
         return COT_BAT_BUOC;
     }
 
-    // ===== PHƯƠNG THỨC: kiemTraDuLieu(Map<String,Object>, boolean) — Kiểm tra dữ liệu. =====
+    // Kiểm tra dữ liệu dòng chi tiết phiếu nhập kho (ràng buộc 0 <= soLuongNhap <= soLuongThucNhan <= soLuongYeuCau).
     private static void kiemTraDuLieu(Map<String, Object> row, boolean creating) throws SQLException {
+        // BƯỚC 1: Kiểm tra các cột bắt buộc khi tạo mới dòng chi tiết.
         if (creating) {
             Set<String> required = COT_BAT_BUOC;
             for (String field : required) {
                 Object val = row.get(field);
                 if (val == null || (val instanceof String s && s.trim().isEmpty()))
-                    fail(field, "Bắt buộc nhập: " + field);
+                    nemLoiDuLieu(field, "Bắt buộc nhập: " + field);
             }
         }
+        // BƯỚC 2: Kiểm tra kiểu dữ liệu, độ dài chuỗi, giá trị không âm và định dạng mã phụ tùng PTxxx.
         for (Map.Entry<String, Object> e : row.entrySet()) {
             String field = e.getKey();
             Object value = e.getValue();
@@ -219,15 +240,15 @@ public class ChiTietPhieuNhapKhoDAO implements DuLieuDAO {
             String[] spec = KIEU_COT.get(field).split(":", 2);
             if ((spec[0].equals("varchar") || spec[0].equals("nvarchar"))
                     && raw.length() > Integer.parseInt(spec[1]))
-                fail(field, "Vượt quá độ dài cho phép: " + field);
+                nemLoiDuLieu(field, "Vượt quá độ dài cho phép: " + field);
             if (spec[0].equals("bit") && !(value instanceof Boolean))
-                fail(field, "Giới tính phải là Nam hoặc Nữ.");
+                nemLoiDuLieu(field, "Giới tính phải là Nam hoặc Nữ.");
             if (value instanceof Number number) {
                 BigDecimal n = new BigDecimal(number.toString());
                 if (n.signum() < 0)
-                    fail(field, "Giá trị không được âm: " + field);
+                    nemLoiDuLieu(field, "Giá trị không được âm: " + field);
                 if (field.equals("soLuongYeuCau") && n.signum() == 0)
-                    fail(field, "Số lượng yêu cầu phải lớn hơn 0.");
+                    nemLoiDuLieu(field, "Số lượng yêu cầu phải lớn hơn 0.");
 
                 if (spec[0].equals("decimal")) {
                     String[] size = spec[1].split(",");
@@ -235,15 +256,16 @@ public class ChiTietPhieuNhapKhoDAO implements DuLieuDAO {
                     if (Math.max(0, normalized.scale()) > Integer.parseInt(size[1].trim()) || Math.max(0,
                             normalized.precision() - normalized.scale()) > Integer.parseInt(size[0].trim())
                                     - Integer.parseInt(size[1].trim()))
-                        fail(field, "Số tiền vượt độ chính xác cho phép: " + field);
+                        nemLoiDuLieu(field, "Số tiền vượt độ chính xác cho phép: " + field);
                 }
             }
 
             if (field.equals("maPhuTung") && !raw.matches("PT[0-9]{3}"))
-                fail(field, "Mã phụ tùng phải có dạng PT001.");
+                nemLoiDuLieu(field, "Mã phụ tùng phải có dạng PT001.");
 
         }
 
+        // BƯỚC 3: Kiểm tra ràng buộc chéo giữa Số lượng chấp nhận (soLuongNhap), Số lượng thực nhận (soLuongThucNhan) và Số lượng yêu cầu (soLuongYeuCau).
         {
             Object reqObj = row.get("soLuongYeuCau");
             Object recObj = row.get("soLuongThucNhan");
@@ -251,26 +273,27 @@ public class ChiTietPhieuNhapKhoDAO implements DuLieuDAO {
 
             if (recObj instanceof Number rec && accObj instanceof Number acc) {
                 if (acc.intValue() > rec.intValue())
-                    fail("soLuongNhap", "Số lượng chấp nhận (" + acc.intValue()
+                    nemLoiDuLieu("soLuongNhap", "Số lượng chấp nhận (" + acc.intValue()
                             + ") không được vượt quá số lượng thực nhận (" + rec.intValue() + ").");
             }
             if (reqObj instanceof Number req && recObj instanceof Number rec) {
                 if (rec.intValue() > req.intValue())
-                    fail("soLuongThucNhan", "Số lượng thực nhận (" + rec.intValue()
+                    nemLoiDuLieu("soLuongThucNhan", "Số lượng thực nhận (" + rec.intValue()
                             + ") không được vượt quá số lượng yêu cầu (" + req.intValue() + ").");
             }
         }
 
+        // BƯỚC 4: Không cho phép nhập kho mã phụ tùng ảo PT000.
         if ("PT000".equals(String.valueOf(row.get("maPhuTung")))) {
 
-            fail("maPhuTung",
+            nemLoiDuLieu("maPhuTung",
                     "PT000 chỉ dùng để biểu thị hạng mục không sử dụng phụ tùng; không được nhập kho hoặc bán như phụ tùng.");
 
         }
     }
 
-    // ===== PHƯƠNG THỨC: fail(String, String) — Tạo lỗi truy vấn khi thao tác nghiệp vụ không hợp lệ. =====
-    private static void fail(String field, String message) throws SQLException {
+    // Ném ngoại lệ LoiDuLieu kèm tên trường bị lỗi để tầng GUI hiển thị thông báo.
+    private static void nemLoiDuLieu(String field, String message) throws SQLException {
         throw new LoiDuLieu(field, message);
     }
 }

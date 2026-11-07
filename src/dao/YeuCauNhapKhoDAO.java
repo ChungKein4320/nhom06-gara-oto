@@ -7,9 +7,27 @@ import connectDB.KetNoiCSDL;
 import java.sql.*;
 import java.util.*;
 
-// ===== DAO: YeuCauNhapKhoDAO =====
-/** SQL và thao tác dữ liệu riêng của YeuCauNhapKho. */
+/**
+ * ============================================================================
+ * DAO: YeuCauNhapKhoDAO (Truy vấn và xử lý nghiệp vụ Yêu cầu nhập kho)
+ * ============================================================================
+ * 1. Mục đích:
+ *    - Thực hiện truy vấn SQL và nghiệp vụ dữ liệu cho bảng dbo.YeuCauNhapKho
+ *      (đầu phiếu yêu cầu nhập kho phụ tùng, khóa chính maYCNK).
+ * 2. Phục vụ màn hình / nghiệp vụ:
+ *    - Nghiệp vụ 2 (Lập và phê duyệt yêu cầu nhập kho):
+ *      + Nhân viên kho tạo/sửa yêu cầu ở trạng thái "Chờ duyệt" thông qua
+ *        FormYeuCauNhapKho -> TrinhSuaYeuCauNhapKho -> QuyTrinhDAO.saveDocument().
+ *      + Quản lý hoặc Admin duyệt ("Đã duyệt") / từ chối ("Từ chối") thông qua
+ *        approvePurchaseRequest().
+ * 3. Phương thức quan trọng:
+ *    - insert(Connection, Map): Sinh mã YCNxxx từ Sequence dbo.Seq_YeuCauNhapKho và lưu đầu phiếu.
+ *    - approvePurchaseRequest(String, boolean, VaiTro, String): Phê duyệt hoặc từ chối
+ *      yêu cầu nhập kho (tuyệt đối chưa làm thay đổi tồn kho ở bước này).
+ * ============================================================================
+ */
 public class YeuCauNhapKhoDAO implements DuLieuDAO {
+    // ===== CẤU HÌNH BẢNG VÀ CỘT DỮ LIỆU =====
     private static final String KHOA_CHINH = "maYCNK";
     private static final String[] CAC_COT = new String[] { "maYCNK", "maNCC", "maNhanVien", "ngayTao",
             "trangThai", "maNhanVienDuyet", "ngayDuyet", "ghiChu" };
@@ -25,7 +43,9 @@ public class YeuCauNhapKhoDAO implements DuLieuDAO {
     private final String table = "YeuCauNhapKho";
     private final String primary = KHOA_CHINH;
 
-    // ===== PHƯƠNG THỨC: getAll() — Lấy danh sách bản ghi từ cơ sở dữ liệu. =====
+    // ===== NHÓM 1: TRUY VẤN VÀ THAO TÁC CRUD CƠ BẢN (Triển khai DuLieuDAO) =====
+
+    // Lấy toàn bộ danh sách Yêu cầu nhập kho từ CSDL (loại bỏ các bản ghi đã ẩn mềm).
     @Override
     public List<LinkedHashMap<String, Object>> getAll() throws SQLException {
         try (Connection conn = KetNoiCSDL.getConnection()) {
@@ -35,15 +55,15 @@ public class YeuCauNhapKhoDAO implements DuLieuDAO {
         }
     }
 
-    // ===== PHƯƠNG THỨC: getAll(Connection, Map<String,Object>) — Lấy danh sách bản ghi từ cơ sở dữ liệu. =====
+    // Truy vấn danh sách Yêu cầu nhập kho theo điều kiện lọc (dùng chung Connection trong transaction).
     @Override
     public List<LinkedHashMap<String, Object>> getAll(Connection conn, Map<String, Object> filter)
             throws SQLException {
-        String where = filter == null || filter.isEmpty() ? "" : " WHERE " + conditions(filter);
+        String where = filter == null || filter.isEmpty() ? "" : " WHERE " + taoDieuKienWhere(filter);
         try (PreparedStatement ps = conn.prepareStatement(
                 "SELECT * FROM dbo.[" + table + "]" + where + " ORDER BY [" + primary + "]")) {
             if (filter != null)
-                bind(ps, filter.values());
+                ganThamSoSQL(ps, filter.values());
             try (ResultSet rs = ps.executeQuery()) {
                 List<LinkedHashMap<String, Object>> rows = new ArrayList<>();
                 while (rs.next()) {
@@ -57,7 +77,7 @@ public class YeuCauNhapKhoDAO implements DuLieuDAO {
         }
     }
 
-    // ===== PHƯƠNG THỨC: previewNextId() — Tạo mã tiếp theo để xem trước khi lưu. =====
+    // Xem trước mã yêu cầu nhập kho tiếp theo từ Sequence dbo.Seq_YeuCauNhapKho (ví dụ: YCN001).
     @Override
     public String previewNextId() throws SQLException {
         if (CAC_KHOA.length != 1 || primary.equals("VIN"))
@@ -68,23 +88,23 @@ public class YeuCauNhapKhoDAO implements DuLieuDAO {
                         "SELECT CASE WHEN current_value IS NULL THEN CONVERT(int,start_value) ELSE CONVERT(int,current_value)+1 END FROM sys.sequences WHERE name=? AND schema_id=SCHEMA_ID('dbo')")) {
             ps.setString(1, "Seq_" + table);
             try (ResultSet rs = ps.executeQuery()) {
-                return rs.next() ? prefix() + String.format(Locale.ROOT, "%03d", rs.getInt(1)) : "";
+                return rs.next() ? layTienToMa() + String.format(Locale.ROOT, "%03d", rs.getInt(1)) : "";
             }
         }
     }
 
-    // ===== PHƯƠNG THỨC: prefix() — Xử lý prefix. =====
-    private String prefix() {
+    // Lấy tiền tố mã yêu cầu nhập kho ("YCN").
+    private String layTienToMa() {
         return "YCN";
     }
 
-    // ===== PHƯƠNG THỨC: insert(Map<String,Object>) — Thêm bản ghi vào cơ sở dữ liệu. =====
+    // Thêm mới đầu phiếu yêu cầu nhập kho (mở transaction độc lập).
     @Override
     public void insert(Map<String, Object> row) throws SQLException {
         insert(row, null);
     }
 
-    // ===== PHƯƠNG THỨC: insert(Map<String,Object>, String) — Thêm bản ghi vào cơ sở dữ liệu. =====
+    // Thêm mới đầu phiếu yêu cầu nhập kho trong giao dịch của QuyTrinhDAO.
     @Override
     public void insert(Map<String, Object> row, String preview) throws SQLException {
         QuyTrinhDAO.transaction(conn -> {
@@ -93,32 +113,34 @@ public class YeuCauNhapKhoDAO implements DuLieuDAO {
         });
     }
 
-    // ===== PHƯƠNG THỨC: insert(Connection, Map<String,Object>) — Thêm bản ghi vào cơ sở dữ liệu. =====
     /** Dùng connection của phiếu để lưu đầu phiếu và chi tiết cùng giao dịch. */
     @Override
     public String insert(Connection conn, Map<String, Object> values) throws SQLException {
         Map<String, Object> row = new LinkedHashMap<>(values);
+        // BƯỚC 1: Sinh mã maYCNK mới từ Sequence dbo.Seq_YeuCauNhapKho.
         if (CAC_KHOA.length == 1 && !primary.equals("VIN")) {
             {
                 try (Statement ps = conn.createStatement();
                         ResultSet rs = ps.executeQuery("SELECT NEXT VALUE FOR dbo.[Seq_" + table + "]")) {
                     rs.next();
-                    row.put(primary, prefix() + String.format(Locale.ROOT, "%03d", rs.getInt(1)));
+                    row.put(primary, layTienToMa() + String.format(Locale.ROOT, "%03d", rs.getInt(1)));
                 }
             }
         }
+        // BƯỚC 2: Kiểm tra dữ liệu đầu phiếu và quy tắc toàn vẹn trước khi INSERT.
         kiemTraDuLieu(row, true);
         QuyTrinhDAO.guardWrite(conn, table, row, null);
+        // BƯỚC 3: Thực thi INSERT INTO dbo.[YeuCauNhapKho] và trả về mã phiếu vừa tạo.
         String fields = String.join(",", row.keySet().stream().map(s -> "[" + s + "]").toList());
         try (PreparedStatement ps = conn.prepareStatement("INSERT INTO dbo.[" + table + "](" + fields
                 + ") VALUES(" + String.join(",", Collections.nCopies(row.size(), "?")) + ")")) {
-            bind(ps, row.values());
+            ganThamSoSQL(ps, row.values());
             ps.executeUpdate();
         }
         return String.valueOf(row.get(primary));
     }
 
-    // ===== PHƯƠNG THỨC: update(String, Map<String,Object>) — Cập nhật bản ghi trong cơ sở dữ liệu. =====
+    // Cập nhật đầu phiếu yêu cầu nhập kho theo mã maYCNK.
     @Override
     public void update(String id, Map<String, Object> row) throws SQLException {
         if (CAC_KHOA.length != 1)
@@ -129,7 +151,7 @@ public class YeuCauNhapKhoDAO implements DuLieuDAO {
         });
     }
 
-    // ===== PHƯƠNG THỨC: update(Connection, Map<String,Object>, Map<String,Object>) — Cập nhật bản ghi trong cơ sở dữ liệu. =====
+    // Cập nhật đầu phiếu yêu cầu nhập kho trong giao dịch đang mở.
     @Override
     public void update(Connection conn, Map<String, Object> key, Map<String, Object> values)
             throws SQLException {
@@ -142,40 +164,47 @@ public class YeuCauNhapKhoDAO implements DuLieuDAO {
             return;
         String fields = String.join(",", row.keySet().stream().map(s -> "[" + s + "]=?").toList());
         try (PreparedStatement ps = conn
-                .prepareStatement("UPDATE dbo.[" + table + "] SET " + fields + " WHERE " + conditions(key))) {
+                .prepareStatement("UPDATE dbo.[" + table + "] SET " + fields + " WHERE " + taoDieuKienWhere(key))) {
             List<Object> params = new ArrayList<>(row.values());
             params.addAll(key.values());
-            bind(ps, params);
+            ganThamSoSQL(ps, params);
             if (ps.executeUpdate() != 1)
                 throw new SQLException("Bản ghi đã thay đổi hoặc không còn tồn tại.");
         }
     }
 
-    // ===== PHƯƠNG THỨC: softDelete(String) — Đánh dấu bản ghi đã xóa mà vẫn giữ dữ liệu. =====
+    // Ẩn mềm bản ghi yêu cầu nhập kho khỏi danh sách hiển thị.
     @Override
     public void softDelete(String id) throws SQLException {
         HiddenRecords.hide(table, id);
     }
 
-    // ===== PHƯƠNG THỨC: conditions(Map<String,Object>) — Tạo điều kiện truy vấn theo tiêu chí lọc. =====
-    private String conditions(Map<String, Object> values) throws SQLException {
+    // Tạo biểu thức điều kiện WHERE từ Map tiêu chí lọc.
+    private String taoDieuKienWhere(Map<String, Object> values) throws SQLException {
         for (String field : values.keySet())
             if (!KIEU_COT.containsKey(field))
                 throw new SQLException("Trường không hợp lệ: " + field);
         return String.join(" AND ", values.keySet().stream().map(s -> "[" + s + "]=?").toList());
     }
 
-    // ===== PHƯƠNG THỨC: bind(PreparedStatement, Collection<?>) — Gán giá trị tham số cho câu lệnh SQL. =====
-    private static void bind(PreparedStatement ps, Collection<?> values) throws SQLException {
+    // Gán tuần tự các giá trị tham số vào dấu hỏi (?) của PreparedStatement.
+    private static void ganThamSoSQL(PreparedStatement ps, Collection<?> values) throws SQLException {
         int i = 1;
         for (Object value : values)
             ps.setObject(i++, value);
     }
 
-    // Các thao tác nghiệp vụ của đối tượng, giữ nguyên giao dịch SQL.
-    // ===== PHƯƠNG THỨC: approvePurchaseRequest(String, boolean, gui.VaiTro, String) — Phê duyệt hoặc từ chối yêu cầu nhập kho. =====
+    // ===== NHÓM 2: PHƯƠNG THỨC NGHIỆP VỤ PHÊ DUYỆT YÊU CẦU NHẬP KHO =====
+
+    /**
+     * NGHIỆP VỤ 2: Phê duyệt hoặc từ chối Yêu cầu nhập kho.
+     * - Chỉ Quản lý (QUAN_LY) hoặc Quản trị viên (ADMIN) mới có quyền thực hiện.
+     * - Chỉ xử lý khi phiếu đang ở trạng thái "Chờ duyệt" và có ít nhất 1 dòng chi tiết.
+     * - Tuyệt đối KHÔNG làm tăng/giảm tồn kho tại bước duyệt yêu cầu.
+     */
     public static void approvePurchaseRequest(String id, boolean approve, gui.VaiTro role, String employeeId)
             throws SQLException {
+        // BƯỚC 1: Kiểm tra phân quyền — chỉ Quản lý hoặc Quản trị viên mới được duyệt/từ chối.
         if (role == null || (role != gui.VaiTro.ADMIN && role != gui.VaiTro.QUAN_LY)) {
             throw new SecurityException(
                     "Chỉ Quản lý hoặc Quản trị viên mới có quyền duyệt/từ chối yêu cầu nhập kho.");
@@ -183,14 +212,19 @@ public class YeuCauNhapKhoDAO implements DuLieuDAO {
         if (employeeId == null || employeeId.isBlank()) {
             throw new SecurityException("Mã nhân viên phê duyệt không hợp lệ.");
         }
+        // BƯỚC 2: Mở giao dịch SQL để khóa phiếu và cập nhật trạng thái an toàn.
         transaction(conn -> {
+            // BƯỚC 2.1: Xác minh nhân viên phê duyệt đang hoạt động trong hệ thống.
             requireActiveEmployee(conn, employeeId, "phê duyệt");
+            // BƯỚC 2.2: Khóa dòng YeuCauNhapKho (UPDLOCK, HOLDLOCK) và kiểm tra trạng thái phải là "Chờ duyệt".
             Map<String, Object> row = lock(conn, "YeuCauNhapKho", id);
             require("Chờ duyệt".equals(row.get("trangThai")), "Yêu cầu nhập kho đã xử lý (trạng thái: "
                     + row.get("trangThai") + "); không thể duyệt lại.");
+            // BƯỚC 2.3: Kiểm tra phiếu yêu cầu phải có ít nhất một hạng mục chi tiết phụ tùng.
             List<LinkedHashMap<String, Object>> details = new dao.ChiTietYeuCauNhapKhoDAO().getAll(conn,
                     Map.of("maYCNK", id));
             require(!details.isEmpty(), "Yêu cầu nhập kho chưa có chi tiết hạng mục.");
+            // BƯỚC 2.4: Cập nhật trạng thái mới ("Đã duyệt" hoặc "Từ chối"), người duyệt và thời điểm duyệt.
             String newState = approve ? "Đã duyệt" : "Từ chối";
             Timestamp now = now(conn);
             execute(conn,
@@ -200,44 +234,41 @@ public class YeuCauNhapKhoDAO implements DuLieuDAO {
         });
     }
 
-    // ===== PHƯƠNG THỨC: cacKhoa() — Liệt kê các cột khóa của bản ghi. =====
+    // ===== NHÓM 3: SIÊU DỮ LIỆU BẢNG VÀ KIỂM TRA DỮ LIỆU ĐẦU VÀO =====
+
     @Override
     public String[] cacKhoa() {
         return CAC_KHOA.clone();
     }
 
-    // ===== PHƯƠNG THỨC: khoaChinh() — Xác định cột khóa chính của bảng dữ liệu. =====
     @Override
     public String khoaChinh() {
         return KHOA_CHINH;
     }
 
-    // ===== PHƯƠNG THỨC: cacCot() — Liệt kê các cột dữ liệu của đối tượng. =====
     @Override
     public String[] cacCot() {
         return CAC_COT.clone();
     }
 
-    // ===== PHƯƠNG THỨC: kieuCot() — Khai báo kiểu dữ liệu của từng cột. =====
     @Override
     public Map<String, String> kieuCot() {
         return KIEU_COT;
     }
 
-    // ===== PHƯƠNG THỨC: cotBatBuoc() — Liệt kê các cột bắt buộc nhập. =====
     @Override
     public Set<String> cotBatBuoc() {
         return COT_BAT_BUOC;
     }
 
-    // ===== PHƯƠNG THỨC: kiemTraDuLieu(Map<String,Object>, boolean) — Kiểm tra dữ liệu. =====
+    // Kiểm tra các trường bắt buộc, độ dài chuỗi và định dạng mã nhân viên / mã nhà cung cấp.
     private static void kiemTraDuLieu(Map<String, Object> row, boolean creating) throws SQLException {
         if (creating) {
             Set<String> required = COT_BAT_BUOC;
             for (String field : required) {
                 Object val = row.get(field);
                 if (val == null || (val instanceof String s && s.trim().isEmpty()))
-                    fail(field, "Bắt buộc nhập: " + field);
+                    nemLoiDuLieu(field, "Bắt buộc nhập: " + field);
             }
         }
         for (Map.Entry<String, Object> e : row.entrySet()) {
@@ -249,13 +280,13 @@ public class YeuCauNhapKhoDAO implements DuLieuDAO {
             String[] spec = KIEU_COT.get(field).split(":", 2);
             if ((spec[0].equals("varchar") || spec[0].equals("nvarchar"))
                     && raw.length() > Integer.parseInt(spec[1]))
-                fail(field, "Vượt quá độ dài cho phép: " + field);
+                nemLoiDuLieu(field, "Vượt quá độ dài cho phép: " + field);
             if (spec[0].equals("bit") && !(value instanceof Boolean))
-                fail(field, "Giới tính phải là Nam hoặc Nữ.");
+                nemLoiDuLieu(field, "Giới tính phải là Nam hoặc Nữ.");
             if (value instanceof Number number) {
                 BigDecimal n = new BigDecimal(number.toString());
                 if (n.signum() < 0)
-                    fail(field, "Giá trị không được âm: " + field);
+                    nemLoiDuLieu(field, "Giá trị không được âm: " + field);
 
                 if (spec[0].equals("decimal")) {
                     String[] size = spec[1].split(",");
@@ -263,22 +294,22 @@ public class YeuCauNhapKhoDAO implements DuLieuDAO {
                     if (Math.max(0, normalized.scale()) > Integer.parseInt(size[1].trim()) || Math.max(0,
                             normalized.precision() - normalized.scale()) > Integer.parseInt(size[0].trim())
                                     - Integer.parseInt(size[1].trim()))
-                        fail(field, "Số tiền vượt độ chính xác cho phép: " + field);
+                        nemLoiDuLieu(field, "Số tiền vượt độ chính xác cho phép: " + field);
                 }
             }
 
             if (field.equals("maNhanVien") && !raw.matches("NV[0-9]{3}"))
-                fail(field, "Mã nhân viên phải có dạng NV001.");
+                nemLoiDuLieu(field, "Mã nhân viên phải có dạng NV001.");
 
             if (field.equals("maNCC") && !raw.matches("NCC[0-9]{3}"))
-                fail(field, "Mã nhà cung cấp phải có dạng NCC001.");
+                nemLoiDuLieu(field, "Mã nhà cung cấp phải có dạng NCC001.");
 
         }
 
     }
 
-    // ===== PHƯƠNG THỨC: fail(String, String) — Tạo lỗi truy vấn khi thao tác nghiệp vụ không hợp lệ. =====
-    private static void fail(String field, String message) throws SQLException {
+    // Ném ngoại lệ LoiDuLieu kèm tên trường bị lỗi để tầng GUI hiển thị thông báo.
+    private static void nemLoiDuLieu(String field, String message) throws SQLException {
         throw new LoiDuLieu(field, message);
     }
 }
