@@ -7,8 +7,26 @@ import java.sql.SQLException;
 import java.util.*;
 import javax.swing.*;
 
-// ===== GUI: BieuMauChiTietPhieuNhapKho =====
+/**
+ * ============================================================================
+ * GUI: BieuMauChiTietPhieuNhapKho (Biểu mẫu một dòng chi tiết Phiếu nhập kho)
+ * ============================================================================
+ * 1. Mục đích:
+ *    - Tạo panel chứa các ô nhập liệu của một dòng hạng mục trong Phiếu nhập kho
+ *      (maPhuTung, soLuongYeuCau, soLuongThucNhan, soLuongNhap, donGiaNhap).
+ * 2. Phục vụ màn hình / nghiệp vụ:
+ *    - Nghiệp vụ 3 (Lập và xác nhận phiếu nhập kho): Biểu mẫu dòng chi tiết của
+ *      bảng ChiTietPhieuNhapKho (được giữ lại trong gói gui; trên cửa sổ
+ *      TrinhSuaPhieuNhapKho, các cột số lượng thực nhận, số lượng nhập và đơn giá
+ *      nhập hiện được chỉnh sửa trực tiếp trên bảng qua BoChinhSuaOHangMucPNK).
+ * 3. Phương thức quan trọng:
+ *    - read() -> kiemTraDuLieu(Map): Đọc dữ liệu từ các ô nhập và kiểm tra
+ *      ràng buộc 0 <= soLuongNhap <= soLuongThucNhan <= soLuongYeuCau.
+ *    - docVaKiemTraGiaTriCot(...): Chuyển đổi văn bản sang kiểu int/decimal và kiểm tra âm/độ dài.
+ * ============================================================================
+ */
 final class BieuMauChiTietPhieuNhapKho extends JPanel {
+    // ===== CẤU HÌNH CÁC CỘT TRÊN BIỂU MẪU =====
     private static final String[] CAC_COT = new String[] { "maPNK", "maPhuTung", "soLuongYeuCau",
             "soLuongThucNhan", "soLuongNhap", "donGiaNhap" };
     private static final Map<String, String> KIEU_COT = Map.ofEntries(Map.entry("maPNK", "varchar"),
@@ -22,18 +40,17 @@ final class BieuMauChiTietPhieuNhapKho extends JPanel {
     private static final long serialVersionUID = 1L;
     private final Map<String, JComponent> inputs = new LinkedHashMap<>();
 
-    // ===== KHỞI TẠO ĐỐI TƯỢNG: BieuMauChiTietPhieuNhapKho(String, Map<String,Object>, Set<String>) — Khởi tạo đối tượng và thiết lập trạng thái ban đầu. =====
+    // ===== NHÓM 1: KHỞI TẠO GIAO DIỆN BIỂU MẪU CHI TIẾT =====
+
     BieuMauChiTietPhieuNhapKho(String table, Map<String, Object> row, Set<String> excluded) {
         this(table, row, excluded, false);
     }
 
-    // ===== KHỞI TẠO ĐỐI TƯỢNG: BieuMauChiTietPhieuNhapKho(String, Map<String,Object>, Set<String>, boolean) — Khởi tạo đối tượng và thiết lập trạng thái ban đầu. =====
     BieuMauChiTietPhieuNhapKho(String table, Map<String, Object> row, Set<String> excluded,
             boolean readOnly) {
         this(table, row, excluded, readOnly, isExisting(table, row));
     }
 
-    // ===== KHỞI TẠO ĐỐI TƯỢNG: BieuMauChiTietPhieuNhapKho(String, Map<String,Object>, Set<String>, boolean, boolean) — Khởi tạo đối tượng và thiết lập trạng thái ban đầu. =====
     BieuMauChiTietPhieuNhapKho(String table, Map<String, Object> row, Set<String> excluded, boolean readOnly,
             boolean existing) {
         super(new GridBagLayout());
@@ -91,7 +108,7 @@ final class BieuMauChiTietPhieuNhapKho extends JPanel {
             c.insets = new Insets(6, 8, 6, 8);
             JPanel pnlCell = new JPanel(new BorderLayout(0, 5));
             pnlCell.setOpaque(false);
-            String fieldLabel = nhanCot(field);
+            String fieldLabel = layTenHienThiCuaCot(field);
             String label = fieldLabel + (COT_BAT_BUOC.contains(field) ? " *" : "");
 
             pnlCell.add(GiaoDien.label(label, 12, true, GiaoDien.TEXT), BorderLayout.NORTH);
@@ -102,7 +119,7 @@ final class BieuMauChiTietPhieuNhapKho extends JPanel {
         }
     }
 
-    // ===== PHƯƠNG THỨC: isExisting(String, Map<String,Object>) — Kiểm tra dữ liệu đã tồn tại. =====
+    // Kiểm tra dòng dữ liệu truyền vào là dòng đã tồn tại hay dòng tạo mới.
     static boolean isExisting(String table, Map<String, Object> row) {
         if (row == null || row.isEmpty())
             return false;
@@ -119,17 +136,19 @@ final class BieuMauChiTietPhieuNhapKho extends JPanel {
         return true;
     }
 
-    // ===== PHƯƠNG THỨC: read() — Đọc và chuyển đổi dữ liệu từ biểu mẫu. =====
+    // ===== NHÓM 2: ĐỌC DỮ LIỆU, KHÓA TRƯỜNG & KIỂM TRA HỢP LỆ =====
+
+    // Đọc và kiểm tra toàn bộ dữ liệu trên biểu mẫu chi tiết phiếu nhập kho.
     Map<String, Object> read() throws SQLException {
         return kiemTraDuLieu(inputs);
     }
-    // ===== PHƯƠNG THỨC: lockField(String) — Khóa trường dữ liệu để không cho chỉnh sửa. =====
+
+    // Khóa một trường trên biểu mẫu không cho người dùng sửa (ví dụ: maPhuTung, soLuongYeuCau).
     void lockField(String field) {
         if (inputs.get(field) != null)
             DinhDangKeThua.lock(inputs.get(field));
     }
 
-    // ===== PHƯƠNG THỨC: getPreferredSize() — Tính kích thước ưu tiên của thành phần. =====
     @Override
     public Dimension getPreferredSize() {
         Dimension d = super.getPreferredSize();
@@ -138,15 +157,15 @@ final class BieuMauChiTietPhieuNhapKho extends JPanel {
         return d;
     }
 
-    // ===== PHƯƠNG THỨC: kiemTraDuLieu(Map<String,JComponent>) — Kiểm tra dữ liệu. =====
+    // Kiểm tra các trường của dòng chi tiết phiếu nhập kho (ràng buộc số lượng và mã phụ tùng).
     private static Map<String, Object> kiemTraDuLieu(Map<String, JComponent> inputs)
             throws java.sql.SQLException {
         Map<String, Object> values = new LinkedHashMap<>();
-        docCot(inputs, values, "maPhuTung", "Mã phụ tùng", "varchar:5", true);
-        docCot(inputs, values, "soLuongYeuCau", "Số lượng yêu cầu", "int:", false);
-        docCot(inputs, values, "soLuongThucNhan", "Số lượng thực nhận", "int:", true);
-        docCot(inputs, values, "soLuongNhap", "Số lượng nhập", "int:", true);
-        docCot(inputs, values, "donGiaNhap", "Đơn giá nhập", "decimal:18,2", true);
+        docVaKiemTraGiaTriCot(inputs, values, "maPhuTung", "Mã phụ tùng", "varchar:5", true);
+        docVaKiemTraGiaTriCot(inputs, values, "soLuongYeuCau", "Số lượng yêu cầu", "int:", false);
+        docVaKiemTraGiaTriCot(inputs, values, "soLuongThucNhan", "Số lượng thực nhận", "int:", true);
+        docVaKiemTraGiaTriCot(inputs, values, "soLuongNhap", "Số lượng nhập", "int:", true);
+        docVaKiemTraGiaTriCot(inputs, values, "donGiaNhap", "Đơn giá nhập", "decimal:18,2", true);
         for (Map.Entry<String, Object> e : values.entrySet()) {
             String field = e.getKey();
             Object value = e.getValue();
@@ -165,6 +184,7 @@ final class BieuMauChiTietPhieuNhapKho extends JPanel {
 
         }
 
+        // Kiểm tra ràng buộc số lượng: 0 <= soLuongNhap <= soLuongThucNhan <= soLuongYeuCau.
         {
             Object reqObj = values.get("soLuongYeuCau");
             Object recObj = values.get("soLuongThucNhan");
@@ -191,8 +211,8 @@ final class BieuMauChiTietPhieuNhapKho extends JPanel {
         return values;
     }
 
-    // ===== PHƯƠNG THỨC: docCot(Map<String,JComponent>, Map<String,Object>, String, String, String, boolean) — Đọc, kiểm tra và chuyển giá trị của một cột biểu mẫu. =====
-    private static void docCot(Map<String, JComponent> inputs, Map<String, Object> values,
+    // Đọc giá trị văn bản từ một ô nhập, kiểm tra bắt buộc và chuyển đổi sang kiểu dữ liệu tương ứng.
+    private static void docVaKiemTraGiaTriCot(Map<String, JComponent> inputs, Map<String, Object> values,
             String field, String label, String specification, boolean required) throws ThongBaoLoiSQL.Issue {
         if (!inputs.containsKey(field)) return;
         if (inputs.get(field) instanceof OChonThamChieu cmbCombo) cmbCombo.validateSelection();
@@ -200,7 +220,7 @@ final class BieuMauChiTietPhieuNhapKho extends JPanel {
             values.put(field,checkBox.isSelected());
             return;
         }
-        String raw = docVanBan(inputs.get(field));
+        String raw = layVanBanTuONhap(inputs.get(field));
         if (raw.isEmpty()) {
             if (required) throw new ThongBaoLoiSQL.Issue(field, "Vui lòng nhập " + label.toLowerCase() + ".");
             values.put(field, null);
@@ -247,18 +267,18 @@ final class BieuMauChiTietPhieuNhapKho extends JPanel {
         values.put(field, value);
     }
 
+    // ===== NHÓM 3: TIỆN ÍCH GIAO DIỆN & ĐỌC VĂN BẢN TỪ COMPONENT =====
+
     private static final class GiaoDien {
 
         private static final Color WHITE = Color.WHITE;
         private static final Color TEXT = new Color(0x21383C);
         private static final Color LINE = new Color(0xE4EBE9);
 
-        // ===== PHƯƠNG THỨC: font(int, boolean) — Tạo phông chữ theo cỡ và kiểu chữ. =====
         public static Font font(int size, boolean bold) {
             return new Font("Segoe UI", bold ? Font.BOLD : Font.PLAIN, size);
         }
 
-        // ===== PHƯƠNG THỨC: label(String, int, boolean, Color) — Tạo nhãn giao diện. =====
         public static JLabel label(String s, int size, boolean bold, Color c) {
             JLabel lblL = new JLabel(s);
             lblL.setFont(font(size, bold));
@@ -266,7 +286,6 @@ final class BieuMauChiTietPhieuNhapKho extends JPanel {
             return lblL;
         }
 
-        // ===== PHƯƠNG THỨC: field(String) — Tạo thành phần nhập liệu cho một trường. =====
         public static JTextField field(String hint) {
             JTextField txtT = new JTextField();
             txtT.putClientProperty("JTextField.placeholderText", hint);
@@ -278,8 +297,8 @@ final class BieuMauChiTietPhieuNhapKho extends JPanel {
         }
     }
 
-    // ===== PHƯƠNG THỨC: nhanCot(String) — Tạo tiêu đề hiển thị cho cột bảng. =====
-    private static String nhanCot(String field) {
+    // Lấy tên nhãn tiếng Việt hiển thị cho từng cột dữ liệu.
+    private static String layTenHienThiCuaCot(String field) {
         return switch (field) {
         case "maPhuTung" -> "Mã phụ tùng";
         case "soLuongYeuCau" -> "Số lượng yêu cầu";
@@ -291,8 +310,8 @@ final class BieuMauChiTietPhieuNhapKho extends JPanel {
         };
     }
 
-    // ===== PHƯƠNG THỨC: docVanBan(javax.swing.JComponent) — Lấy văn bản từ thành phần nhập liệu. =====
-    private static String docVanBan(javax.swing.JComponent control) {
+    // Trích xuất chuỗi văn bản người dùng đã nhập hoặc chọn từ một JComponent.
+    private static String layVanBanTuONhap(javax.swing.JComponent control) {
         if (control instanceof OChonNgay pnlPicker)
             return pnlPicker.getDateText();
         if (control instanceof OChonThamChieu cmbCombo)

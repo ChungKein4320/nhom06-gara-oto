@@ -21,8 +21,13 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
 
-// ===== GUI: FormYeuCauNhapKho =====
-/** Danh sách và biểu mẫu sử dụng dữ liệu SQL Server thực tế. */
+/**
+ * Màn hình GUI: Quản lý danh sách Yêu cầu nhập kho (FormYeuCauNhapKho).
+ * - Nghiệp vụ:
+ *   + Nhân viên kho: Lập yêu cầu nhập kho mới, sửa yêu cầu ở trạng thái 'Chờ duyệt', xem chi tiết và bấm 'Lập phiếu nhập kho' (qua ThaoTacNghiepVu) khi yêu cầu 'Đã duyệt'.
+ *   + Quản lý: Xem xét và phê duyệt / từ chối yêu cầu nhập kho ở màn hình 'Danh sách yêu cầu nhập'.
+ * - Luồng chính: taiDanhSachTuCSDL() -> moFormThemHoacSua() / moChiTietPhieu() -> TrinhSuaYeuCauNhapKho.
+ */
 public final class FormYeuCauNhapKho extends JPanel {
     private static final String[] CAC_COT = new String[] { "maYCNK", "maNCC", "maNhanVien", "ngayTao",
             "trangThai", "maNhanVienDuyet", "ngayDuyet", "ghiChu" };
@@ -43,7 +48,7 @@ public final class FormYeuCauNhapKho extends JPanel {
     private final String[] displayFields;
     private final BoLocTrangThai statusFilters;
 
-    // ===== PHƯƠNG THỨC: readObject(java.io.ObjectInputStream) — Khôi phục trạng thái đối tượng sau khi đọc từ luồng lưu. =====
+    // ===== PHƯƠNG THỨC: readObject(java.io.ObjectInputStream) — Khôi phục DAO sau khi giải tuần tự hóa. =====
     @java.io.Serial
     private void readObject(java.io.ObjectInputStream input)
             throws java.io.IOException, ClassNotFoundException {
@@ -51,18 +56,19 @@ public final class FormYeuCauNhapKho extends JPanel {
         dao = new dao.YeuCauNhapKhoDAO();
     }
 
-    // ===== KHỞI TẠO ĐỐI TƯỢNG: FormYeuCauNhapKho(String) — Khởi tạo đối tượng và thiết lập trạng thái ban đầu. =====
+    // ===== KHỞI TẠO ĐỐI TƯỢNG: FormYeuCauNhapKho(String) — Khởi tạo màn hình yêu cầu nhập kho theo tên trang. =====
     public FormYeuCauNhapKho(String page) {
         this(page, null, null);
     }
 
-    // ===== KHỞI TẠO ĐỐI TƯỢNG: FormYeuCauNhapKho(String, String) — Khởi tạo đối tượng và thiết lập trạng thái ban đầu. =====
+    // ===== KHỞI TẠO ĐỐI TƯỢNG: FormYeuCauNhapKho(String, String) — Khởi tạo màn hình yêu cầu nhập kho kèm mã nhân viên. =====
     public FormYeuCauNhapKho(String page, String employeeId) {
         this(page, null, employeeId);
     }
 
-    // ===== KHỞI TẠO ĐỐI TƯỢNG: FormYeuCauNhapKho(String, VaiTro, String) — Khởi tạo đối tượng và thiết lập trạng thái ban đầu. =====
+    // ===== KHỞI TẠO ĐỐI TƯỢNG: FormYeuCauNhapKho(String, VaiTro, String) — Khởi tạo đầy đủ màn hình yêu cầu nhập kho và phân quyền. =====
     public FormYeuCauNhapKho(String page, VaiTro role, String employeeId) {
+        // 1. Khởi tạo giao diện chính, xác định chế độ Quản lý xét duyệt và cấu hình DAO
         this.role = role;
         this.employeeId = employeeId;
         setLayout(new BorderLayout(0, 18));
@@ -78,6 +84,7 @@ public final class FormYeuCauNhapKho extends JPanel {
         fields = CAC_COT;
         displayFields = fields;
 
+        // 2. Tạo các thành phần Swing (tiêu đề, thanh tìm kiếm, bảng danh sách, thanh nút chức năng)
         JPanel pnlHeading = new JPanel(new GridLayout(2, 1, 0, 5));
         pnlHeading.setOpaque(false);
 
@@ -114,7 +121,7 @@ public final class FormYeuCauNhapKho extends JPanel {
             canAdd = false;
         }
         btnAdd.setEnabled(canAdd);
-        btnAdd.addActionListener(e -> edit(false));
+        btnAdd.addActionListener(e -> moFormThemHoacSua(false));
 
         if (!isManagerReview) {
             pnlToolbar.add(btnAdd, BorderLayout.EAST);
@@ -124,7 +131,7 @@ public final class FormYeuCauNhapKho extends JPanel {
 
         model = new DefaultTableModel(new String[] { "Mã yêu cầu nhập kho", "Mã nhà cung cấp", "Mã nhân viên",
                 "Ngày tạo", "Trạng thái", "Nhân viên duyệt", "Ngày duyệt", "Ghi chú" }, 0) {
-            // ===== PHƯƠNG THỨC: isCellEditable(int, int) — Kiểm tra ô bảng có cho phép chỉnh sửa không. =====
+            // ===== PHƯƠNG THỨC: isCellEditable(int, int) — Khóa chỉnh sửa trực tiếp trên bảng danh sách. =====
             @Override
             public boolean isCellEditable(int row, int col) {
                 return false;
@@ -139,7 +146,7 @@ public final class FormYeuCauNhapKho extends JPanel {
 
         statusFilters = new BoLocTrangThai(tblTable);
         statusFilters.onChange(() -> {
-            updateCount();
+            capNhatSoLuongBanGhi();
         });
         statusFilters.setBorder(new EmptyBorder(6, 0, 0, 0));
         pnlToolbar.add(statusFilters, BorderLayout.SOUTH);
@@ -163,26 +170,23 @@ public final class FormYeuCauNhapKho extends JPanel {
 
         JButton btnRefresh = GiaoDien.button("Làm mới", GiaoDien.CREAM, GiaoDien.NAV);
         JButton btnEdit = GiaoDien.button("Chỉnh sửa", GiaoDien.TEAL, Color.WHITE);
-        JButton btnDelete = GiaoDien.button("Xóa", GiaoDien.ORANGE, Color.WHITE);
 
-        final boolean canEdit = true && !isManagerReview && !(role == VaiTro.QUAN_LY);
         btnEdit.setEnabled(false);
-        btnDelete.setEnabled(false);
 
+        // 3. Đăng ký sự kiện cho các nút chức năng, gắn nút nghiệp vụ từ ThaoTacNghiepVu và sự kiện chọn dòng
         btnRefresh.addActionListener(e -> lamMoi());
-        btnEdit.addActionListener(e -> edit(true));
-        btnDelete.addActionListener(e -> hideRecord());
+        btnEdit.addActionListener(e -> moFormThemHoacSua(true));
 
         pnlButtons.add(btnRefresh);
 
         {
             JButton btnDetails = GiaoDien.button(isManagerReview ? "Xem chi tiết" : "Chi tiết phiếu",
                     GiaoDien.CREAM, GiaoDien.NAV);
-            btnDetails.addActionListener(e -> openDocument());
+            btnDetails.addActionListener(e -> moChiTietPhieu());
             pnlButtons.add(btnDetails);
         }
 
-        ThaoTacNghiepVu.install(pnlButtons, tableName, page, this::currentRecord, this::load, pnlButtons,
+        ThaoTacNghiepVu.install(pnlButtons, tableName, page, this::layBanGhiDangChon, this::taiDanhSachTuCSDL, pnlButtons,
                 role, employeeId, tblTable);
 
         if (!isManagerReview) {
@@ -197,22 +201,11 @@ public final class FormYeuCauNhapKho extends JPanel {
                     btnEdit.setEnabled(false);
                 } else {
                     int row = tblTable.convertRowIndexToModel(selected);
-                    switch (tableName) {
-                    case "YeuCauNhapKho" -> {
-                        int statusCol = Arrays.asList(displayFields).indexOf("trangThai");
-                        boolean isPending = statusCol >= 0
-                                && "Chờ duyệt".equals(String.valueOf(model.getValueAt(row, statusCol)));
-                        btnEdit.setEnabled(isPending && !isManagerReview
-                                && (role == VaiTro.KHO || role == VaiTro.ADMIN));
-                    }
-                    case "PhieuNhapKho" -> {
-                        int statusCol = Arrays.asList(displayFields).indexOf("trangThai");
-                        String st = statusCol >= 0 ? String.valueOf(model.getValueAt(row, statusCol)) : "";
-                        boolean isPending = "Chờ xác nhận nhập kho".equals(st);
-                        btnEdit.setEnabled(isPending && (role == VaiTro.KHO || role == VaiTro.ADMIN));
-                    }
-                    default -> btnEdit.setEnabled(canEdit);
-                    }
+                    int statusCol = Arrays.asList(displayFields).indexOf("trangThai");
+                    boolean isPending = statusCol >= 0
+                            && "Chờ duyệt".equals(String.valueOf(model.getValueAt(row, statusCol)));
+                    btnEdit.setEnabled(isPending && !isManagerReview
+                            && (role == VaiTro.KHO || role == VaiTro.ADMIN));
                 }
             }
         });
@@ -236,38 +229,38 @@ public final class FormYeuCauNhapKho extends JPanel {
         add(pnlCard, BorderLayout.CENTER);
 
         tblTable.addMouseListener(new java.awt.event.MouseAdapter() {
-            // ===== PHƯƠNG THỨC: mouseClicked(java.awt.event.MouseEvent) — Xử lý khi người dùng nhấp chuột. =====
+            // ===== PHƯƠNG THỨC: mouseClicked(java.awt.event.MouseEvent) — Nhấp đúp dòng để mở chi tiết phiếu. =====
             @Override
             public void mouseClicked(java.awt.event.MouseEvent event) {
                 if (event.getClickCount() == 2 && tblTable.rowAtPoint(event.getPoint()) >= 0) {
                     {
-                        openDocument();
+                        moChiTietPhieu();
                     }
                 }
             }
         });
 
         txtSearch.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
-            // ===== PHƯƠNG THỨC: insertUpdate(javax.swing.event.DocumentEvent) — Xử lý khi nội dung được thêm vào. =====
+            // ===== PHƯƠNG THỨC: insertUpdate(javax.swing.event.DocumentEvent) — Lọc danh sách khi thêm ký tự tìm kiếm. =====
             @Override
             public void insertUpdate(javax.swing.event.DocumentEvent e) {
-                filter();
+                locDanhSachTheoTimKiem();
             }
 
-            // ===== PHƯƠNG THỨC: removeUpdate(javax.swing.event.DocumentEvent) — Xử lý khi nội dung bị xóa. =====
+            // ===== PHƯƠNG THỨC: removeUpdate(javax.swing.event.DocumentEvent) — Lọc danh sách khi xóa ký tự tìm kiếm. =====
             @Override
             public void removeUpdate(javax.swing.event.DocumentEvent e) {
-                filter();
+                locDanhSachTheoTimKiem();
             }
 
-            // ===== PHƯƠNG THỨC: changedUpdate(javax.swing.event.DocumentEvent) — Cập nhật giao diện khi nội dung thay đổi. =====
+            // ===== PHƯƠNG THỨC: changedUpdate(javax.swing.event.DocumentEvent) — Lọc danh sách khi thuộc tính văn bản thay đổi. =====
             @Override
             public void changedUpdate(javax.swing.event.DocumentEvent e) {
-                filter();
+                locDanhSachTheoTimKiem();
             }
         });
 
-        // Khởi tạo các lựa chọn lọc cố định theo quy định nghiệp vụ và trạng thái mặc định
+        // Khởi tạo các lựa chọn lọc cố định theo quy định nghiệp vụ và trạng thái mặc định ('Chờ duyệt')
         String statusField = "trangThai";
         int statusCol = Arrays.asList(displayFields).indexOf(statusField);
         if (statusCol >= 0) {
@@ -281,26 +274,28 @@ public final class FormYeuCauNhapKho extends JPanel {
             statusFilters.selectDefault(statusCol, "Chờ duyệt");
         }
 
-        load();
+        // 8. Tải dữ liệu ban đầu từ SQL Server lên bảng
+        taiDanhSachTuCSDL();
     }
 
-    // ===== PHƯƠNG THỨC: lamMoi() — Tải lại dữ liệu và cập nhật nội dung đang hiển thị. =====
+    // ===== PHƯƠNG THỨC: lamMoi() — Xóa bộ lọc tìm kiếm và tải lại danh sách yêu cầu nhập kho. =====
     private void lamMoi() {
         txtSearch.setText("");
         statusFilters.reset();
-        load();
+        taiDanhSachTuCSDL();
         tblTable.clearSelection();
         tblTable.scrollRectToVisible(new Rectangle(0, 0, 1, 1));
     }
 
-    // ===== PHƯƠNG THỨC: load() — Tải dữ liệu cho bảng hiện tại. =====
-    private void load() {
+    // ===== PHƯƠNG THỨC: taiDanhSachTuCSDL() — Gọi YeuCauNhapKhoDAO.getAll() để nạp danh sách yêu cầu nhập kho lên bảng. =====
+    private void taiDanhSachTuCSDL() {
         try {
-
+            // 6. Gọi DAO lấy danh sách yêu cầu nhập kho và lọc trong 30 ngày gần nhất
             model.setRowCount(0);
             List<LinkedHashMap<String, Object>> rows = dao.getAll();
             rows.removeIf(row -> !BoLocTrangThai.trongBaMuoiNgay(tableName, row));
 
+            // 8. Đổ từng bản ghi vào model của JTable
             for (Map<String, Object> row : rows) {
 
                 Object[] values = new Object[displayFields.length];
@@ -316,42 +311,43 @@ public final class FormYeuCauNhapKho extends JPanel {
 
             statusFilters.refresh();
         } catch (SQLException ex) {
+            // 7. Hiển thị thông báo lỗi nếu mất kết nối SQL Server
             lblCount.setText("Lỗi kết nối SQL Server");
             JOptionPane.showMessageDialog(this, ex.getMessage(), "Lỗi cơ sở dữ liệu",
                     JOptionPane.ERROR_MESSAGE);
         }
     }
 
-    // ===== PHƯƠNG THỨC: filter() — Lọc dữ liệu theo tiêu chí đang chọn. =====
-    private void filter() {
+    // ===== PHƯƠNG THỨC: locDanhSachTheoTimKiem() — Lọc các dòng trên bảng theo từ khóa trong ô tìm kiếm. =====
+    private void locDanhSachTheoTimKiem() {
         statusFilters.search(txtSearch.getText());
     }
 
-    // ===== PHƯƠNG THỨC: updateCount() — Cập nhật số lượng. =====
-    private void updateCount() {
+    // ===== PHƯƠNG THỨC: capNhatSoLuongBanGhi() — Cập nhật nhãn tổng số bản ghi đang hiển thị trên bảng. =====
+    private void capNhatSoLuongBanGhi() {
         lblCount.setText("Hiển thị: " + tblTable.getRowCount() + " / " + model.getRowCount() + " bản ghi");
     }
 
-    // ===== PHƯƠNG THỨC: edit(boolean) — Mở biểu mẫu để chỉnh sửa dữ liệu. =====
-    private void edit(boolean existing) {
+    // ===== PHƯƠNG THỨC: moFormThemHoacSua(boolean) — Mở trình sửa TrinhSuaYeuCauNhapKho để lập mới hoặc sửa yêu cầu nhập kho. =====
+    private void moFormThemHoacSua(boolean existing) {
         if (isManagerReview) {
             if (!existing) {
                 JOptionPane.showMessageDialog(this,
                         "Quản lý chỉ có quyền xem xét và duyệt yêu cầu nhập kho, không được tạo mới yêu cầu.",
                         "Phân quyền", JOptionPane.WARNING_MESSAGE);
             } else {
-                openDocument();
+                moChiTietPhieu();
             }
             return;
         }
 
         if (existing) {
-            Map<String, Object> record = requireSelectedRecord("chỉnh sửa");
+            Map<String, Object> record = layBanGhiDaChonHoacThongBao("chỉnh sửa");
             if (record == null)
                 return;
 
             TrinhSuaYeuCauNhapKho.show(this, tableName, record, role, employeeId);
-            load();
+            taiDanhSachTuCSDL();
         } else {
             Map<String, Object> record = null;
             if (employeeId != null) {
@@ -359,13 +355,13 @@ public final class FormYeuCauNhapKho extends JPanel {
                 record.put("maNhanVien", employeeId);
             }
             TrinhSuaYeuCauNhapKho.show(this, tableName, record, role, employeeId);
-            load();
+            taiDanhSachTuCSDL();
         }
 
     }
 
-    // ===== PHƯƠNG THỨC: currentRecord() — Lấy bản ghi đang được chọn. =====
-    private Map<String, Object> currentRecord() {
+    // ===== PHƯƠNG THỨC: layBanGhiDangChon() — Lấy dữ liệu của dòng yêu cầu nhập kho đang chọn trên bảng. =====
+    private Map<String, Object> layBanGhiDangChon() {
         int selected = tblTable.getSelectedRow();
         if (selected < 0)
             return null;
@@ -382,9 +378,9 @@ public final class FormYeuCauNhapKho extends JPanel {
         return record;
     }
 
-    // ===== PHƯƠNG THỨC: requireSelectedRecord(String) — Kiểm tra và lấy bản ghi đang được chọn. =====
-    private Map<String, Object> requireSelectedRecord(String actionDesc) {
-        Map<String, Object> record = currentRecord();
+    // ===== PHƯƠNG THỨC: layBanGhiDaChonHoacThongBao(String) — Lấy dòng đang chọn hoặc hiển thị cảnh báo nếu chưa chọn. =====
+    private Map<String, Object> layBanGhiDaChonHoacThongBao(String actionDesc) {
+        Map<String, Object> record = layBanGhiDangChon();
         if (record == null) {
             JOptionPane.showMessageDialog(this,
                     "Vui lòng chọn một bản ghi" + (actionDesc == null ? "." : " để " + actionDesc + "."),
@@ -393,44 +389,21 @@ public final class FormYeuCauNhapKho extends JPanel {
         return record;
     }
 
-    // ===== PHƯƠNG THỨC: openDocument() — Mở cửa sổ chi tiết của chứng từ đã chọn. =====
-    private void openDocument() {
-
-        Map<String, Object> record = requireSelectedRecord("xem chi tiết");
+    // ===== PHƯƠNG THỨC: moChiTietPhieu() — Mở cửa sổ xem chi tiết hoặc xét duyệt yêu cầu nhập kho đã chọn. =====
+    private void moChiTietPhieu() {
+        // 4. Lấy bản ghi đang chọn trên bảng và mở cửa sổ TrinhSuaYeuCauNhapKho tương ứng
+        Map<String, Object> record = layBanGhiDaChonHoacThongBao("xem chi tiết");
         if (record != null) {
             if (isManagerReview) {
                 TrinhSuaYeuCauNhapKho.review(this, tableName, record, role, employeeId);
             } else {
                 TrinhSuaYeuCauNhapKho.view(this, tableName, record);
             }
-            load();
+            taiDanhSachTuCSDL();
         }
     }
 
-    // ===== PHƯƠNG THỨC: hideRecord() — Ẩn bản ghi đã chọn khỏi danh sách. =====
-    private void hideRecord() {
-        int row = tblTable.getSelectedRow();
-        if (row < 0) {
-            JOptionPane.showMessageDialog(this, "Vui lòng chọn một bản ghi để xóa.", "Chưa chọn bản ghi",
-                    JOptionPane.WARNING_MESSAGE);
-            return;
-        }
-
-        if (JOptionPane.showConfirmDialog(this,
-                "Bạn chắc chắn muốn xoá dòng này" + " ra khỏi danh sách hiển thị?", "Xác nhận",
-                JOptionPane.YES_NO_OPTION) != JOptionPane.YES_OPTION) {
-            return;
-        }
-
-        try {
-            dao.softDelete(model.getValueAt(tblTable.convertRowIndexToModel(row), 0).toString());
-            load();
-        } catch (SQLException ex) {
-            JOptionPane.showMessageDialog(this, ex.getMessage(), "Lỗi SQL", JOptionPane.ERROR_MESSAGE);
-        }
-    }
-
-    // ===== PHƯƠNG THỨC: filterOptionsFor(String, String) — Lọc options for. =====
+    // ===== PHƯƠNG THỨC: filterOptionsFor(String, String) — Trả về danh sách trạng thái lọc cố định cho bảng. =====
     public static List<String> filterOptionsFor(String table, String field) {
         if ("PhieuNhapKho".equals(table) && "trangThai".equals(field)) {
             return List.of("Chờ xác nhận nhập kho", "Đã nhập kho", "Đã hủy");
@@ -441,14 +414,14 @@ public final class FormYeuCauNhapKho extends JPanel {
         return Collections.emptyList();
     }
 
-    // ===== PHƯƠNG THỨC: getStatusFilterCombo() — Lấy trạng thái bộ lọc combo. =====
+    // ===== PHƯƠNG THỨC: getStatusFilterCombo() — Lấy combobox lọc trạng thái trên thanh công cụ. =====
     public JComboBox<String> getStatusFilterCombo() {
         String statusField = "trangThai";
         int column = Arrays.asList(displayFields).indexOf(statusField);
         return column >= 0 ? statusFilters.getFilter(column) : null;
     }
 
-    // ===== PHƯƠNG THỨC: getTable() — Lấy bảng. =====
+    // ===== PHƯƠNG THỨC: getTable() — Lấy đối tượng JTable hiển thị danh sách yêu cầu nhập kho. =====
     public JTable getTable() {
         return tblTable;
     }
@@ -616,7 +589,7 @@ public final class FormYeuCauNhapKho extends JPanel {
                     super.createDefaultColumnsFromModel();
                     for (int i = 0; i < getColumnModel().getColumnCount(); i++) {
                         TableColumn column = getColumnModel().getColumn(i);
-                        column.setHeaderValue(nhanCot(getModel().getColumnName(column.getModelIndex())));
+                        column.setHeaderValue(layTenHienThiCuaCot(getModel().getColumnName(column.getModelIndex())));
                     }
                 }
             };
@@ -759,8 +732,8 @@ public final class FormYeuCauNhapKho extends JPanel {
         }
     }
 
-    // ===== PHƯƠNG THỨC: nhanCot(String) — Tạo tiêu đề hiển thị cho cột bảng. =====
-    private static String nhanCot(String field) {
+    // ===== PHƯƠNG THỨC: layTenHienThiCuaCot(String) — Trả về nhãn tiếng Việt cho tên cột yêu cầu nhập kho. =====
+    private static String layTenHienThiCuaCot(String field) {
         return switch (field) {
         case "maNhanVien" -> "Mã nhân viên";
         case "trangThai" -> "Trạng thái";
