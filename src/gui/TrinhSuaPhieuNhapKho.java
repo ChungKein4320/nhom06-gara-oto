@@ -205,7 +205,7 @@ final class TrinhSuaPhieuNhapKho {
     static JDialog buildDialog(Component parent, String table, Map<String, Object> header,
             List<Map<String, Object>> initialDetails, boolean viewOnly, VaiTro role, String employeeId) {
         // 1. Kiểm tra điều kiện bắt buộc: Phiếu nhập kho mới (id == null) phải gắn với maYCNK đã duyệt
-        String child = QuyTrinhDAO.detailTable(table), pk = "maPNK";
+        String pk = "maPNK";
         String id = header == null || header.get(pk) == null ? null : String.valueOf(header.get(pk));
         if (id == null && (((header == null || header.get("maYCNK") == null)))) {
             if (!java.awt.GraphicsEnvironment.isHeadless()) {

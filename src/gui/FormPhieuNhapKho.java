@@ -495,7 +495,6 @@ public final class FormPhieuNhapKho extends JPanel {
         private static final Color NAV = new Color(0x13272E);
         private static final Color TEAL = new Color(0x487674);
         private static final Color CREAM = new Color(0xE8C69B);
-        private static final Color ORANGE = new Color(0xCB6330);
         private static final Color BG = new Color(0xF4F7F6);
         private static final Color WHITE = Color.WHITE;
         private static final Color TEXT = new Color(0x21383C);
