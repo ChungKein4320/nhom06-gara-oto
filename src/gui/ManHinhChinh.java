@@ -16,6 +16,7 @@ public final class ManHinhChinh extends JFrame {
     private final JLabel lblTitle;
     private static final String SEARCH_PREFIX = "Tìm kiếm: ";
     private boolean searchExpanded;
+    // Lưu tên các menu đã mở rộng
     private final java.util.Set<String> expandedSections = new java.util.HashSet<>();
     private String current = "Tổng quan";
 
@@ -140,6 +141,7 @@ public final class ManHinhChinh extends JFrame {
         pnlBody = new JPanel(new BorderLayout());
         pnlMain.add(pnlBody, BorderLayout.CENTER);
         add(pnlMain, BorderLayout.CENTER);
+        // Mở màn hình tổng quan khi bắt đầu
         open("Tổng quan");
     }
 
@@ -208,12 +210,15 @@ public final class ManHinhChinh extends JFrame {
 
             @Override
             public void paintIcon(Component c, Graphics g, int x, int y) {
+                // Vẽ tam giác
                 Graphics2D q = (Graphics2D) g.create();
                 q.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 q.setColor(textColor);
+                // tam giác hướng xuống
                 if (expanded)
                     q.fillPolygon(new int[] { x + 1, x + 11, x + 6 }, new int[] { y + 3, y + 3, y + 9 }, 3);
                 else
+                // tam giác hướng sang phải
                     q.fillPolygon(new int[] { x + 3, x + 9, x + 3 }, new int[] { y + 1, y + 6, y + 11 }, 3);
                 q.dispose();
             }
@@ -228,9 +233,11 @@ public final class ManHinhChinh extends JFrame {
         btnArrow.setBackground(row.getBackground());
         btnArrow.setOpaque(false);
         btnArrow.addActionListener(e -> {
+            // Nếu đã mở thì xóa khỏi Set, thu gọn
             if (expandedSections.contains(label)) {
                 expandedSections.remove(label);
             } else {
+                // Chưa thì thêm vào, mở rộng
                 expandedSections.add(label);
             }
             rebuildNavigation();
@@ -258,10 +265,12 @@ public final class ManHinhChinh extends JFrame {
         String page = current;
         // Xóa menu cũ
         pnlNav.removeAll();
+        // Trả về danh sách đối tượng
         String[] items = DuLieuTrinhDon.forRole(role);
         section("TỔNG QUAN");
         String lastGroup = null;
         JButton activeBtnRef = null;
+        // Duyệt từng tên chức năng
         for (int i = 0; i < items.length; i++) {
             String s = items[i];
             if (i == 2)
@@ -272,11 +281,13 @@ public final class ManHinhChinh extends JFrame {
                     lastGroup = groupName;
                     accordionSection(groupName, expandedSections.contains(groupName));
                 }
+                // Nếu đang thu gọn thì bỏ qua các chức năng trong nhóm đó
                 if (!expandedSections.contains(groupName))
                     continue;
             }
             boolean search = s.equals("Công cụ tìm kiếm");
             boolean active = s.equals(page) || (search && page.startsWith(SEARCH_PREFIX));
+            // Tạo nút trên sidebar
             JButton btnB = new JButton(s);
             if (search) {
                 final boolean expanded = searchExpanded;
@@ -314,6 +325,7 @@ public final class ManHinhChinh extends JFrame {
             }
             btnB.setIcon(BieuTuong.get(s, 17, active ? Color.WHITE : new Color(0xB8D4D0)));
             btnB.setIconTextGap(12);
+            // Căn trái
             btnB.setHorizontalAlignment(SwingConstants.LEFT);
             btnB.setAlignmentX(Component.LEFT_ALIGNMENT);
             btnB.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
@@ -322,6 +334,7 @@ public final class ManHinhChinh extends JFrame {
             btnB.setFocusPainted(false);
             btnB.setBorder(new EmptyBorder(0, 13, 0, search ? 16 : 8));
             btnB.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            // Xác định nút đang được chọn.
             btnB.setBackground(active ? GiaoDien.TEAL : GiaoDien.NAV);
             btnB.setForeground(active ? Color.WHITE : new Color(0xD1DFDD));
             btnB.setOpaque(true);
@@ -332,6 +345,7 @@ public final class ManHinhChinh extends JFrame {
                 });
             else
                 btnB.addActionListener(e -> open(s));
+            // đưa nút vào sidebar để hiển thị
             pnlNav.add(btnB);
             if (active)
                 activeBtnRef = btnB;
@@ -387,9 +401,12 @@ public final class ManHinhChinh extends JFrame {
         String targetSection = sectionForItem(page);
         if (targetSection != null)
             expandedSections.add(targetSection);
+        // Lưu trang hiện tại và cập nhật tiêu đề
         current = page;
         lblTitle.setText(page);
+        // gọi hàm tạo sidebar
         rebuildNavigation();
+        // xóa màn hình cũ và tạo màn hình mới
         pnlBody.removeAll();
         JComponent view = page.equals("Tổng quan") ? new ManHinhTongQuan(role, this, displayName)
                 : searchGroup != null ? new ManHinhTimKiem(role, searchGroup)
@@ -399,6 +416,7 @@ public final class ManHinhChinh extends JFrame {
                                         : DieuHuongManHinh.tao(page, role, employeeId);
         if (view instanceof ManHinhBanPhuTung || DieuHuongManHinh.tableFor(page) != null
                 || view instanceof ManHinhTimKiem) {
+            // Đưa màn hình vừa tạo vào khung bên phải
             pnlBody.add(view, BorderLayout.CENTER);
         } else {
             JPanel pnlViewportWrap = new JPanel(new BorderLayout()) {
